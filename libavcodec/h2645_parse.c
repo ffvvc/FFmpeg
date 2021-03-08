@@ -1,5 +1,5 @@
 /*
- * H.264/HEVC common parsing code
+ * H.264/HEVC/VVC common parsing code
  *
  * This file is part of FFmpeg.
  *
@@ -27,6 +27,7 @@
 #include "libavutil/mem.h"
 
 #include "bytestream.h"
+#include "vvc.h"
 #include "hevc.h"
 #include "h264.h"
 #include "h2645_parse.h"
@@ -143,6 +144,47 @@ nsc:
     rbsp->rbsp_buffer_size += si;
 
     return si;
+}
+
+static const char *const vvc_nal_type_name[32] = {
+    "TRAIL_NUT", // VVC_TRAIL_NUT
+    "STSA_NUT", // VVC_STSA_NUT
+    "RADL_NUT", // VVC_RADL_NUT
+    "RASL_NUT", // VVC_RASL_NUT
+    "RSV_VCL_4", // VVC_RSV_VCL_4
+    "RSV_VCL_5", // VVC_RSV_VCL_5
+    "RSV_VCL_6", // VVC_RSV_VCL_6
+    "IDR_W_RADL", // VVC_IDR_W_RADL
+    "IDR_N_LP", // VVC_IDR_N_LP
+    "CRA_NUT", // VVC_CRA_NUT
+    "GDR_NUT", // VVC_GDR_NUT
+    "RSV_IRAP_11", // VVC_RSV_IRAP_11
+    "OPI_NUT", // VVC_OPI_NUT
+    "DCI_NUT", // VVC_DCI_NUT
+    "VPS_NUT", // VVC_VPS_NUT
+    "SPS_NUT", // VVC_SPS_NUT
+    "PPS_NUT", // VVC_PPS_NUT
+    "PREFIX_APS_NUT",// VVC_PREFIX_APS_NUT
+    "SUFFIX_APS_NUT",// VVC_SUFFIX_APS_NUT
+    "PH_NUT", // VVC_PH_NUT
+    "AUD_NUT", // VVC_AUD_NUT
+    "EOS_NUT", // VVC_EOS_NUT
+    "EOB_NUT", // VVC_EOB_NUT
+    "PREFIX_SEI_NUT",// VVC_PREFIX_SEI_NUT
+    "SUFFIX_SEI_NUT",// VVC_SUFFIX_SEI_NUT
+    "FD_NUT", // VVC_FD_NUT
+    "RSV_NVCL_26", // VVC_RSV_NVCL_26
+    "RSV_NVCL_27", // VVC_RSV_NVCL_27
+    "UNSPEC_28", // VVC_UNSPEC_28
+    "UNSPEC_29", // VVC_UNSPEC_29
+    "UNSPEC_30", // VVC_UNSPEC_30
+    "UNSPEC_31", // VVC_UNSPEC_31
+};
+
+static const char *vvc_nal_unit_name(int nal_type)
+{
+    av_assert0(nal_type >= 0 && nal_type < 32);
+    return vvc_nal_type_name[nal_type];
 }
 
 static const char *const hevc_nal_type_name[64] = {
@@ -293,6 +335,31 @@ static int get_bit_length(H2645NAL *nal, int min_size, int skip_trailing_zeros)
  * @return AVERROR_INVALIDDATA if the packet is not a valid NAL unit,
  * 0 otherwise
  */
+static int vvc_parse_nal_header(H2645NAL *nal, void *logctx)
+{
+    GetBitContext *gb = &nal->gb;
+
+    if (get_bits1(gb) != 0)     //forbidden_zero_bit
+        return AVERROR_INVALIDDATA;
+
+    skip_bits1(gb);             //nuh_reserved_zero_bit
+
+    nal->nuh_layer_id = get_bits(gb, 6);
+    nal->type = get_bits(gb, 5);
+    nal->temporal_id = get_bits(gb, 3) - 1;
+    if (nal->temporal_id < 0)
+        return AVERROR_INVALIDDATA;
+
+    if ((nal->type >= VVC_IDR_W_RADL && nal->type <= VVC_RSV_IRAP_11) && nal->temporal_id)
+        return AVERROR_INVALIDDATA;
+
+    av_log(logctx, AV_LOG_DEBUG,
+      "nal_unit_type: %d(%s), nuh_layer_id: %d, temporal_id: %d\n",
+           nal->type, vvc_nal_unit_name(nal->type), nal->nuh_layer_id, nal->temporal_id);
+
+    return 0;
+}
+
 static int hevc_parse_nal_header(H2645NAL *nal, void *logctx)
 {
     GetBitContext *gb = &nal->gb;
@@ -508,8 +575,9 @@ int ff_h2645_packet_split(H2645Packet *pkt, const uint8_t *buf, int length,
 
         /* Reset type in case it contains a stale value from a previously parsed NAL */
         nal->type = 0;
-
-        if (codec_id == AV_CODEC_ID_HEVC)
+        if (codec_id == AV_CODEC_ID_VVC)
+            ret = vvc_parse_nal_header(nal, logctx);
+        else if (codec_id == AV_CODEC_ID_HEVC)
             ret = hevc_parse_nal_header(nal, logctx);
         else
             ret = h264_parse_nal_header(nal, logctx);
