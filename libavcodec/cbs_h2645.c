@@ -659,32 +659,118 @@ static int cbs_h2645_split_fragment(CodedBitstreamContext *ctx,
     return 0;
 }
 
-#define cbs_h2645_replace_ps(h26n, ps_name, ps_var, id_element) \
-static int cbs_h26 ## h26n ## _replace_ ## ps_var(CodedBitstreamContext *ctx, \
-                                                  CodedBitstreamUnit *unit)  \
-{ \
-    CodedBitstreamH26 ## h26n ## Context *priv = ctx->priv_data; \
-    H26 ## h26n ## Raw ## ps_name *ps_var = unit->content; \
-    unsigned int id = ps_var->id_element; \
-    int err = ff_cbs_make_unit_refcounted(ctx, unit); \
-    if (err < 0) \
-        return err; \
-    if (priv->ps_var[id] == priv->active_ ## ps_var) \
-        priv->active_ ## ps_var = NULL ; \
-    av_buffer_unref(&priv->ps_var ## _ref[id]); \
-    av_assert0(unit->content_ref); \
-    priv->ps_var ## _ref[id] = av_buffer_ref(unit->content_ref); \
-    if (!priv->ps_var ## _ref[id]) \
-        return AVERROR(ENOMEM); \
-    priv->ps_var[id] = (H26 ## h26n ## Raw ## ps_name *)priv->ps_var ## _ref[id]->data; \
-    return 0; \
-}
+static int cbs_h2645_replace_ps(CodedBitstreamContext *ctx,
+                                CodedBitstreamUnit *unit)
+{
+    typedef struct {
+        // Codec this parameter set exists in.
+        enum AVCodecID codec_id;
+        // The NAL unit type corresponding to this parameter set type.
+        int    nal_unit_type;
+        // Name of the parameter set.  This field is large enough to
+        // contain a string of the form "XPS".
+        char   name[4];
+        // The maximum number of this type of parameter set which might
+        // be stored.  The greatest valid id is also one less than this.
+        int    id_count;
+        // Offset of the ID field (uint8_t) in the decomposed raw
+        // parameter set structure.
+        size_t id_offset;
+        // Offset of the reference array (AVBufferRef*[]) in the codec
+        // private context.
+        size_t ref_array_offset;
+        // Offset of the pointer array (CodecRawXPS*[]) in the codec
+        // private context.
+        size_t ptr_array_offset;
+        // Offset of the active field (const CodecRawXPS*) in the codec
+        // private context, or zero if this codec does not have active
+        // parameter sets.
+        size_t active_offset;
+    } PSType;
 
-cbs_h2645_replace_ps(4, SPS, sps, seq_parameter_set_id)
-cbs_h2645_replace_ps(4, PPS, pps, pic_parameter_set_id)
-cbs_h2645_replace_ps(5, VPS, vps, vps_video_parameter_set_id)
-cbs_h2645_replace_ps(5, SPS, sps, sps_seq_parameter_set_id)
-cbs_h2645_replace_ps(5, PPS, pps, pps_pic_parameter_set_id)
+#define H2645_PS_TYPE(codec, nal, cname, uname, count, id_name, active_field) { \
+        .codec_id         = AV_CODEC_ID_ ## codec, \
+        .nal_unit_type    = nal, \
+        .name             = #cname, \
+        .id_count         = count, \
+        .id_offset        = offsetof(codec ## Raw ## cname, \
+                                     id_name ## _parameter_set_id), \
+        .ref_array_offset = offsetof(CodedBitstream ## codec ## Context, \
+                                     uname ## _ref), \
+        .ptr_array_offset = offsetof(CodedBitstream ## codec ## Context, \
+                                     uname), \
+        .active_offset    = offsetof(CodedBitstream ## codec ## Context, \
+                                     active_field), \
+    }
+#define H264_PS_TYPE(cname, uname, id_name) \
+    H2645_PS_TYPE(H264, H264_NAL_ ## cname, cname, uname, \
+                  H264_MAX_ ## cname ## _COUNT, \
+                  id_name, active_ ## uname)
+#define H265_PS_TYPE(cname, uname, id_name) \
+    H2645_PS_TYPE(H265, HEVC_NAL_ ## cname, cname, uname, \
+                  HEVC_MAX_ ## cname ## _COUNT, \
+                  uname ## _ ## id_name, active_ ## uname)
+
+    static const PSType ps_types[] = {
+        H264_PS_TYPE(SPS, sps, seq),
+        H264_PS_TYPE(PPS, pps, pic),
+        H265_PS_TYPE(VPS, vps, video),
+        H265_PS_TYPE(SPS, sps, seq),
+        H265_PS_TYPE(PPS, pps, pic),
+    };
+
+    const PSType *ps_type;
+    AVBufferRef **ref_array;
+    void **ptr_array;
+    int err, id, i;
+
+    ps_type = NULL;
+    for (i = 0; i < FF_ARRAY_ELEMS(ps_types); i++) {
+        if (ps_types[i].codec_id == ctx->codec->codec_id &&
+            ps_types[i].nal_unit_type == unit->type) {
+            ps_type = &ps_types[i];
+            break;
+        }
+    }
+    av_assert0(ps_type);
+
+
+    id = *((uint8_t*)unit->content + ps_type->id_offset);
+
+    if (id >= ps_type->id_count) {
+        av_log(ctx->log_ctx, AV_LOG_ERROR, "Invalid %s id: %d.\n",
+            ps_type->name, id);
+        return AVERROR_INVALIDDATA;
+    }
+
+    err = ff_cbs_make_unit_refcounted(ctx, unit);
+    if (err < 0)
+        return err;
+
+    ref_array = (AVBufferRef**)((uint8_t*)ctx->priv_data +
+                                ps_type->ref_array_offset);
+    ptr_array = (void**)       ((uint8_t*)ctx->priv_data +
+                                ps_type->ptr_array_offset);
+
+    if (ps_type->active_offset) {
+        void **active = (void**)((uint8_t*)ctx->priv_data +
+                                 ps_type->active_offset);
+
+        if (ptr_array[id] == *active) {
+            // The old active parameter set is being overwritten, so it can't
+            // be active after this point.
+            *active = NULL;
+        }
+    }
+    av_buffer_unref(&ref_array[id]);
+
+    ref_array[id] = av_buffer_ref(unit->content_ref);
+    if (!ref_array[id])
+        return AVERROR(ENOMEM);
+    ptr_array[id] = ref_array[id]->data;
+
+    return 0;
+}
 
 static int cbs_h264_read_nal_unit(CodedBitstreamContext *ctx,
                                   CodedBitstreamUnit *unit)
@@ -709,7 +795,7 @@ static int cbs_h264_read_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h264_replace_sps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -731,7 +817,7 @@ static int cbs_h264_read_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h264_replace_pps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -828,7 +914,7 @@ static int cbs_h265_read_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h265_replace_vps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -841,7 +927,7 @@ static int cbs_h265_read_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h265_replace_sps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -855,7 +941,7 @@ static int cbs_h265_read_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h265_replace_pps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -999,7 +1085,7 @@ static int cbs_h264_write_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h264_replace_sps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -1023,7 +1109,7 @@ static int cbs_h264_write_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h264_replace_pps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -1116,7 +1202,7 @@ static int cbs_h265_write_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h265_replace_vps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -1130,7 +1216,7 @@ static int cbs_h265_write_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h265_replace_sps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -1144,7 +1230,7 @@ static int cbs_h265_write_nal_unit(CodedBitstreamContext *ctx,
             if (err < 0)
                 return err;
 
-            err = cbs_h265_replace_pps(ctx, unit);
+            err = cbs_h2645_replace_ps(ctx, unit);
             if (err < 0)
                 return err;
         }
