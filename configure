@@ -2427,6 +2427,7 @@ CONFIG_EXTRA="
     cbs_av1
     cbs_h264
     cbs_h265
+    cbs_h266
     cbs_jpeg
     cbs_mpeg2
     cbs_vp9
@@ -2709,6 +2710,7 @@ threads_if_any="$THREADS_LIST"
 cbs_av1_select="cbs"
 cbs_h264_select="cbs"
 cbs_h265_select="cbs"
+cbs_h266_select="cbs"
 cbs_jpeg_select="cbs"
 cbs_mpeg2_select="cbs"
 cbs_vp9_select="cbs"

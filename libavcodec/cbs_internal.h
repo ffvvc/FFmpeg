@@ -41,9 +41,9 @@ enum CBSContentType {
 };
 
 enum {
-      // Maximum number of unit types described by the same non-range
-      // unit type descriptor.
-      CBS_MAX_LIST_UNIT_TYPES = 3,
+      // Maximum number of unit types described by the same unit type
+      // descriptor.
+      CBS_MAX_UNIT_TYPES  = 8,
       // Maximum number of reference buffer offsets in any one unit.
       CBS_MAX_REF_OFFSETS = 2,
       // Special value used in a unit type descriptor to indicate that it
@@ -60,7 +60,7 @@ typedef const struct CodedBitstreamUnitTypeDescriptor {
 
     union {
         // Array of unit types that this entry describes.
-        CodedBitstreamUnitType list[CBS_MAX_LIST_UNIT_TYPES];
+        CodedBitstreamUnitType list[CBS_MAX_UNIT_TYPES];
         // Start and end of unit type range, used if nb_unit_types is
         // CBS_UNIT_TYPE_RANGE.
         struct {
@@ -245,6 +245,7 @@ int ff_cbs_write_signed(CodedBitstreamContext *ctx, PutBitContext *pbc,
 extern const CodedBitstreamType ff_cbs_type_av1;
 extern const CodedBitstreamType ff_cbs_type_h264;
 extern const CodedBitstreamType ff_cbs_type_h265;
+extern const CodedBitstreamType ff_cbs_type_h266;
 extern const CodedBitstreamType ff_cbs_type_jpeg;
 extern const CodedBitstreamType ff_cbs_type_mpeg2;
 extern const CodedBitstreamType ff_cbs_type_vp9;
