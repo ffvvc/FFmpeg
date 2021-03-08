@@ -401,6 +401,31 @@ const AVOutputFormat ff_hevc_muxer = {
 };
 #endif
 
+#if CONFIG_VVC_MUXER
+static int vvc_check_bitstream(struct AVFormatContext *s, struct AVStream *st, const AVPacket *pkt)
+{
+    if (pkt->size >= 5 && AV_RB32(pkt->data) != 0x0000001 &&
+                          AV_RB24(pkt->data) != 0x000001) {
+        //TODO: fixed this after vvc codec defined in http://mp4ra.org/#/codecs
+        av_log(s, AV_LOG_ERROR, "vvc: mp4 to annexb is not supported\n");
+        return AVERROR_PATCHWELCOME;
+    }
+    return 1;
+}
+
+AVOutputFormat ff_vvc_muxer = {
+    .name              = "vvc",
+    .long_name         = NULL_IF_CONFIG_SMALL("raw VVC video"),
+    .extensions        = "vvc,h266,266",
+    .audio_codec       = AV_CODEC_ID_NONE,
+    .video_codec       = AV_CODEC_ID_VVC,
+    .write_header      = force_one_stream,
+    .write_packet      = ff_raw_write_packet,
+    .check_bitstream   = vvc_check_bitstream,
+    .flags             = AVFMT_NOTIMESTAMPS,
+};
+#endif
+
 #if CONFIG_M4V_MUXER
 const AVOutputFormat ff_m4v_muxer = {
     .name              = "m4v",
