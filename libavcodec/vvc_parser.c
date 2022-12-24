@@ -212,7 +212,7 @@ static int set_parser_ctx(AVCodecParserContext *ctx, AVCodecContext *avctx,
         h266_sub_width_c[sps->sps_chroma_format_idc];
     ctx->height       = pps->pps_pic_height_in_luma_samples -
         (pps->pps_conf_win_top_offset + pps->pps_conf_win_bottom_offset) *
-        h266_sub_height_c[sps->sps_chroma_format_idc];;
+        h266_sub_height_c[sps->sps_chroma_format_idc];
     ctx->pict_type    = pu->pic_type;
     ctx->format       = get_format(sps);
 
@@ -226,7 +226,7 @@ static int set_parser_ctx(AVCodecParserContext *ctx, AVCodecContext *avctx,
     }
     avctx->pix_fmt = ctx->format;
 
-    if(sps->sps_ptl_dpb_hrd_params_present_flag && sps->sps_timing_hrd_params_present_flag) {
+    if (sps->sps_ptl_dpb_hrd_params_present_flag && sps->sps_timing_hrd_params_present_flag) {
         num = sps->sps_general_timing_hrd_parameters.num_units_in_tick;
         den = sps->sps_general_timing_hrd_parameters.time_scale;
     } else {
