@@ -391,7 +391,6 @@ static int FUNC(lmcs_sum_samples)(const pixel *start, ptrdiff_t stride, const in
 // 8.7.5.3 Picture reconstruction with luma dependent chroma residual scaling process for chroma samples
 static int FUNC(lmcs_derive_chroma_scale)(VVCLocalContext *lc, const int x0, const int y0)
 {
-    SliceContext *sc    = lc->sc;
     VVCFrameContext *fc = lc->fc;
     const VVCPH *ph     = fc->ps.ph;
     const int size_y = FFMIN(fc->ps.sps->ctb_size_y, 64);

@@ -1059,7 +1059,7 @@ static void derive_transform_type(const VVCFrameContext *fc, const VVCLocalConte
     *trv = mts_to_trv[cu->mts_idx];
 }
 
-static void add_residual_for_joint_coding_chroma(const VVCLocalContext *lc,
+static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
     const TransformUnit *tu, TransformBlock *tb, const int chroma_scale)
 {
     const VVCFrameContext *fc  = lc->fc;
@@ -1366,7 +1366,7 @@ static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     scale(tb->coeffs, temp, w, h, 21 - sps->bit_depth);
 }
 
-static void itransform(const VVCLocalContext *lc, TransformUnit *tu, const int tu_idx, const int target_ch_type)
+static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx, const int target_ch_type)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
