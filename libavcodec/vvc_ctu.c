@@ -1444,8 +1444,10 @@ static void intra_luma_pred_modes(VVCLocalContext *lc, const int cu_act_enabled_
     const int cb_height             = cu->cb_height;
 
     cu->intra_luma_ref_idx  = 0;
+    if (sps->bdpcm_enabled_flag && cb_width <= sps->max_ts_size && cb_height <= sps->max_ts_size)
+        cu->bdpcm_flag[LUMA] = ff_vvc_intra_bdpcm_luma_flag(lc);
     if (cu->bdpcm_flag[LUMA]) {
-        av_assert0(0 && "fix me");
+        cu->intra_pred_mode_y = ff_vvc_intra_bdpcm_luma_dir_flag(lc) ? INTRA_VERT : INTRA_HORZ;
     } else {
         if (sps->mip_enabled_flag)
             cu->intra_mip_flag = ff_vvc_intra_mip_flag(lc, fc->tab.imf);
