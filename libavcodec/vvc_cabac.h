@@ -54,6 +54,10 @@ int ff_vvc_non_inter_flag(VVCLocalContext *lc, int x0, int y0, int ch_type);
 //coding unit
 int ff_vvc_pred_mode_flag(VVCLocalContext *lc, int is_chroma);
 int ff_vvc_pred_mode_plt_flag(VVCLocalContext *lc);
+int ff_vvc_intra_bdpcm_luma_flag(VVCLocalContext *lc);
+int ff_vvc_intra_bdpcm_luma_dir_flag(VVCLocalContext *lc);
+int ff_vvc_intra_bdpcm_chroma_flag(VVCLocalContext *lc);
+int ff_vvc_intra_bdpcm_chroma_dir_flag(VVCLocalContext *lc);
 int ff_vvc_cu_skip_flag(VVCLocalContext *lc, const uint8_t *cu_skip_flag);
 int ff_vvc_pred_mode_ibc_flag(VVCLocalContext *lc, int ch_type);
 int ff_vvc_cu_coded_flag(VVCLocalContext *lc);

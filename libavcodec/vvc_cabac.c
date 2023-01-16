@@ -1225,6 +1225,26 @@ int ff_vvc_pred_mode_plt_flag(VVCLocalContext *lc)
     return GET_CABAC(PRED_MODE_PLT_FLAG);
 }
 
+int ff_vvc_intra_bdpcm_luma_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(INTRA_BDPCM_LUMA_FLAG);
+}
+
+int ff_vvc_intra_bdpcm_luma_dir_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(INTRA_BDPCM_LUMA_DIR_FLAG);
+}
+
+int ff_vvc_intra_bdpcm_chroma_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(INTRA_BDPCM_CHROMA_FLAG);
+}
+
+int ff_vvc_intra_bdpcm_chroma_dir_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(INTRA_BDPCM_CHROMA_DIR_FLAG);
+}
+
 int ff_vvc_cu_skip_flag(VVCLocalContext *lc, const uint8_t *cu_skip_flag)
 {
     const int inc = get_inc(lc, cu_skip_flag);
