@@ -887,7 +887,6 @@ static void derive_chroma_intra_pred_mode(VVCLocalContext *lc,
     }
     luma_intra_pred_mode = derive_center_luma_intra_pred_mode(fc, sps, pps, cu);
 
-    cu->mip_chroma_direct_flag = 0;
     if (cu->act_enabled_flag) {
         cu->intra_pred_mode_c = luma_intra_pred_mode;
         return;
@@ -1483,21 +1482,36 @@ static void intra_luma_pred_modes(VVCLocalContext *lc, const int cu_act_enabled_
     ff_vvc_set_cb_tab(lc, fc->tab.ipm, cu->intra_pred_mode_y);
 }
 
-static void intra_chroma_pred_modes(VVCLocalContext *lc, int x0, int y0)
+static void intra_chroma_pred_modes(VVCLocalContext *lc)
 {
-    const int cclm_enabled = get_cclm_enabled(lc, x0, y0);
-    int cclm_mode_flag = 0;
-    int cclm_mode_idx = 0;
-    int intra_chroma_pred_mode = 0;
+    const VVCSPS *sps   = lc->fc->ps.sps;
+    CodingUnit *cu      = lc->cu;
+    const int hs        = sps->hshift[CHROMA];
+    const int vs        = sps->vshift[CHROMA];
 
-    if (cclm_enabled)
-        cclm_mode_flag = ff_vvc_cclm_mode_flag(lc);
+    cu->mip_chroma_direct_flag = 0;
+    if (sps->bdpcm_enabled_flag &&
+        (cu->cb_width  >> hs) <= sps->max_ts_size &&
+        (cu->cb_height >> vs) <= sps->max_ts_size) {
+        cu->bdpcm_flag[CB] = cu->bdpcm_flag[CR] = ff_vvc_intra_bdpcm_chroma_flag(lc);
+    }
+    if (cu->bdpcm_flag[CHROMA]) {
+        cu->intra_pred_mode_c = ff_vvc_intra_bdpcm_chroma_dir_flag(lc) ? INTRA_VERT : INTRA_HORZ;
+    } else {
+        const int cclm_enabled = get_cclm_enabled(lc, cu->x0, cu->y0);
+        int cclm_mode_flag = 0;
+        int cclm_mode_idx = 0;
+        int intra_chroma_pred_mode = 0;
 
-    if (cclm_mode_flag)
-        cclm_mode_idx = ff_vvc_cclm_mode_idx(lc);
-    else
-        intra_chroma_pred_mode = ff_vvc_intra_chroma_pred_mode(lc);
-    derive_chroma_intra_pred_mode(lc, cclm_mode_flag, cclm_mode_idx, intra_chroma_pred_mode);
+        if (cclm_enabled)
+            cclm_mode_flag = ff_vvc_cclm_mode_flag(lc);
+
+        if (cclm_mode_flag)
+            cclm_mode_idx = ff_vvc_cclm_mode_idx(lc);
+        else
+            intra_chroma_pred_mode = ff_vvc_intra_chroma_pred_mode(lc);
+        derive_chroma_intra_pred_mode(lc, cclm_mode_flag, cclm_mode_idx, intra_chroma_pred_mode);
+    }
 }
 
 static PredMode pred_mode_decode(VVCLocalContext *lc,
@@ -1769,20 +1783,8 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
             if (pred_mode_plt_flag && tree_type == DUAL_TREE_CHROMA)
                 return AVERROR_PATCHWELCOME;
             else if (!pred_mode_plt_flag) {
-                if (!cu->act_enabled_flag) {
-                    if ((cb_width  >> hs) <= sps->max_ts_size &&
-                        (cb_height >> vs) <= sps->max_ts_size &&
-                        sps->bdpcm_enabled_flag) {
-                        av_assert0(0 && "fix me");
-                        //cu->bdpcm_flag[1] = cu->bdpcm_flag[2] =
-                    }
-                    if (cu->bdpcm_flag[1])
-                        av_assert0(0 && "fix me");
-                    else {
-                        intra_chroma_pred_modes(lc, x0, y0);
-                    }
-
-                }
+                if (!cu->act_enabled_flag)
+                    intra_chroma_pred_modes(lc);
             }
         }
     } else if (tree_type != DUAL_TREE_CHROMA) { /* MODE_INTER or MODE_IBC */
