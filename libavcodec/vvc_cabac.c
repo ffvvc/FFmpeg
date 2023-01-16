@@ -59,7 +59,7 @@ enum SyntaxElement {
     INTRA_SUBPARTITIONS_SPLIT_FLAG,
     INTRA_LUMA_MPM_FLAG,
     INTRA_LUMA_NOT_PLANAR_FLAG,
-    INTRA_BDPCM_CHROMA              = INTRA_LUMA_NOT_PLANAR_FLAG    + 2,
+    INTRA_BDPCM_CHROMA_FLAG         = INTRA_LUMA_NOT_PLANAR_FLAG    + 2,
     INTRA_BDPCM_CHROMA_DIR_FLAG,
     CCLM_MODE_FLAG,
     CCLM_MODE_IDX,
@@ -164,7 +164,7 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
         45,
         //intra_luma_not_planar_flag
         13,  28,
-        //intra_bdpcm_chroma
+        //intra_bdpcm_chroma_flag
          1,
         //intra_bdpcm_chroma_dir_flag
         27,
@@ -328,7 +328,7 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
         36,
         //intra_luma_not_planar_flag
         12,  20,
-        //intra_bdpcm_chroma
+        //intra_bdpcm_chroma_flag
          0,
         //intra_bdpcm_chroma_dir_flag
         13,
@@ -491,7 +491,7 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
         44,
         //intra_luma_not_planar_flag
         13,   6,
-        //intra_bdpcm_chroma
+        //intra_bdpcm_chroma_flag
          0,
         //intra_bdpcm_chroma_dir_flag
         28,
@@ -655,7 +655,7 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
          6,
         //intra_luma_not_planar_flag
          1,   5,
-        //intra_bdpcm_chroma
+        //intra_bdpcm_chroma_flag
          1,
         //intra_bdpcm_chroma_dir_flag
          0,
