@@ -747,7 +747,6 @@ static enum IntraPredMode luma_intra_pred_mode(VVCLocalContext* lc, const int in
             }
         }
     }
-    ff_vvc_set_cb_tab(lc, fc->tab.ipm, pred);
     return pred;
 }
 
@@ -1450,12 +1449,11 @@ static void intra_luma_pred_modes(VVCLocalContext *lc, const int cu_act_enabled_
     if (cu->intra_mip_flag) {
         int intra_mip_transposed_flag = ff_vvc_intra_mip_transposed_flag(lc);
         int intra_mip_mode = ff_vvc_intra_mip_mode(lc);
-
         int x = y_cb * pps->min_cb_width + x_cb;
+
         for (int y = 0; y < (cb_height>>log2_min_cb_size); y++) {
             int width = cb_width>>log2_min_cb_size;
             memset(&fc->tab.imf[x],  cu->intra_mip_flag, width);
-            memset(&fc->tab.ipm[x], intra_mip_mode, width);
             fc->tab.imtf[x] = intra_mip_transposed_flag;
             fc->tab.imm[x]  = intra_mip_mode;
             x += pps->min_cb_width;
@@ -1477,6 +1475,7 @@ static void intra_luma_pred_modes(VVCLocalContext *lc, const int cu_act_enabled_
         cu->num_intra_subpartitions = get_num_intra_subpartitions(cu->isp_split_type, cb_width, cb_height);
         cu->intra_pred_mode_y = luma_intra_pred_mode(lc, intra_subpartitions_mode_flag);
     }
+    ff_vvc_set_cb_tab(lc, fc->tab.ipm, cu->intra_pred_mode_y);
 }
 
 static void intra_chroma_pred_modes(VVCLocalContext *lc, int x0, int y0)
