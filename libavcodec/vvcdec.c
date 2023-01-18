@@ -121,7 +121,7 @@ static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int c
         fc->tab.deblock         = av_calloc(ctu_count, sizeof(*fc->tab.deblock));
         fc->tab.sao             = av_calloc(ctu_count, sizeof(*fc->tab.sao));
         fc->tab.alf             = av_calloc(ctu_count, sizeof(*fc->tab.alf));
-        fc->tab.ctus            = av_calloc(ctu_count, sizeof(fc->tab.ctus));
+        fc->tab.ctus            = av_calloc(ctu_count, sizeof(*fc->tab.ctus));
         fc->tab.slice_idx   = av_malloc(ctu_count * sizeof(*fc->tab.slice_idx));
         if (!fc->tab.deblock || !fc->tab.sao || !fc->tab.alf || !fc->tab.ctus || !fc->tab.slice_idx )
             return AVERROR(ENOMEM);
@@ -137,7 +137,7 @@ static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int c
         memset(fc->tab.alf, 0, ctu_count * sizeof(*fc->tab.alf));
         for (int i = 0; i < fc->tab.ctu_count; i++)
             ff_vvc_ctu_free_cus(fc->tab.ctus + i);
-        memset(fc->tab.ctus, 0, ctu_count * sizeof(fc->tab.ctus));
+        memset(fc->tab.ctus, 0, ctu_count * sizeof(*fc->tab.ctus));
     }
     memset(fc->tab.slice_idx, -1, ctu_count * sizeof(*fc->tab.slice_idx));
 
