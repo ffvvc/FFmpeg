@@ -122,7 +122,7 @@ static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int c
         fc->tab.sao             = av_calloc(ctu_count, sizeof(*fc->tab.sao));
         fc->tab.alf             = av_calloc(ctu_count, sizeof(*fc->tab.alf));
         fc->tab.ctus            = av_calloc(ctu_count, sizeof(*fc->tab.ctus));
-        fc->tab.slice_idx   = av_malloc(ctu_count * sizeof(*fc->tab.slice_idx));
+        fc->tab.slice_idx       = av_malloc(ctu_count * sizeof(*fc->tab.slice_idx));
         if (!fc->tab.deblock || !fc->tab.sao || !fc->tab.alf || !fc->tab.ctus || !fc->tab.slice_idx )
             return AVERROR(ENOMEM);
         fc->tab.coeffs = av_malloc(ctu_count * sizeof(*fc->tab.coeffs) * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
