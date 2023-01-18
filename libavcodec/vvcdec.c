@@ -61,7 +61,7 @@ static int vvc_frame_start(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
     }
 
     // 8.3.1 Decoding process for picture order count
-    if (!s->temporal_id && !ph->non_ref_pic_flag && !(IS_RASL(s) && IS_RADL(s)))
+    if (!s->temporal_id && !ph->non_ref_pic_flag && !(IS_RASL(s) || IS_RADL(s)))
         s->pocTid0 = ph->poc;
 
     if ((ret = ff_vvc_set_new_ref(s, fc, &fc->frame)) < 0)
