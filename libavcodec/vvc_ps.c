@@ -1252,7 +1252,7 @@ static unsigned int* pps_parse_tile_sizes(uint16_t *num, unsigned int num_exp,
     unsigned int i, exp_tile_size = 0;
     unsigned int unified_size, remaining_size;
     unsigned int *sizes, *p;
-    sizes = av_malloc_array(num_exp, sizeof(sizes));
+    sizes = av_malloc_array(num_exp, sizeof(*sizes));
     if (!sizes)
         return NULL;
     for (i = 0; i < num_exp; i++) {
