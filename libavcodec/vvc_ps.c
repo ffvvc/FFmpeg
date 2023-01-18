@@ -1267,7 +1267,7 @@ static unsigned int* pps_parse_tile_sizes(uint16_t *num, unsigned int num_exp,
     *num = i + vvc_ceil(remaining_size, unified_size);
     if (*num > max_num) {
         av_log(log_ctx, AV_LOG_ERROR, "num(%d) large than %d.\n", *num, max_num);
-        return NULL;
+        goto err;
     }
     p = av_realloc_array(sizes, *num, sizeof(*sizes));
     if (!p)
