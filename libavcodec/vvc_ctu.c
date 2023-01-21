@@ -1700,6 +1700,24 @@ static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
     return cu;
 }
 
+static void set_cu_tabs(const VVCLocalContext *lc, const CodingUnit *cu)
+{
+    const VVCFrameContext *fc = lc->fc;
+
+    ff_vvc_set_cb_tab(lc, fc->tab.cpm[cu->ch_type], cu->pred_mode);
+    if (cu->tree_type != DUAL_TREE_CHROMA)
+        ff_vvc_set_cb_tab(lc, fc->tab.skip, cu->skip_flag);
+
+    for (int i = 0; i < cu->num_tus; i++) {
+        const TransformUnit *tu = cu->tus + i;
+        for (int j = 0; j < tu->nb_tbs; j++) {
+            const TransformBlock *tb = tu->tbs + j;
+            if (tb->c_idx != LUMA)
+                set_qp_c_tab(lc, tu, tb);
+        }
+    }
+}
+
 static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, int cb_height,
     int cqt_depth, const VVCTreeType tree_type, VVCModeType mode_type)
 {
@@ -1798,19 +1816,7 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         if (ret < 0)
             return ret;
     }
-    ff_vvc_set_cb_tab(lc, fc->tab.cpm[cu->ch_type], cu->pred_mode);
-    if (tree_type != DUAL_TREE_CHROMA)
-        ff_vvc_set_cb_tab(lc, fc->tab.skip, cu->skip_flag);
-    if (tree_type != DUAL_TREE_LUMA && sps->chroma_format_idc) {
-        for (int i = 0; i < cu->num_tus; i++) {
-            const TransformUnit *tu = cu->tus + i;
-            for (int j = 0; j < tu->nb_tbs; j++) {
-                const TransformBlock *tb = tu->tbs + j;
-                if (tb->c_idx != LUMA)
-                    set_qp_c_tab(lc, tu, tb);
-            }
-        }
-    }
+    set_cu_tabs(lc, cu);
 
     return 0;
 }
