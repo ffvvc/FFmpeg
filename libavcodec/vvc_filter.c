@@ -865,26 +865,6 @@ static void vvc_deblock_bs(const VVCLocalContext *lc, const int x0, const int y0
     }
 }
 
-static int get_pcm(VVCFrameContext *fc, int x, int y)
-{
-    return 0;
-#if 0
-    int log2_min_pu_size = fc->ps.sps->log2_min_pu_size;
-    int x_pu, y_pu;
-
-
-    if (x < 0 || y < 0)
-        return 2;
-
-    x_pu = x >> log2_min_pu_size;
-    y_pu = y >> log2_min_pu_size;
-
-    if (x_pu >= fc->ps.sps->min_pu_width || y_pu >= fc->ps.sps->min_pu_height)
-        return 2;
-    return fc->is_pcm[y_pu * fc->ps.sps->min_pu_width + x_pu];
-#endif
-}
-
 //part of 8.8.3.3 Derivation process of transform block boundary
 static void max_filter_length_luma(const VVCFrameContext *fc, const int qx, const int qy,
                                    const int vertical, uint8_t *max_len_p, uint8_t *max_len_q)
@@ -979,13 +959,6 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
         (y0 >> ctb_log2_size_y) * fc->ps.pps->ctb_width;
     DBParams  *params = fc->tab.deblock + ctb;
 
-    //fixme
-    int pcmf = 0;
-#if 0
-    int pcmf = (fc->ps.sps->pcm_enabled_flag &&
-        fc->ps.sps->pcm.loop_filter_disable_flag) ||
-        fc->ps.pps->transquant_bypass_enable_flag;
-#endif
     vvc_deblock_bs(lc, x0, y0, 1);
 
     x_end = x0 + ctb_size;
@@ -1017,24 +990,12 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
 
                     max_filter_length(fc, x, y, c_idx, 1, 0, bs, &max_len_p, &max_len_q);
 
-                    if (pcmf) {
-                        no_p = get_pcm(fc, x - 1, y);
-                        no_q = get_pcm(fc, x, y);
-                        if (!c_idx) {
-                            fc->vvcdsp.vvc_v_loop_filter_luma_c(src,
-                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q);
-                        } else {
-                            fc->vvcdsp.vvc_v_loop_filter_chroma_c(src,
-                                fc->frame->linesize[c_idx], beta,tc, no_p, no_q, vs, max_len_p, max_len_q);
-                        }
+                    if (!c_idx) {
+                        fc->vvcdsp.vvc_v_loop_filter_luma(src,
+                            fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q);
                     } else {
-                        if (!c_idx) {
-                            fc->vvcdsp.vvc_v_loop_filter_luma(src,
-                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q);
-                        } else {
-                            fc->vvcdsp.vvc_v_loop_filter_chroma(src,
-                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);
-                        }
+                        fc->vvcdsp.vvc_v_loop_filter_chroma(src,
+                            fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);
                     }
                 }
             }
@@ -1058,13 +1019,6 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
     int ctb = (x0 >> ctb_log2_size_y) +
         (y0 >> ctb_log2_size_y) * fc->ps.pps->ctb_width;
     int tc_offset, beta_offset;
-    //fixme
-    int pcmf = 0;
-#if 0
-    int pcmf = (fc->ps.sps->pcm_enabled_flag &&
-        fc->ps.sps->pcm.loop_filter_disable_flag) ||
-        fc->ps.pps->transquant_bypass_enable_flag;
-#endif
 
     vvc_deblock_bs(lc, x0, y0, 0);
 
@@ -1105,24 +1059,12 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
 
                     max_filter_length(fc, x, y, c_idx, 0, horizontal_ctu_edge, bs, &max_len_p, &max_len_q);
 
-                    if (pcmf) {
-                        no_p = get_pcm(fc, x, y - 1);
-                        no_q = get_pcm(fc, x, y);
-                        if (!c_idx) {
-                            fc->vvcdsp.vvc_h_loop_filter_luma_c(src, fc->frame->linesize[c_idx],
-                                beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
-                        } else {
-                            fc->vvcdsp.vvc_h_loop_filter_chroma_c(src, fc->frame->linesize[c_idx],
-                                beta, tc, no_p, no_q, hs, max_len_p, max_len_q);
-                        }
+                    if (!c_idx) {
+                        fc->vvcdsp.vvc_h_loop_filter_luma(src, fc->frame->linesize[c_idx],
+                            beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
                     } else {
-                        if (!c_idx) {
-                            fc->vvcdsp.vvc_h_loop_filter_luma(src, fc->frame->linesize[c_idx],
-                                beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
-                        } else {
-                            fc->vvcdsp.vvc_h_loop_filter_chroma(src, fc->frame->linesize[c_idx], beta,
-                                tc, no_p, no_q, hs, max_len_p, max_len_q);
-                        }
+                        fc->vvcdsp.vvc_h_loop_filter_chroma(src, fc->frame->linesize[c_idx], beta,
+                            tc, no_p, no_q, hs, max_len_p, max_len_q);
                     }
                 }
             }
