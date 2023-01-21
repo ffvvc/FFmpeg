@@ -87,30 +87,28 @@ static void FUNC(pred_residual_joint)(int *buf, const int w, const int h,
     }
 }
 
-
-#if 0
-static void FUNC(transform_rdpcm)(int16_t *_coeffs, int16_t log2_size, int mode)
+static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height,
+    const int vertical, const int depth)
 {
-    int16_t *coeffs = (int16_t *) _coeffs;
     int x, y;
-    int size = 1 << log2_size;
 
-    if (mode) {
-        coeffs += size;
-        for (y = 0; y < size - 1; y++) {
-            for (x = 0; x < size; x++)
-                coeffs[x] += coeffs[x - size];
-            coeffs += size;
+    if (vertical) {
+        coeffs += width;
+        for (y = 0; y < height - 1; y++) {
+            for (x = 0; x < width; x++)
+                coeffs[x] = av_clip_intp2(coeffs[x] + coeffs[x - width], depth);
+            coeffs += width;
         }
     } else {
-        for (y = 0; y < size; y++) {
-            for (x = 1; x < size; x++)
-                coeffs[x] += coeffs[x - 1];
-            coeffs += size;
+        for (y = 0; y < height; y++) {
+            for (x = 1; x < width; x++)
+                coeffs[x] = av_clip_intp2(coeffs[x] + coeffs[x - 1], depth);
+            coeffs += width;
         }
     }
 }
 
+#if 0
 static void FUNC(dequant)(int16_t *coeffs, int16_t log2_size)
 {
     int shift  = 15 - BIT_DEPTH - log2_size;

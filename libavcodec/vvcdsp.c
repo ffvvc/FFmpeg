@@ -376,6 +376,7 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->add_residual                = FUNC(add_residual, depth);            \
     vvcdsp->add_residual_joint          = FUNC(add_residual_joint, depth);      \
     vvcdsp->pred_residual_joint         = FUNC(pred_residual_joint, depth);     \
+    vvcdsp->transform_bdpcm             = FUNC(transform_bdpcm, depth);         \
     vvcdsp->fetch_samples               = FUNC(fetch_samples, depth);           \
     vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
     vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
