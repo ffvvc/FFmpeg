@@ -612,9 +612,12 @@ static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
             MvField *curr = &tab_mvf[y_pu * min_pu_width + xq_pu];
             uint8_t left_cbf_luma = fc->tab.tu_coded_flag[0][y_tu * min_tu_width + xp_tu];
             uint8_t curr_cbf_luma = fc->tab.tu_coded_flag[0][y_tu * min_tu_width + xq_tu];
+            uint8_t pcmf          = fc->tab.pcmf[LUMA][y_tu * min_tu_width + xp_tu] &&
+                fc->tab.pcmf[LUMA][y_tu * min_tu_width + xq_tu];
 
-            bs = 0;
-            if (curr->pred_flag == PF_INTRA || left->pred_flag == PF_INTRA || curr->ciip_flag || left->ciip_flag)
+            if (pcmf)
+                bs = 0;
+            else if (curr->pred_flag == PF_INTRA || left->pred_flag == PF_INTRA || curr->ciip_flag || left->ciip_flag)
                 bs = 2;
             else if (curr_cbf_luma || left_cbf_luma)
                 bs = 1;
@@ -691,9 +694,12 @@ static void vvc_deblock_bs_luma_horizontal(const VVCLocalContext *lc,
             MvField *curr = &tab_mvf[yq_pu * min_pu_width + x_pu];
             uint8_t top_cbf_luma  = fc->tab.tu_coded_flag[0][yp_tu * min_tu_width + x_tu];
             uint8_t curr_cbf_luma = fc->tab.tu_coded_flag[0][yq_tu * min_tu_width + x_tu];
+            const uint8_t pcmf    = fc->tab.pcmf[LUMA][yp_tu * min_tu_width + x_tu] &&
+                fc->tab.pcmf[LUMA][yq_tu * min_tu_width + x_tu];
 
-            bs = 0;
-            if (curr->pred_flag == PF_INTRA || top->pred_flag == PF_INTRA || curr->ciip_flag || top->ciip_flag)
+            if (pcmf)
+                bs = 0;
+            else if (curr->pred_flag == PF_INTRA || top->pred_flag == PF_INTRA || curr->ciip_flag || top->ciip_flag)
                 bs = 2;
             else if (curr_cbf_luma || top_cbf_luma)
                 bs = 1;
@@ -751,6 +757,7 @@ static void vvc_deblock_bs_chroma_vertical(const VVCLocalContext *lc,
             MvField *curr = &tab_mvf[y_pu * min_pu_width + xq_pu];
             const int left_tu = y_tu * min_tu_width + xp_tu;
             const int curr_tu = y_tu * min_tu_width + xq_tu;
+            const uint8_t pcmf = fc->tab.pcmf[CHROMA][left_tu] && fc->tab.pcmf[CHROMA][curr_tu];
 
             for (int c = 1; c < 3; c++) {
                 uint8_t cbf  = fc->tab.tu_coded_flag[c][left_tu] |
@@ -759,7 +766,9 @@ static void vvc_deblock_bs_chroma_vertical(const VVCLocalContext *lc,
                     fc->tab.tu_joint_cbcr_residual_flag[curr_tu];
                 int bs = 0;
 
-                if (curr->pred_flag == PF_INTRA || left->pred_flag == PF_INTRA || curr->ciip_flag || left->ciip_flag)
+                if (pcmf)
+                    bs = 0;
+                else if (curr->pred_flag == PF_INTRA || left->pred_flag == PF_INTRA || curr->ciip_flag || left->ciip_flag)
                     bs = 2;
                 else if (cbf)
                     bs = 1;
@@ -804,6 +813,7 @@ static void vvc_deblock_bs_chroma_horizontal(const VVCLocalContext *lc,
             MvField *curr = &tab_mvf[yq_pu * min_pu_width + x_pu];
             const int top_tu = yp_tu * min_tu_width + x_tu;
             const int curr_tu = yq_tu * min_tu_width + x_tu;
+            const uint8_t pcmf = fc->tab.pcmf[CHROMA][top_tu] && fc->tab.pcmf[CHROMA][curr_tu];
 
             for (int c = 1; c < 3; c++) {
                 uint8_t cbf = fc->tab.tu_coded_flag[c][top_tu] |
@@ -812,7 +822,9 @@ static void vvc_deblock_bs_chroma_horizontal(const VVCLocalContext *lc,
                     fc->tab.tu_joint_cbcr_residual_flag[curr_tu];
                 int bs = 0;
 
-                if (curr->pred_flag == PF_INTRA || top->pred_flag == PF_INTRA || curr->ciip_flag || top->ciip_flag)
+                if (pcmf)
+                    bs = 0;
+                else if (curr->pred_flag == PF_INTRA || top->pred_flag == PF_INTRA || curr->ciip_flag || top->ciip_flag)
                     bs = 2;
                 else if (cbf)
                     bs = 1;
