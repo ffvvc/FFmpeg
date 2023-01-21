@@ -1802,12 +1802,13 @@ static int par_level_flag_ts_decode(VVCLocalContext *lc)
 static int sb_coded_flag_decode(VVCLocalContext *lc, const uint8_t *sb_coded_flag,
     const ResidualCoding *rc, const int xs, const int ys)
 {
+    const VVCSH *sh          = &lc->sc->sh;
     const TransformBlock *tb = rc->tb;
     const int w = rc->width_in_sbs;
     const int h = rc->height_in_sbs;
     int inc;
 
-    if (tb->ts) {
+    if (tb->ts && !sh->ts_residual_coding_disabled_flag) {
         const int left = xs > 0 ? sb_coded_flag[-1] : 0;
         const int above = ys > 0 ? sb_coded_flag[-w] : 0;
         inc = left + above + 4;
@@ -1821,10 +1822,11 @@ static int sb_coded_flag_decode(VVCLocalContext *lc, const uint8_t *sb_coded_fla
 
 static int sig_coeff_flag_decode(VVCLocalContext *lc, const ResidualCoding* rc, const int xc, const int yc)
 {
+    const VVCSH *sh          = &lc->sc->sh;
     const TransformBlock *tb = rc->tb;
     int inc;
 
-    if (tb->ts) {
+    if (tb->ts && !sh->ts_residual_coding_disabled_flag) {
         const int local_num_sig = get_local_sum_ts(rc->sig_coeff_flag, tb->tb_width, tb->tb_height, xc, yc);
         inc = 60 + local_num_sig;
     } else {
@@ -1985,10 +1987,9 @@ static void init_residual_coding(ResidualCoding *rc, const int log2_zo_tb_width,
     rc->height_in_sbs = (1 << (log2_zo_tb_height - log2_sb_h));
     rc->nb_sbs        = rc->width_in_sbs * rc->height_in_sbs;
 
-    if (!tb->ts) {
-        rc->last_scan_pos = rc->num_sb_coeff;
-        rc->qstate        = 0;
-    }
+    rc->last_scan_pos = rc->num_sb_coeff;
+    rc->qstate        = 0;
+
     rc->tb = tb;
 }
 
