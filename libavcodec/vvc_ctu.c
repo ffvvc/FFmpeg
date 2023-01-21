@@ -343,8 +343,8 @@ static int hls_transform_unit(VVCLocalContext *lc, int x0, int y0,int tu_width, 
         if (tb->has_coeffs && is_chroma)
             tb->has_coeffs = tb->c_idx == CB ? 1 : !(tu->coded_flag[CB] && tu->joint_cbcr_residual_flag);
         if (tb->has_coeffs) {
-            tb->ts = cu->bdpcm_flag[i];
-            if (sps->transform_skip_enabled_flag && !cu->bdpcm_flag[i] &&
+            tb->ts = cu->bdpcm_flag[tb->c_idx];
+            if (sps->transform_skip_enabled_flag && !cu->bdpcm_flag[tb->c_idx] &&
                 tb->tb_width <= sps->max_ts_size && tb->tb_height <= sps->max_ts_size &&
                 !cu->sbt_flag && (is_chroma || !is_isp)) {
                 tb->ts = ff_vvc_transform_skip_flag(lc, is_chroma);
@@ -1364,6 +1364,17 @@ static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     scale(tb->coeffs, temp, w, h, 21 - sps->bit_depth);
 }
 
+static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const CodingUnit *cu)
+{
+    const IntraPredMode mode = tb->c_idx ? cu->intra_pred_mode_c : cu->intra_pred_mode_y;
+    const int vertical       = mode == INTRA_VERT;
+    lc->fc->vvcdsp.transform_bdpcm(tb->coeffs, tb->tb_width, tb->tb_height, vertical, 15);
+    if (vertical)
+        tb->max_scan_y = tb->tb_height - 1;
+    else
+        tb->max_scan_x = tb->tb_width - 1;
+}
+
 static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx, const int target_ch_type)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -1387,6 +1398,8 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
             const int vs            = sps->vshift[c_idx];
             uint8_t *dst            = &fc->frame->data[c_idx][(tb->y0 >> vs) * stride + ((tb->x0 >> hs) << ps)];
 
+            if (cu->bdpcm_flag[tb->c_idx])
+                transform_bdpcm(tb, lc, cu);
             dequant(lc, tu, tb);
             if (!tb->ts) {
                 enum TxType trh, trv;
