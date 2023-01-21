@@ -130,41 +130,6 @@ static void copy_CTB_to_hv(VVCFrameContext *fc, const uint8_t *src,
     copy_vert(fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb + 1) * h + y) << ps), src + ((width - 1) << ps), ps, height, 1 << ps, src_stride);
 }
 
-static void restore_tqb_pixels(VVCFrameContext *fc,
-                               uint8_t *src1, const uint8_t *dst1,
-                               ptrdiff_t src_stride, ptrdiff_t dst_stride,
-                               int x0, int y0, int width, int height, int c_idx)
-{
-#if 0
-    if ( fc->ps.pps->transquant_bypass_enable_flag ||
-            (fc->ps.sps->pcm.loop_filter_disable_flag && fc->ps.sps->pcm_enabled_flag)) {
-        int x, y;
-        int min_pu_size  = 1 << fc->ps.sps->log2_min_pu_size;
-        int hshift       = fc->ps.sps->hshift[c_idx];
-        int vshift       = fc->ps.sps->vshift[c_idx];
-        int x_min        = ((x0         ) >> fc->ps.sps->log2_min_pu_size);
-        int y_min        = ((y0         ) >> fc->ps.sps->log2_min_pu_size);
-        int x_max        = ((x0 + width ) >> fc->ps.sps->log2_min_pu_size);
-        int y_max        = ((y0 + height) >> fc->ps.sps->log2_min_pu_size);
-        int len          = (min_pu_size >> hshift) << fc->ps.sps->pixel_shift;
-        for (y = y_min; y < y_max; y++) {
-            for (x = x_min; x < x_max; x++) {
-                if (fc->is_pcm[y * fc->ps.sps->min_pu_width + x]) {
-                    int n;
-                    uint8_t *src = src1 + (((y << fc->ps.sps->log2_min_pu_size) - y0) >> vshift) * src_stride + ((((x << fc->ps.sps->log2_min_pu_size) - x0) >> hshift) << fc->ps.sps->pixel_shift);
-                    const uint8_t *dst = dst1 + (((y << fc->ps.sps->log2_min_pu_size) - y0) >> vshift) * dst_stride + ((((x << fc->ps.sps->log2_min_pu_size) - x0) >> hshift) << fc->ps.sps->pixel_shift);
-                    for (n = 0; n < (min_pu_size >> vshift); n++) {
-                        memcpy(src, dst, len);
-                        src += src_stride;
-                        dst += dst_stride;
-                    }
-                }
-            }
-        }
-    }
-#endif
-}
-
 void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
 {
     VVCFrameContext *fc  = lc->fc;
@@ -240,26 +205,8 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
         switch (sao->type_idx[c_idx]) {
         case SAO_BAND:
             copy_CTB_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx, x_ctb, y_ctb);
-#if 0
-            if (fc->ps.pps->transquant_bypass_enable_flag ||
-                (fc->ps.sps->pcm.loop_filter_disable_flag && fc->ps.sps->pcm_enabled_flag)) {
-                dst = lc->edge_emu_buffer;
-                dst_stride = 2*MAX_PB_SIZE;
-                copy_CTB(dst, src, width << fc->ps.sps->pixel_shift, height, dst_stride, src_stride);
-                fc->vvcdsp.sao_band_filter[tab](src, dst, src_stride, dst_stride,
-                                                sao->offset_val[c_idx], sao->band_position[c_idx],
-                                                width, height);
-                restore_tqb_pixels(fc, src, dst, src_stride, dst_stride,
-                                   x, y, width, height, c_idx);
-            } else {
-                fc->vvcdsp.sao_band_filter[tab](src, src, src_stride, src_stride,
-                                                sao->offset_val[c_idx], sao->band_position[c_idx],
-                                                width, height);
-            }
-#endif
             fc->vvcdsp.sao_band_filter[tab](src, src, src_stride, src_stride,
-                sao->offset_val[c_idx], sao->band_position[c_idx],
-                width, height);
+                sao->offset_val[c_idx], sao->band_position[c_idx], width, height);
 
             sao->type_idx[c_idx] = SAO_APPLIED;
             break;
@@ -369,8 +316,6 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                                                 vert_edge,
                                                 horiz_edge,
                                                 diag_edge);
-            restore_tqb_pixels(fc, src, dst, src_stride, dst_stride,
-                               x, y, width, height, c_idx);
             sao->type_idx[c_idx] = SAO_APPLIED;
             break;
         }
