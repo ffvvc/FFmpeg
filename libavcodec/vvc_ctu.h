@@ -228,8 +228,7 @@ typedef struct CodingUnit {
     IntraPredMode intra_pred_mode_c;        ///< IntraPredModeC
     int mip_chroma_direct_flag;             ///< MipChromaDirectFlag
 
-    int bdpcm_flag[3];                      ///< BdpcmFlag
-    int bdpcm_dir[3];                       ///< BdpcmDir
+    int bdpcm_flag[VVC_MAX_SAMPLE_ARRAYS];  ///< BdpcmFlag
 
     int apply_lfnst_flag[VVC_MAX_SAMPLE_ARRAYS];    ///< ApplyLfnstFlag[]
 

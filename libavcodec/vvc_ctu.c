@@ -662,8 +662,6 @@ static enum IntraPredMode luma_intra_pred_mode(VVCLocalContext* lc, const int in
 
     if (!intra_luma_not_planar_flag) {
         pred = INTRA_PLANAR;
-    } else if (cu->bdpcm_flag[0]) {
-        pred = cu->bdpcm_dir[0] ? INTRA_VERT : INTRA_HORZ;
     } else {
         const VVCSPS *sps       = fc->ps.sps;
         const int x_a           = (x0 - 1) >> sps->min_cb_log2_size_y;
@@ -889,10 +887,6 @@ static void derive_chroma_intra_pred_mode(VVCLocalContext *lc,
 
     if (cu->act_enabled_flag) {
         cu->intra_pred_mode_c = luma_intra_pred_mode;
-        return;
-    }
-    if (cu->bdpcm_flag[1]){
-        cu->intra_pred_mode_c = cu->bdpcm_dir[1] ? INTRA_VERT : INTRA_HORZ;
         return;
     }
     if (cclm_mode_flag) {
