@@ -1745,6 +1745,8 @@ static void set_cu_tabs(const VVCLocalContext *lc, const CodingUnit *cu)
             const TransformBlock *tb = tu->tbs + j;
             if (tb->c_idx != LUMA)
                 set_qp_c_tab(lc, tu, tb);
+            if (tb->c_idx != CR && cu->bdpcm_flag[tb->c_idx])
+                set_tb_tab(fc->tab.pcmf[tb->c_idx], 1, fc, tb);
         }
     }
 }

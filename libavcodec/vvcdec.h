@@ -303,6 +303,7 @@ struct VVCFrameContext {
         int     *tb_pos_y0[2];
         uint8_t *tb_width[2];
         uint8_t *tb_height[2];
+        uint8_t *pcmf[2];
 
         uint8_t *horizontal_bs[VVC_MAX_SAMPLE_ARRAYS];
         uint8_t *vertical_bs[VVC_MAX_SAMPLE_ARRAYS];

@@ -216,6 +216,7 @@ static void min_tu_arrays_free(VVCFrameContext *fc)
         av_freep(&fc->tab.tb_pos_y0[i]);
         av_freep(&fc->tab.tb_width[i]);
         av_freep(&fc->tab.tb_height[i]);
+        av_freep(&fc->tab.pcmf[i]);
     }
 
     for (int i = 0; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
@@ -235,7 +236,9 @@ static int min_tu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_tu)
             fc->tab.tb_pos_y0[i] = av_mallocz(pic_size_in_min_tu * sizeof(*fc->tab.tb_pos_y0[0])) ;
             fc->tab.tb_width[i]  = av_mallocz(pic_size_in_min_tu);
             fc->tab.tb_height[i] = av_mallocz(pic_size_in_min_tu);
-            if (!fc->tab.tb_pos_x0[i] || !fc->tab.tb_pos_y0[i] || !fc->tab.tb_width[i] || !fc->tab.tb_height[i])
+            fc->tab.pcmf[i]      = av_mallocz(pic_size_in_min_tu);
+            if (!fc->tab.tb_pos_x0[i] || !fc->tab.tb_pos_y0[i] ||
+                !fc->tab.tb_width[i] || !fc->tab.tb_height[i] || !fc->tab.pcmf[i])
                 return AVERROR(ENOMEM);
         }
 
@@ -258,6 +261,7 @@ static int min_tu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_tu)
             memset(fc->tab.tb_pos_y0[i], 0, pic_size_in_min_tu * sizeof(*fc->tab.tb_pos_y0[0])) ;
             memset(fc->tab.tb_width[i], 0, pic_size_in_min_tu);
             memset(fc->tab.tb_height[i], 0, pic_size_in_min_tu);
+            memset(fc->tab.pcmf[i], 0, pic_size_in_min_tu);
         }
 
         for (int i = 0; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
