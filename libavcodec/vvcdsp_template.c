@@ -713,7 +713,8 @@ static void FUNC(alf_get_idx)(const int *sum, const int ac, int *filt_idx, int *
     static const int arg_var[] = {0, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4 };
     static const int transpose_table[] = { 0, 1, 0, 2, 2, 3, 1, 3 };
 
-    int hv0, hv1, dir_hv, d0, d1, dir_d, hvd1, hvd0, dir1, dir2, dirs, sum_hv;
+    int hv0, hv1, dir_hv, d0, d1, dir_d, hvd1, hvd0, sum_hv;
+    int dir1, dir2, dirs; ///< mainDirection, secondaryDirection, directionStrength in vtm
     if (sum[ALF_DIR_VERT] > sum[ALF_DIR_HORZ]) {
         hv1 = sum[ALF_DIR_VERT];
         hv0 = sum[ALF_DIR_HORZ];
@@ -723,6 +724,7 @@ static void FUNC(alf_get_idx)(const int *sum, const int ac, int *filt_idx, int *
         hv0 = sum[ALF_DIR_VERT];
         dir_hv = 3;
     }
+
     if (sum[ALF_DIR_DIGA0] > sum[ALF_DIR_DIGA1]) {
         d1 = sum[ALF_DIR_DIGA0];
         d0 = sum[ALF_DIR_DIGA1];
@@ -732,11 +734,19 @@ static void FUNC(alf_get_idx)(const int *sum, const int ac, int *filt_idx, int *
         d0 = sum[ALF_DIR_DIGA0];
         dir_d = 2;
     }
-    hvd1 = (d1 * hv0 > hv1 * d0) ? d1 : hv1;
-    hvd0 = (d1 * hv0 > hv1 * d0) ? d0 : hv0;
 
-    dir1 = (d1 * hv0 > hv1 * d0) ? dir_d : dir_hv;
-    dir2 = (d1 * hv0 > hv1 * d0) ? dir_hv : dir_d;
+    //promote to avoid overflow
+    if ((uint64_t)d1 * hv0 > (uint64_t)hv1 * d0) {
+        hvd1 = d1;
+        hvd0 = d0;
+        dir1 = dir_d;
+        dir2 = dir_hv;
+    } else {
+        hvd1 = hv1;
+        hvd0 = hv0;
+        dir1 = dir_hv;
+        dir2 = dir_d;
+    }
     dirs = (hvd1 * 2 > 9 * hvd0) ? 2 : ((hvd1 > 2 * hvd0) ? 1 : 0);
 
     *transpose_idx = transpose_table[dir1 * 2 + (dir2 >> 1)];
