@@ -348,7 +348,8 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, i
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry);
 
 int ff_vvc_inter_data(VVCLocalContext *lc);
-int ff_vvc_predict_inter(VVCLocalContext *lc);
+int ff_vvc_predict_inter(VVCLocalContext *lc, int rs);
+void ff_vvc_predict_ciip(VVCLocalContext *lc);
 void ff_vvc_set_cb_tab(const VVCLocalContext *lc, uint8_t *tab, uint8_t v);
 int ff_vvc_wide_angle_mode_mapping(const CodingUnit *cu,
     int tb_width, int tb_height, int c_idx, int pred_mode_intra);
