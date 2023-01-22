@@ -213,7 +213,7 @@ int ff_vvc_task_priority_higher(const Task *_a, const Task *_b)
     return a->type < b->type;
 }
 
-static void add_filter_task(VVCContext *s, VVCTask *t, VVCTaskType type)
+static void add_task(VVCContext *s, VVCTask *t, const VVCTaskType type)
 {
     t->type = type;
     ff_vvc_frame_add_task(s, t);
@@ -286,7 +286,7 @@ static int run_recon(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         }
 
         set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_RECON);
-        add_filter_task(s, ft->tasks + rs, VVC_TASK_TYPE_LMCS);
+        add_task(s, ft->tasks + rs, VVC_TASK_TYPE_LMCS);
 
         t->rx++;
     } while (t->rx < ft->ctu_width && is_recon_ready(fc, t));
@@ -312,7 +312,7 @@ static int run_lmcs(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     }
     set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_LMCS);
     if (!t->rx)
-        add_filter_task(s, &ft->rows[t->ry].deblock_v_task, VVC_TASK_TYPE_DEBLOCK_V);
+        add_task(s, &ft->rows[t->ry].deblock_v_task, VVC_TASK_TYPE_DEBLOCK_V);
 
     return 0;
 }
@@ -340,7 +340,7 @@ static int run_deblock_v(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_DEBLOCK_V);
 
         if (!t->ry)
-            add_filter_task(s, &ft->cols[t->rx].deblock_h_task , VVC_TASK_TYPE_DEBLOCK_H);
+            add_task(s, &ft->cols[t->rx].deblock_h_task , VVC_TASK_TYPE_DEBLOCK_H);
 
         t->rx++;
         rs++;
@@ -375,7 +375,7 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_DEBLOCK_H);
 
         if (!t->rx)
-            add_filter_task(s, &ft->rows[t->ry].sao_task, VVC_TASK_TYPE_SAO);
+            add_task(s, &ft->rows[t->ry].sao_task, VVC_TASK_TYPE_SAO);
 
         rs += ft->ctu_width;
         t->ry++;
@@ -387,12 +387,6 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     return 0;
 }
 
-static void add_alf_task(VVCContext *s, VVCTask *t)
-{
-   t->type = VVC_TASK_TYPE_ALF;
-   ff_vvc_frame_add_task(s, t);
-}
-
 static void add_alf_tasks(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
@@ -401,15 +395,15 @@ static void add_alf_tasks(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     if (t->ry > 0) {
         VVCTask *top = at - ft->ctu_width;
         if (t->rx > 0)
-            add_alf_task(s, top - 1);
+            add_task(s, top - 1, VVC_TASK_TYPE_ALF);
         if (t->rx == ft->ctu_width - 1)
-            add_alf_task(s, top);
+            add_task(s, top, VVC_TASK_TYPE_ALF);
     }
     if (t->ry == ft->ctu_height - 1) {
         if (t->rx > 0)
-            add_alf_task(s, at - 1);
+            add_task(s, at - 1, VVC_TASK_TYPE_ALF);
         if (t->rx == ft->ctu_width - 1)
-            add_alf_task(s, at);
+            add_task(s, at, VVC_TASK_TYPE_ALF);
     }
 
 }
