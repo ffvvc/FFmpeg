@@ -109,12 +109,18 @@ static int is_parse_ready(const VVCFrameContext *fc, const VVCTask *t)
     return 1;
 }
 
+static int is_inter_ready(const VVCFrameContext *fc, const VVCTask *t)
+{
+    av_assert0(t->type == VVC_TASK_TYPE_INTER);
+    return 1;
+}
+
 static int is_recon_ready(const VVCFrameContext *fc, const VVCTask *t)
 {
     const VVCFrameThread *ft = fc->frame_thread;
 
     av_assert0(t->type == VVC_TASK_TYPE_RECON);
-    return get_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_PARSE) &&
+    return get_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_INTER) &&
         get_avail(ft, t->rx + 1, t->ry - 1, VVC_TASK_TYPE_RECON) &&
         get_avail(ft, t->rx - 1, t->ry, VVC_TASK_TYPE_RECON);
 }
@@ -171,6 +177,7 @@ int ff_vvc_task_ready(const Task *_t, void *user_data)
     int ready;
     is_ready_func is_ready[]    = {
         is_parse_ready,
+        is_inter_ready,
         is_recon_ready,
         is_lmcs_ready,
         is_deblock_v_ready,
@@ -243,6 +250,7 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             return ret;
 
         set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_PARSE);
+        add_task(s, ft->tasks + rs, VVC_TASK_TYPE_INTER);
 
         if (fc->ps.sps->entropy_coding_sync_enabled_flag && t->rx == pps->ctb_to_col_bd[t->rx]) {
             EntryPoint *next = ep + 1;
@@ -252,9 +260,6 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
                 ff_vvc_frame_add_task(s, next->parse_task);
             }
         }
-
-        if (!t->rx)
-            ff_vvc_frame_add_task(s, &ft->rows[t->ry].reconstruct_task);
 
         t->ctb_addr_in_slice++;
         if (t->ctb_addr_in_slice >= ep->ctu_addr_last)
@@ -267,6 +272,24 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 
     if (t->ctb_addr_in_slice < ep->ctu_addr_last)
         ff_vvc_frame_add_task(s, t);
+
+    return 0;
+}
+
+static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
+{
+    VVCFrameContext *fc = lc->fc;
+    VVCFrameThread *ft  = fc->frame_thread;
+    const int rs        = t->ry * ft->ctu_width + t->rx;
+    const int slice_idx = fc->tab.slice_idx[rs];
+
+    if (slice_idx != -1) {
+        lc->sc = fc->slices[slice_idx];
+        ff_vvc_predict_inter(lc, rs);
+        if (!t->rx)
+            ff_vvc_frame_add_task(s, &ft->rows[t->ry].reconstruct_task);
+    }
+    set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_INTER);
 
     return 0;
 }
@@ -503,6 +526,7 @@ static void finished_one_task(VVCFrameThread *ft, const VVCTaskType type)
 #ifdef VVC_THREAD_DEBUG
 const static char* task_name[] = {
     "P",
+    "I",
     "R",
     "L",
     "V",
@@ -524,6 +548,7 @@ int ff_vvc_task_run(Task *_t, void *local_context, void *user_data)
     int ret = 0;
     run_func run[] = {
         run_parse,
+        run_inter,
         run_recon,
         run_lmcs,
         run_deblock_v,

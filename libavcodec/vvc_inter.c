@@ -1204,7 +1204,7 @@ static void derive_sb_mv(VVCLocalContext *lc, const int x0, const int y0, const 
     }
 }
 
-static void pred_regular_blk(VVCLocalContext *lc)
+static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
 {
     VVCFrameContext *fc         = lc->fc;
     CodingUnit *cu              = lc->cu;
@@ -1213,6 +1213,9 @@ static void pred_regular_blk(VVCLocalContext *lc)
     MvField mv, orig_mv;
     int sbw, sbh, num_sb_x, num_sb_y, sb_bdof_flag = 0;
     int dmvr_flag, bdof_flag;
+
+    if (cu->ciip_flag && skip_ciip)
+        return;
 
     derive_dmvr_bdof_flag(lc, pu, &dmvr_flag, &bdof_flag);
     num_sb_x = mi->num_sb_x;
@@ -1325,24 +1328,46 @@ int ff_vvc_inter_data(VVCLocalContext *lc)
     return ret;
 }
 
-int ff_vvc_predict_inter(VVCLocalContext *lc)
+static void predict_inter(VVCLocalContext *lc)
 {
     const VVCFrameContext *fc   = lc->fc;
     const CodingUnit *cu        = lc->cu;
     const PredictionUnit *pu    = &cu->pu;
-    int ret                     = 0;
 
-    if (pu->merge_gpm_flag) {
+    if (pu->merge_gpm_flag)
         pred_gpm_blk(lc);
-    } else if (pu->inter_affine_flag){
+    else if (pu->inter_affine_flag)
         pred_affine_blk(lc);
-    } else {
-        pred_regular_blk(lc);
-    }
+    else
+        pred_regular_blk(lc, 1);    //intra block is not ready yet, skip ciip
     if (lc->sc->sh.lmcs_used_flag && !cu->ciip_flag) {
         uint8_t* dst0 = POS(0, cu->x0, cu->y0);
         fc->vvcdsp.lmcs_filter_luma(dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.ph->lmcs_fwd_lut);
     }
-    return ret;
 }
+
+int ff_vvc_predict_inter(VVCLocalContext *lc, const int rs)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    CTU *ctu                    = fc->tab.ctus + rs;
+    CodingUnit *cu              = ctu->cus;
+
+    while (cu) {
+        lc->cu = cu;
+        if (cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA)
+            predict_inter(lc);
+        cu = cu->next;
+    }
+
+    return 0;
+}
+
+void ff_vvc_predict_ciip(VVCLocalContext *lc)
+{
+    av_assert0(lc->cu->ciip_flag);
+
+    //todo: refact out ciip from pred_regular_blk
+    pred_regular_blk(lc, 0);
+}
+
 #undef POS

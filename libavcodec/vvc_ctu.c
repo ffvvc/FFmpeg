@@ -2336,9 +2336,9 @@ int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const in
     ff_vvc_decode_neighbour(lc, x_ctb, y_ctb, rx, ry, rs);
     while (cu) {
         lc->cu = cu;
-        if (cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA) {
-            ff_vvc_predict_inter(lc);
-        }
+
+        if (cu->ciip_flag)
+            ff_vvc_predict_ciip(lc);
         if (cu->coded_flag) {
             ret = reconstruct(lc);
         } else {
