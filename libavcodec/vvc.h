@@ -102,9 +102,9 @@ enum {
     VVC_MAX_REF_ENTRIES = VVC_MAX_DPB_SIZE + 13,
 
     //7.4.3.3 sps_num_points_in_qp_table_minus1[i] in range [0, 36 − sps_qp_table_start_minus26[i]],
-    //sps_qp_table_start_minus26[i] in range [sps_qp_table_start_minus26[i] −26 − QpBdOffset, 36]
-    //for 10 bitsQpBdOffset is 12, so sps_num_points_in_qp_table_minus1[i] in range [0, 74]
-    VVC_MAX_POINTS_IN_QP_TABLE = 75,
+    //sps_qp_table_start_minus26[i] in range [sps_qp_table_start_minus26[i] − 26 − QpBdOffset, 36]
+    //for 16 bits QpBdOffset is 48, so sps_num_points_in_qp_table[i] in range [0, 102]
+    VVC_MAX_POINTS_IN_QP_TABLE = 102,
 
     // 7.4.6.1: hrd_cpb_cnt_minus1 is in [0, 31].
     VVC_MAX_CPB_CNT = 32,
