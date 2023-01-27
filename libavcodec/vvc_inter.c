@@ -222,17 +222,18 @@ static void chroma_mc(VVCLocalContext *lc, int16_t *dst, AVFrame *ref, const Mv 
 }
 
 static void luma_mc_uni(VVCLocalContext *lc, uint8_t *_dst, ptrdiff_t dst_stride,
-    AVFrame *ref, const Mv *mv, int x_off, int y_off, const int block_w, const int block_h,
-    const int luma_weight, const int luma_offset, const int hf_idx, const int vf_idx)
+    AVFrame *ref, const MvField *mvf, int x_off, int y_off, const int block_w, const int block_h,
+    const int hf_idx, const int vf_idx)
 {
     VVCFrameContext *fc     = lc->fc;
+    const int lx            = mvf->pred_flag - PF_L0;
+    const Mv *mv            = mvf->mv + lx;
     const uint8_t *src      = ref->data[0];
     uint8_t *dst            = _dst;
     ptrdiff_t src_stride    = ref->linesize[0];
     int mx                  = mv->x & 0xf;
     int my                  = mv->y & 0xf;
-    int weight_flag         = (IS_P(&lc->sc->sh) && fc->ps.pps->weighted_pred_flag) ||
-                              (IS_B(&lc->sc->sh) && fc->ps.pps->weighted_bipred_flag);
+    int denom, wx, ox;
 
     x_off += mv->x >> 4;
     y_off += mv->y >> 4;
@@ -240,19 +241,12 @@ static void luma_mc_uni(VVCLocalContext *lc, uint8_t *_dst, ptrdiff_t dst_stride
 
     EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src, &src_stride, x_off, y_off);
 
-
-
-    if (!weight_flag) {
-        fc->vvcdsp.put_vvc_luma_uni[!!my][!!mx](dst, dst_stride, src, src_stride,
-                                                      block_h, mx, my, block_w,
-                                                      hf_idx, vf_idx);
+    if (derive_weight_uni(&denom, &wx, &ox, lc, mvf, LUMA)) {
+        fc->vvcdsp.put_vvc_luma_uni_w[!!my][!!mx](dst, dst_stride, src, src_stride,
+            block_h, denom, wx, ox, mx, my, block_w, hf_idx, vf_idx);
     } else {
-        av_assert0(0 && "fixme");
-#if 0
-        fc->vvcdsp.put_vvc_qpel_uni_w[idx][!!my][!!mx](dst, dst_stride, src, src_stride,
-                                                        block_h, fc->sh.luma_log2_weight_denom,
-                                                        luma_weight, luma_offset, mx, my, block_w);
-#endif
+        fc->vvcdsp.put_vvc_luma_uni[!!my][!!mx](dst, dst_stride, src, src_stride,
+            block_h, mx, my, block_w, hf_idx, vf_idx);
     }
 }
 
@@ -1006,10 +1000,7 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
     if (mv->pred_flag != PF_BI) {
         const int lx = mv->pred_flag - PF_L0;
         luma_mc_uni(lc, inter, inter_stride, ref[lx]->frame,
-            mv->mv + lx, x0, y0, sbw, sbh, 0, 0, hf_idx, vf_idx);
-
-        //                        fc->sh.luma_weight_l0[current_mv->ref_idx[0]],
-        //                        fc->sh.luma_offset_l0[current_mv->ref_idx[0]]);
+            mv, x0, y0, sbw, sbh, hf_idx, vf_idx);
     } else {
         luma_mc_bi(lc, inter, inter_stride, ref[0]->frame,
                    &mv->mv[0], x0, y0, sbw, sbh,
