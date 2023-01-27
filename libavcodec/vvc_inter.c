@@ -350,17 +350,14 @@ static void chroma_mc_uni(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_strid
 
 static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
     AVFrame *ref0, AVFrame *ref1, const int x_off, const int y_off, const int block_w, const int block_h,
-    const MvField *current_mv, const int cidx, const int hf_idx, const int vf_idx,
+    const MvField *current_mv, const int c_idx, const int hf_idx, const int vf_idx,
     const MvField *orig_mv, const int dmvr_flag, const int ciip_flag)
 {
     VVCFrameContext *fc  = lc->fc;
-    const uint8_t *src0  = ref0->data[cidx+1];
-    const uint8_t *src1  = ref1->data[cidx+1];
-    ptrdiff_t src0stride = ref0->linesize[cidx+1];
-    ptrdiff_t src1stride = ref1->linesize[cidx+1];
-    int weight_flag      = (IS_P(&lc->sc->sh) && fc->ps.pps->weighted_pred_flag) ||
-                           (IS_B(&lc->sc->sh) && fc->ps.pps->weighted_bipred_flag);
-    int bcw_idx          = current_mv->bcw_idx;
+    const uint8_t *src0  = ref0->data[c_idx];
+    const uint8_t *src1  = ref1->data[c_idx];
+    ptrdiff_t src0stride = ref0->linesize[c_idx];
+    ptrdiff_t src1stride = ref1->linesize[c_idx];
     const Mv *mv0        = &current_mv->mv[0];
     const Mv *mv1        = &current_mv->mv[1];
     int hshift           = fc->ps.sps->hshift[1];
@@ -379,6 +376,8 @@ static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride
     int y_off0 = y_off + (mv0->y >> (4 + vshift));
     int x_off1 = x_off + (mv1->x >> (4 + hshift));
     int y_off1 = y_off + (mv1->y >> (4 + vshift));
+    int denom, w0, w1, o0, o1;
+
     src0  += y_off0 * src0stride + (int)((unsigned)x_off0 << fc->ps.sps->pixel_shift);
     src1  += y_off1 * src1stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
 
@@ -396,32 +395,12 @@ static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride
 
     fc->vvcdsp.put_vvc_chroma[!!my0][!!mx0](lc->tmp, src0, src0stride,
                                                 block_h, _mx0, _my0, block_w, hf_idx, vf_idx);
-    if (!weight_flag && !bcw_idx || ciip_flag)
-        fc->vvcdsp.put_vvc_chroma_bi[!!my1][!!mx1](dst, dst_stride,
-                                                       src1, src1stride, lc->tmp,
-                                                       block_h, _mx1, _my1, block_w, hf_idx, vf_idx);
-    else {
-        int denom, w0, w1, o0, o1;
-        if (bcw_idx) {
-            denom = 2;
-            w1 = bcw_w_lut[bcw_idx];
-            w0 = 8 - w1;
-            o0 = o1 = 0;
-        } else {
-            av_assert0(0);
-#if 0
-            denom = fc->sh.chroma_log2_weight_denom;
-            w0 = fc->sh.chroma_weight_l0[current_mv->ref_idx[0]][cidx];
-            w1 = fc->sh.chroma_weight_l1[current_mv->ref_idx[1]][cidx];
-            o0 = fc->sh.chroma_offset_l0[current_mv->ref_idx[0]][cidx];
-            o1 = fc->sh.chroma_offset_l1[current_mv->ref_idx[1]][cidx];
-#endif
-        }
-        fc->vvcdsp.put_vvc_chroma_bi_w[!!my1][!!mx1](dst, dst_stride,
-                                                         src1, src1stride, lc->tmp,
-                                                         block_h,
-                                                         denom, w0, w1, o0, o1,
-                                                         _mx1, _my1, block_w, hf_idx, vf_idx);
+    if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, current_mv, c_idx, dmvr_flag)) {
+        fc->vvcdsp.put_vvc_chroma_bi_w[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
+            block_h, denom, w0, w1, o0, o1, _mx1, _my1, block_w, hf_idx, vf_idx);
+    } else {
+        fc->vvcdsp.put_vvc_chroma_bi[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
+            block_h, _mx1, _my1, block_w, hf_idx, vf_idx);
     }
 }
 
@@ -1046,10 +1025,10 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
         if (!ref0 || !ref1)
             return;
         chroma_mc_bi(lc, inter1, inter1_stride, ref0->frame, ref1->frame,
-            x0_c, y0_c, w_c, h_c, mv, 0, hf_idx, vf_idx, orig_mv, dmvr_flag, lc->cu->ciip_flag);
+            x0_c, y0_c, w_c, h_c, mv, CB, hf_idx, vf_idx, orig_mv, dmvr_flag, lc->cu->ciip_flag);
 
         chroma_mc_bi(lc, inter2, inter2_stride, ref0->frame, ref1->frame,
-            x0_c, y0_c, w_c, h_c, mv, 1, hf_idx, vf_idx, orig_mv, dmvr_flag, lc->cu->ciip_flag);
+            x0_c, y0_c, w_c, h_c, mv, CR, hf_idx, vf_idx, orig_mv, dmvr_flag, lc->cu->ciip_flag);
 
     }
     if (do_ciip) {
