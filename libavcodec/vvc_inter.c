@@ -281,9 +281,7 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
     int my0              = mv0->y & 0xf;
     int mx1              = mv1->x & 0xf;
     int my1              = mv1->y & 0xf;
-    int weight_flag      = (IS_P(&lc->sc->sh) && fc->ps.pps->weighted_pred_flag) ||
-                           (IS_B(&lc->sc->sh) && fc->ps.pps->weighted_bipred_flag);
-    int bcw_idx          = current_mv->bcw_idx;
+
     int x_off0           = x_off + (mv0->x >> 4);
     int y_off0           = y_off + (mv0->y >> 4);
     int x_off1           = x_off + (mv1->x >> 4);
@@ -318,7 +316,6 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
                 block_h, mx1, my1, block_w, hf_idx, vf_idx);
         }
     }
-
 }
 
 static void chroma_mc_uni(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
