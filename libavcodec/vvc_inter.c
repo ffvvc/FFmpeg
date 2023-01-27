@@ -440,27 +440,6 @@ static void luma_prof_uni(VVCLocalContext *lc, uint8_t *_dst, ptrdiff_t dst_stri
     }
 }
 
-static void get_luma_weight(const VVCFrameContext *fc, const int bcw_idx,
-    int *denom, int *w0, int *w1, int *o0, int *o1)
-{
-    if (bcw_idx) {
-        *denom = 2;
-        *w1 = bcw_w_lut[bcw_idx];
-        *w0 = 8 - *w1;
-        *o0 = *o1 = 0;
-    } else {
-        av_assert0(0);
-#if 0
-        denom = fc->shluma_log2_weight_denom;
-        w0 = fc->sh.luma_weight_l0[current_mv->ref_idx[0]];
-        w1 = fc->sh.luma_weight_l1[current_mv->ref_idx[1]];
-        o0 = fc->sh.luma_offset_l0[current_mv->ref_idx[0]];
-        o1 = fc->sh.luma_offset_l1[current_mv->ref_idx[1]];
-#endif
-    }
-
-}
-
 static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
     AVFrame *ref0, AVFrame *ref1, const MvField *current_mv, const int x_off, const int y_off,
     const int block_w, const int block_h)
