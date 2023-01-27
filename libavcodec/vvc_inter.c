@@ -130,6 +130,57 @@ static void emulated_edge_bilinear(const VVCFrameContext *fc, uint8_t *dst, uint
 #define EMULATED_EDGE_BILINEAR(dst, src, src_stride, x_off, y_off)               \
     emulated_edge_bilinear(fc, dst, src, src_stride, x_off, y_off, pred_w, pred_h)
 
+// part of 8.5.6.6 Weighted sample prediction process
+static int derive_weight_uni(int *denom, int *wx, int *ox,
+    const VVCLocalContext *lc, const MvField *mvf, const int c_idx)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCPPS *pps           = fc->ps.pps;
+    const VVCSH *sh             = &lc->sc->sh;
+    const int weight_flag       = (IS_P(sh) && pps->weighted_pred_flag) ||
+                                  (IS_B(sh) && pps->weighted_bipred_flag);
+    if (weight_flag) {
+        const int lx                = mvf->pred_flag - PF_L0;
+        const PredWeightTable *w    = pps->wp_info_in_ph_flag ? &fc->ps.ph->pwt : &sh->pwt;
+
+        *denom = w->log2_denom[c_idx > 0];
+        *wx = w->weight[lx][c_idx][mvf->ref_idx[lx]];
+        *ox = w->offset[lx][c_idx][mvf->ref_idx[lx]];
+    }
+    return weight_flag;
+}
+
+// part of 8.5.6.6 Weighted sample prediction process
+static int derive_weight(int *denom, int *w0, int *w1, int *o0, int *o1,
+    const VVCLocalContext *lc, const MvField *mvf, const int c_idx, const int dmvr_flag)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCPPS *pps           = fc->ps.pps;
+    const VVCSH *sh             = &lc->sc->sh;
+    const int bcw_idx           = mvf->bcw_idx;
+    const int weight_flag       = (IS_P(sh) && pps->weighted_pred_flag) ||
+                                  (IS_B(sh) && fc->ps.pps->weighted_bipred_flag && !dmvr_flag);
+    if ((!weight_flag && !bcw_idx) || (bcw_idx && lc->cu->ciip_flag))
+        return 0;
+
+    if (bcw_idx) {
+        *denom = 2;
+        *w1 = bcw_w_lut[bcw_idx];
+        *w0 = 8 - *w1;
+        *o0 = *o1 = 0;
+    } else {
+        const VVCPPS *pps = fc->ps.pps;
+        const PredWeightTable *w = pps->wp_info_in_ph_flag ? &fc->ps.ph->pwt : &sh->pwt;
+
+        *denom = w->log2_denom[c_idx > 0];
+        *w0 = w->weight[L0][c_idx][mvf->ref_idx[L0]];
+        *w1 = w->weight[L1][c_idx][mvf->ref_idx[L1]];
+        *o0 = w->offset[L0][c_idx][mvf->ref_idx[L0]];
+        *o1 = w->offset[L1][c_idx][mvf->ref_idx[L1]];
+    }
+    return 1;
+}
+
 static void luma_mc(VVCLocalContext *lc, int16_t *dst, AVFrame *ref, const Mv *mv,
     int x_off, int y_off, const int block_w, const int block_h)
 {
