@@ -303,13 +303,11 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     PEL_FUNC(put_vvc_chroma_uni, 0, 1, put_vvc_chroma_uni_h, depth);            \
     PEL_FUNC(put_vvc_chroma_uni, 1, 0, put_vvc_chroma_uni_v, depth);            \
     PEL_FUNC(put_vvc_chroma_uni, 1, 1, put_vvc_chroma_uni_hv, depth);           \
-
-#if 0
     PEL_FUNC(put_vvc_chroma_uni_w, 0, 0, put_vvc_pel_uni_w_pixels, depth);      \
     PEL_FUNC(put_vvc_chroma_uni_w, 0, 1, put_vvc_chroma_uni_w_h, depth);        \
     PEL_FUNC(put_vvc_chroma_uni_w, 1, 0, put_vvc_chroma_uni_w_v, depth);        \
     PEL_FUNC(put_vvc_chroma_uni_w, 1, 1, put_vvc_chroma_uni_w_hv, depth)
-#endif
+
 #undef CHROMA_BI_FUNCS
 #define CHROMA_BI_FUNCS(depth)                                                  \
     PEL_FUNC(put_vvc_chroma_bi, 0, 0, put_vvc_pel_bi_pixels, depth);            \
@@ -335,13 +333,10 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     PEL_FUNC(put_vvc_luma_uni, 0, 1, put_vvc_luma_uni_h, depth);                \
     PEL_FUNC(put_vvc_luma_uni, 1, 0, put_vvc_luma_uni_v, depth);                \
     PEL_FUNC(put_vvc_luma_uni, 1, 1, put_vvc_luma_uni_hv, depth);               \
-
-#if 0
     PEL_FUNC(put_vvc_luma_uni_w, 0, 0, put_vvc_pel_uni_w_pixels, depth);        \
     PEL_FUNC(put_vvc_luma_uni_w, 0, 1, put_vvc_luma_uni_w_h, depth);            \
     PEL_FUNC(put_vvc_luma_uni_w, 1, 0, put_vvc_luma_uni_w_v, depth);            \
     PEL_FUNC(put_vvc_luma_uni_w, 1, 1, put_vvc_luma_uni_w_hv, depth)
-#endif
 
 #undef LUMA_BI_FUNCS
 #define LUMA_BI_FUNCS(depth)                                                    \
@@ -381,6 +376,7 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
     vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
     vvcdsp->apply_prof_uni              = FUNC(apply_prof_uni, depth);          \
+    vvcdsp->apply_prof_uni_w            = FUNC(apply_prof_uni_w, depth);        \
     vvcdsp->apply_prof_bi               = FUNC(apply_prof_bi, depth);           \
     vvcdsp->apply_prof_bi_w             = FUNC(apply_prof_bi_w, depth);         \
     vvcdsp->apply_bdof                  = FUNC(apply_bdof, depth);              \

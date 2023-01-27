@@ -124,32 +124,35 @@ typedef struct VVCDSPContext {
 
     void (*put_vvc_luma[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride,
         int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_vvc_luma_uni[2][2])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-#if 0
-    void (*put_vvc_luma_uni_w[10][2][2])(uint8_t *_dst, ptrdiff_t _dst_stride, uint8_t *_src, ptrdiff_t _src_stride,
-                                          int height, int denom, int wx, int ox, intptr_t mx, intptr_t my, int width);
-#endif
+
+    void (*put_vvc_luma_uni[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
+        const uint8_t *src, ptrdiff_t src_stride, int height,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+    void (*put_vvc_luma_uni_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
+        const uint8_t *src, ptrdiff_t src_stride, int height, int denom, int wx, int ox,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+
     void (*put_vvc_luma_bi[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
         const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
         int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_vvc_luma_bi_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t _src_stride,
-        const int16_t *src2,  int height, int denom, int wx0, int wx1, int ox0, int ox1,
+    void (*put_vvc_luma_bi_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
+        const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
+        int height, int denom, int wx0, int wx1, int ox0, int ox1,
         intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
 
     void (*put_vvc_chroma[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride,
         int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
 
-    void (*put_vvc_chroma_uni[2][2])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t _src_stride,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-#if 0
-    void (*put_vvc_chroma_uni_w[10][2][2])(uint8_t *_dst, ptrdiff_t _dst_stride, uint8_t *_src, ptrdiff_t _src_stride,
-                                          int height, int denom, int wx, int ox, intptr_t mx, intptr_t my, int width);
-#endif
+    void (*put_vvc_chroma_uni[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
+        const uint8_t *_src, ptrdiff_t _src_stride, int height,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+    void (*put_vvc_chroma_uni_w[2][2])(uint8_t *_dst, ptrdiff_t _dst_stride,
+        const uint8_t *_src, ptrdiff_t _src_stride, int height, int denom, int wx, int ox,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+
     void (*put_vvc_chroma_bi[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
         const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
         int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
     void (*put_vvc_chroma_bi_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
         const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
         int height, int denom, int wx0, int ox0, int wx1, int ox1,
@@ -169,8 +172,11 @@ typedef struct VVCDSPContext {
     void (*prof_grad_filter)(int16_t *gradient_h, int16_t *gradient_v, const ptrdiff_t gradient_stride,
         const int16_t *src, const ptrdiff_t src_stride, const int _width, const int _height, const int pad);
     void (*apply_prof)(int16_t *dst, const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y);
+
     void (*apply_prof_uni)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src,
         const int16_t *diff_mv_x, const int16_t *diff_mv_y);
+    void (*apply_prof_uni_w)(uint8_t *dst, const ptrdiff_t dst_stride, const int16_t *src,
+        const int16_t *diff_mv_x, const int16_t *diff_mv_y, int denom, int wx, int ox);
 
     void (*apply_prof_bi)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src0, const int16_t *src1,
         const int16_t *diff_mv_x, const int16_t *diff_mv_y);
