@@ -699,19 +699,21 @@ static void hls_mvd_coding(VVCLocalContext *lc, Mv* mvd)
 
 static int bcw_idx_decode(VVCLocalContext *lc, const MotionInfo *mi, const int cb_width, const int cb_height)
 {
-    VVCFrameContext *fc = lc->fc;
-    const VVCSPS *sps = fc->ps.sps;
-    const VVCPH  *ph = fc->ps.ph;
-    const PredWeightTable *w = &ph->pred_weight_table;
-    int bcw_idx = 0;
+    VVCFrameContext *fc         = lc->fc;
+    const VVCSPS *sps           = fc->ps.sps;
+    const VVCPPS *pps           = fc->ps.pps;
+    const VVCPH  *ph            = fc->ps.ph;
+    const VVCSH *sh             = &lc->sc->sh;
+    const PredWeightTable *w    = pps->wp_info_in_ph_flag ? &ph->pwt : &sh->pwt;
+    int bcw_idx                 = 0;
+
     if (sps->bcw_enabled_flag && mi->pred_flag == PF_BI &&
-        !w->luma_weight_l0_flag[mi->ref_idx[0]] &&
-        !w->luma_weight_l1_flag[mi->ref_idx[1]] &&
-        !w->chroma_weight_l0_flag[mi->ref_idx[0]] &&
-        !w->chroma_weight_l1_flag[mi->ref_idx[1]] &&
+        !w->weight_flag[L0][LUMA][mi->ref_idx[0]] &&
+        !w->weight_flag[L1][LUMA][mi->ref_idx[1]] &&
+        !w->weight_flag[L0][CHROMA][mi->ref_idx[0]] &&
+        !w->weight_flag[L1][CHROMA][mi->ref_idx[1]] &&
         cb_width * cb_height >= 256) {
         bcw_idx = ff_vvc_bcw_idx(lc, ff_vvc_no_backward_pred_flag(fc));
-
     }
     return bcw_idx;
 }
@@ -1038,14 +1040,16 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
 static void derive_dmvr_bdof_flag(VVCLocalContext *lc, const PredictionUnit* pu, int *dmvr_flag, int *bdof_flag)
 {
     const VVCFrameContext *fc = lc->fc;
+    const VVCPPS *pps = fc->ps.pps;
     const VVCPH *ph = fc->ps.ph;
+    const VVCSH *sh = &lc->sc->sh;
     const int poc = ph->poc;
     const RefPicList *rpl0 = fc->ref->refPicList + L0;
     const RefPicList *rpl1 = fc->ref->refPicList + L1;
     const int8_t *ref_idx = pu->mi.ref_idx;
     const MotionInfo *mi = &pu->mi;
     const CodingUnit *cu = lc->cu;
-    const PredWeightTable *w = &ph->pred_weight_table;
+    const PredWeightTable *w = pps->wp_info_in_ph_flag ? &fc->ps.ph->pwt : &sh->pwt;
 
     *dmvr_flag = 0;
     *bdof_flag = 0;
@@ -1055,8 +1059,8 @@ static void derive_dmvr_bdof_flag(VVCLocalContext *lc, const PredictionUnit* pu,
         !rpl0->isLongTerm[ref_idx[L0]] && !rpl1->isLongTerm[ref_idx[L1]] &&
         !cu->ciip_flag &&
         !mi->bcw_idx &&
-        !w->luma_weight_l0[mi->ref_idx[L0]] && !w->luma_weight_l1[mi->ref_idx[L1]] &&
-        !w->chroma_weight_l0[mi->ref_idx[L0]] && !w->chroma_weight_l1[mi->ref_idx[L1]] &&
+        !w->weight_flag[L0][LUMA][mi->ref_idx[L0]] && !w->weight_flag[L1][LUMA][mi->ref_idx[L1]] &&
+        !w->weight_flag[L0][CHROMA][mi->ref_idx[L0]] && !w->weight_flag[L1][CHROMA][mi->ref_idx[L1]] &&
         cu->cb_width >= 8 && cu->cb_height >= 8 &&
         (cu->cb_width * cu->cb_height >= 128)) {
         // fixme: for RprConstraintsActiveFlag
