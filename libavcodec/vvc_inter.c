@@ -272,7 +272,7 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
  static void luma_mc_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
     AVFrame *ref0, const Mv *mv0, const int x_off, const int y_off, const int block_w, const int block_h,
     AVFrame *ref1, const Mv *mv1, const MvField *current_mv, const int hf_idx, const int vf_idx,
-    const MvField *orig_mv, const int dmvr_flag, const int sb_bdof_flag, const int ciip_flag)
+    const MvField *orig_mv, const int dmvr_flag, const int sb_bdof_flag)
 {
     VVCFrameContext *fc  = lc->fc;
     ptrdiff_t src0stride = ref0->linesize[0];
@@ -307,31 +307,15 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride,
         luma_bdof(lc, dst, dst_stride, src0, src0stride, mx0, my0, src1, src1stride, mx1, my1,
             block_w, block_h, hf_idx, vf_idx);
     } else {
+        int denom, w0, w1, o0, o1;
         fc->vvcdsp.put_vvc_luma[!!my0][!!mx0](lc->tmp, src0, src0stride,
-                                             block_h, mx0, my0, block_w, hf_idx, vf_idx);
-        if (!weight_flag && !bcw_idx || ciip_flag)
-            fc->vvcdsp.put_vvc_luma_bi[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
-                                                           block_h, mx1, my1, block_w, hf_idx, vf_idx);
-        else {
-            int denom, w0, w1, o0, o1;
-            if (bcw_idx) {
-                denom = 2;
-                w1 = bcw_w_lut[bcw_idx];
-                w0 = 8 - w1;
-                o0 = o1 = 0;
-            } else {
-                av_assert0(0);
-#if 0
-                denom = fc->shluma_log2_weight_denom;
-                w0 = fc->sh.luma_weight_l0[current_mv->ref_idx[0]];
-                w1 = fc->sh.luma_weight_l1[current_mv->ref_idx[1]];
-                o0 = fc->sh.luma_offset_l0[current_mv->ref_idx[0]];
-                o1 = fc->sh.luma_offset_l1[current_mv->ref_idx[1]];
-#endif
-            }
+            block_h, mx0, my0, block_w, hf_idx, vf_idx);
+        if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, current_mv, LUMA, dmvr_flag)) {
             fc->vvcdsp.put_vvc_luma_bi_w[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
-                                                             block_h, denom, w0, w1, o0, o1,
-                                                             mx1, my1, block_w, hf_idx, vf_idx);
+                block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, hf_idx, vf_idx);
+        } else {
+            fc->vvcdsp.put_vvc_luma_bi[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
+                block_h, mx1, my1, block_w, hf_idx, vf_idx);
         }
     }
 
@@ -1010,9 +994,10 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
         luma_mc_bi(lc, inter, inter_stride, ref[0]->frame,
                    &mv->mv[0], x0, y0, sbw, sbh,
                    ref[1]->frame, &mv->mv[1], mv,
-                   hf_idx, vf_idx, orig_mv, dmvr_flag, sb_bdof_flag, ciip_flag);
+                   hf_idx, vf_idx, orig_mv, dmvr_flag, sb_bdof_flag);
 
     }
+
     if (ciip_flag) {
         const int intra_weight = ciip_derive_intra_weight(lc, x0, y0, sbw, sbh);
         fc->hpc.intra_pred(lc, x0, y0, sbw, sbh, 0);
