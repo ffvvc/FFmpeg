@@ -2354,6 +2354,56 @@ static int ph_parse_intra(VVCPH *ph, const VVCSPS *sps, const VVCPPS *pps, GetBi
     return 0;
 }
 
+static int hls_pred_weight_table(PredWeightTable *w, const uint8_t *num_ref_idx_active,
+    const VVCRefPicListStruct *rpls, const VVCSPS *sps, const VVCPPS *pps, GetBitContext *gb,
+    void *log_ctx)
+{
+    const int has_chroma = (sps->chroma_format_idc > 0);
+
+    ue(w->log2_denom[LUMA], 7);
+
+    w->log2_denom[CHROMA] = 0;
+    if (has_chroma)
+        sep(w->log2_denom[CHROMA], w->log2_denom[LUMA], 0, 7);
+
+    for (int lx = L0; lx <= L1; lx++) {
+        w->nb_weights[lx] = num_ref_idx_active[lx];
+        if (pps->wp_info_in_ph_flag) {
+            w->nb_weights[lx] = 0;
+            if (lx == L0 || (pps->weighted_bipred_flag && rpls[L1].num_ref_entries))
+                ue(w->nb_weights[lx], FFMIN(15, rpls[lx].num_ref_entries));
+        }
+
+        for (int is_chroma = 0; is_chroma <= has_chroma; is_chroma++) {
+            for (int i = 0; i < w->nb_weights[lx]; i++)
+                w->weight_flag[lx][is_chroma][i] = get_bits1(gb);
+        }
+
+        for (int i = 0; i < w->nb_weights[lx]; i++) {
+            const int c_end = has_chroma ? VVC_MAX_SAMPLE_ARRAYS : 1;
+            for (int c_idx = 0; c_idx < c_end; c_idx++) {
+                const int is_chroma = !!c_idx;
+                const int denom = 1 << w->log2_denom[is_chroma];
+
+                w->weight[lx][c_idx][i] = denom;
+                w->offset[lx][c_idx][i] = 0;
+                if (w->weight_flag[lx][is_chroma][i]) {
+                    sep(w->weight[lx][c_idx][i], denom, -128 + denom, 127 + denom);
+                    if (!c_idx) {
+                        se(w->offset[lx][c_idx][i], -128, 127);
+                    } else {
+                        int offset;
+                        se(offset, -4 * 128, 4 * 127);
+                        offset += 128 - ((128 * w->weight[lx][c_idx][i]) >> w->log2_denom[CHROMA]);
+                        w->offset[lx][c_idx][i] = av_clip_intp2(offset, 7);
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 static int ph_parse_inter(VVCPH *ph, const VVCSPS *sps, const VVCPPS *pps, GetBitContext *gb, void *log_ctx)
 {
     int ret;
@@ -2405,15 +2455,13 @@ static int ph_parse_inter(VVCPH *ph, const VVCSPS *sps, const VVCPPS *pps, GetBi
         if ((pps->weighted_pred_flag ||
             pps->weighted_bipred_flag) &&
             pps->wp_info_in_ph_flag) {
-            av_assert0("fixme" && 0);
-    #if 0
-            // if pps->wp_info_in_ph->fla == 1
-            // pred_weight_table will not use num_ref_idx_active
+            // if pps->wp_info_in_ph->flag == 1
+            // hls_pred_weight_table will not use num_ref_idx_active
             uint8_t num_ref_idx_active[2] = {0, 0};
-            CHECK(FUNC(pred_weight_table)(ctx, rw, sps, pps, &ph->ref_pic_lists,
-                                          num_ref_idx_active,
-                                          &ph->pred_weight_table));
-    #endif
+            ret = hls_pred_weight_table(&ph->pwt, num_ref_idx_active,
+                ph->rpls, sps, pps, gb, log_ctx);
+            if (ret < 0)
+                return ret;
         }
     }
     return 0;
@@ -3048,13 +3096,11 @@ static int sh_parse_inter(VVCSH *sh, VVCContext *s, GetBitContext *gb)
             if (!pps->wp_info_in_ph_flag &&
                 ((pps->weighted_pred_flag  && IS_P(sh)) ||
                 (pps->weighted_bipred_flag && IS_B(sh)))) {
-                av_assert0(0 && "fix me");
-#if 0
-                CHECK(FUNC(pred_weight_table)(ctx, rw, sps, pps, ref_pic_lists,
-                                              nb_refs,
-                                              &sh->pred_weight_table));
-#endif
-                }
+                ret = hls_pred_weight_table(&sh->pwt, sh->nb_refs, sh->rpls,
+                    sps, pps, gb, log_ctx);
+                if (ret < 0)
+                    return ret;
+            }
         }
 
     }

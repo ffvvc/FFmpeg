@@ -602,15 +602,15 @@ typedef struct Alf {
     uint8_t  cc_aps_id[2];
 } Alf;
 
+#define MAX_WEIGHTS 15
 typedef struct PredWeightTable {
-    uint8_t luma_weight_l0_flag[16];
-    uint8_t luma_weight_l0[16];
-    uint8_t luma_weight_l1_flag[16];
-    uint8_t luma_weight_l1[16];
-    uint8_t chroma_weight_l0_flag[16];
-    uint8_t chroma_weight_l0[16];
-    uint8_t chroma_weight_l1_flag[16];
-    uint8_t chroma_weight_l1[16];
+    int log2_denom[2];                                          ///< luma_log2_weight_denom, ChromaLog2WeightDenom
+
+    int nb_weights[2];                                          ///< num_l0_weights, num_l1_weights
+    int weight_flag[2][2][MAX_WEIGHTS];                         ///< luma_weight_l0_flag, chroma_weight_l0_flag,
+                                                                ///< luma_weight_l1_flag, chroma_weight_l1_flag,
+    int weight[2][VVC_MAX_SAMPLE_ARRAYS][MAX_WEIGHTS];          ///< LumaWeightL0, LumaWeightL1, ChromaWeightL0, ChromaWeightL1
+    int offset[2][VVC_MAX_SAMPLE_ARRAYS][MAX_WEIGHTS];          ///< luma_offset_l0, luma_offset_l1, ChromaOffsetL0, ChromaOffsetL1
 } PredWeightTable;
 
 typedef struct VVCPH {
@@ -658,7 +658,7 @@ typedef struct VVCPH {
     uint8_t  bdof_disabled_flag;
     uint8_t  dmvr_disabled_flag;
     uint8_t  prof_disabled_flag;
-    PredWeightTable pred_weight_table;
+    PredWeightTable pwt;
 
     int8_t   qp_delta;
     uint8_t  joint_cbcr_sign_flag;
@@ -761,7 +761,7 @@ typedef struct VVCSH {
     uint8_t  cabac_init_flag;
     uint8_t  collocated_ref_idx;
 
-    //H266RawPredWeightTable pred_weight_table;
+    PredWeightTable pwt;
 
     int8_t   chroma_qp_offset[3];                           ///< cb_qp_offset, cr_qp_offset, joint_cbcr_qp_offset
     uint8_t  cu_chroma_qp_offset_enabled_flag;
