@@ -469,26 +469,24 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride
     const PredictionUnit *pu   = &lc->cu->pu;
     ptrdiff_t src0stride = ref0->linesize[0];
     ptrdiff_t src1stride = ref1->linesize[0];
-    const int bcw_idx    = current_mv->bcw_idx;
     const Mv *mv0        = current_mv->mv + L0;
     const Mv *mv1        = current_mv->mv + L1;
     int mx0              = mv0->x & 0xf;
     int my0              = mv0->y & 0xf;
     int mx1              = mv1->x & 0xf;
     int my1              = mv1->y & 0xf;
-    int weight_flag      = (IS_P(&lc->sc->sh) && fc->ps.pps->weighted_pred_flag) ||
-                           (IS_B(&lc->sc->sh) && fc->ps.pps->weighted_bipred_flag) || bcw_idx;
     int x_off0           = x_off + (mv0->x >> 4);
     int y_off0           = y_off + (mv0->y >> 4);
     int x_off1           = x_off + (mv1->x >> 4);
     int y_off1           = y_off + (mv1->y >> 4);
 
-    int denom, w0, w1, o0, o1;
-
     const uint8_t *src0  = ref0->data[0] + y_off0 * src0stride + (int)((unsigned)x_off0 << fc->ps.sps->pixel_shift);
     const uint8_t *src1  = ref1->data[0] + y_off1 * src1stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
 
     uint16_t *prof_tmp   = lc->tmp1 + 1 + MAX_PB_SIZE;
+
+    int denom, w0, w1, o0, o1;
+    int weight_flag      = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, current_mv, LUMA, 0);
 
     EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src0, &src0stride, x_off0, y_off0);
     EMULATED_EDGE_LUMA(lc->edge_emu_buffer2, &src1, &src1stride, x_off1, y_off1);
@@ -502,23 +500,21 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, ptrdiff_t dst_stride
         fc->vvcdsp.apply_prof(lc->tmp, prof_tmp, pu->diff_mv_x[L0], pu->diff_mv_y[L0]);
     }
     if (!pu->cb_prof_flag[L1]) {
-        if (!weight_flag) {
+        if (weight_flag) {
+            fc->vvcdsp.put_vvc_luma_bi_w[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
+                block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, 2, 2);
+        } else {
             fc->vvcdsp.put_vvc_luma_bi[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
                 block_h, mx1, my1, block_w, 2, 2);
-        } else {
-            get_luma_weight(fc, bcw_idx, &denom, &w0, &w1, &o0, &o1);
-            fc->vvcdsp.put_vvc_luma_bi_w[!!my1][!!mx1](dst, dst_stride, src1, src1stride, lc->tmp,
-                block_h, denom, w0, w1, o0, o1,  mx1, my1, block_w, 2, 2);
         }
     } else {
         fc->vvcdsp.put_vvc_luma[!!my1][!!mx1](prof_tmp, src1, src1stride, AFFINE_MIN_BLOCK_SIZE, mx1, my1, AFFINE_MIN_BLOCK_SIZE, 2, 2);
         fc->vvcdsp.fetch_samples(prof_tmp, src1, src1stride, mx1, my1);
-
-        if (!weight_flag) {
-            fc->vvcdsp.apply_prof_bi(dst, dst_stride,  lc->tmp, prof_tmp, pu->diff_mv_x[L1], pu->diff_mv_y[L1]);
+        if (weight_flag) {
+            fc->vvcdsp.apply_prof_bi_w(dst, dst_stride, lc->tmp, prof_tmp, pu->diff_mv_x[L1], pu->diff_mv_y[L1],
+                denom, w0, w1, o0, o1);
         } else {
-            get_luma_weight(fc, bcw_idx, &denom, &w0, &w1, &o0, &o1);
-            fc->vvcdsp.apply_prof_bi_w(dst, dst_stride, lc->tmp, prof_tmp, pu->diff_mv_x[L1], pu->diff_mv_y[L1], denom, w0, w1, o0, o1);
+            fc->vvcdsp.apply_prof_bi(dst, dst_stride,  lc->tmp, prof_tmp, pu->diff_mv_x[L1], pu->diff_mv_y[L1]);
         }
     }
 
