@@ -491,7 +491,7 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
 }
 
 //8.5.2.7 Derivation process for merge motion vector difference
-static void derive_mmvd(const VVCFrameContext *fc, const Mv *mmvd_offset, MvField *mvf)
+static void derive_mmvd(MvField *mvf, const VVCFrameContext *fc, const Mv *mmvd_offset)
 {
     Mv mmvd[2];
 
@@ -609,7 +609,7 @@ static int hls_merge_data(VVCLocalContext *lc)
                 }
                 ff_vvc_luma_mv_merge_mode(lc, merge_idx, 0, &mvf);
                 if (pu->mmvd_merge_flag)
-                    derive_mmvd(fc, &mmvd_offset, &mvf);
+                    derive_mmvd(&mvf, fc, &mmvd_offset);
                 mv_merge_refine_pred_flag(&mvf, cb_width, cb_height);
                 ff_vvc_store_mvf(lc, &mvf);
                 mvf_to_mi(&mvf, mi);
@@ -1004,7 +1004,7 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
 
 // derive bdofFlag from 8.5.6 Decoding process for inter blocks
 // derive dmvr from 8.5.1 General decoding process for coding units coded in inter prediction mode
-static void derive_dmvr_bdof_flag(VVCLocalContext *lc, const PredictionUnit* pu, int *dmvr_flag, int *bdof_flag)
+static void derive_dmvr_bdof_flag(VVCLocalContext *lc, int *dmvr_flag, int *bdof_flag, const PredictionUnit* pu)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCPPS *pps           = fc->ps.pps;
@@ -1088,8 +1088,8 @@ static int parametric_mv_refine(const int *sad, const int stride)
 
 #define SAD_ARRAY_SIZE 5
 //8.5.3 Decoder-side motion vector refinement process
-static void dmvr_mv_refine(VVCLocalContext *lc, const AVFrame *ref0, const AVFrame *ref1,
-    const int x_off, const int y_off, const int block_w, const int block_h, MvField *mv, MvField *orig_mv, int *sb_bdof_flag)
+static void dmvr_mv_refine(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int *sb_bdof_flag,
+    const AVFrame *ref0, const AVFrame *ref1, const int x_off, const int y_off, const int block_w, const int block_h)
 {
     const VVCFrameContext *fc   = lc->fc;
     ptrdiff_t src0_stride       = ref0->linesize[0];
@@ -1158,8 +1158,8 @@ static void dmvr_mv_refine(VVCLocalContext *lc, const AVFrame *ref0, const AVFra
         *sb_bdof_flag = 0;
     }
 }
-static void derive_sb_mv(VVCLocalContext *lc, const int x0, const int y0, const int sbw, const int sbh,
-    const int dmvr_flag, const int bdof_flag,  MvField *mv, MvField *orig_mv, int *sb_bdof_flag)
+static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int *sb_bdof_flag,
+    const int x0, const int y0, const int sbw, const int sbh, const int dmvr_flag, const int bdof_flag)
 {
     VVCFrameContext *fc = lc->fc;
 
@@ -1170,7 +1170,7 @@ static void derive_sb_mv(VVCLocalContext *lc, const int x0, const int y0, const 
         VVCFrame* ref[2];
         if (pred_await_progress(fc, ref, mv, y0, sbh) < 0)
             return;
-        dmvr_mv_refine(lc, ref[0]->frame, ref[1]->frame, x0, y0, sbw, sbh, mv, orig_mv, sb_bdof_flag);
+        dmvr_mv_refine(lc, mv, orig_mv, sb_bdof_flag, ref[0]->frame, ref[1]->frame, x0, y0, sbw, sbh);
         ff_vvc_set_dmvr_info(fc, x0, y0, sbw, sbh, mv);
     }
 }
@@ -1188,7 +1188,7 @@ static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
     if (cu->ciip_flag && skip_ciip)
         return;
 
-    derive_dmvr_bdof_flag(lc, pu, &dmvr_flag, &bdof_flag);
+    derive_dmvr_bdof_flag(lc, &dmvr_flag, &bdof_flag, pu);
     num_sb_x = mi->num_sb_x;
     num_sb_y = mi->num_sb_y;
     if (dmvr_flag || bdof_flag) {
@@ -1206,7 +1206,7 @@ static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
             if (cu->ciip_flag)
                 ff_vvc_set_neighbour_available(lc, x0, y0, sbw, sbh);
 
-            derive_sb_mv(lc, x0, y0, sbw, sbh, dmvr_flag, bdof_flag, &mv, &orig_mv, &sb_bdof_flag);
+            derive_sb_mv(lc, &mv, &orig_mv, &sb_bdof_flag, x0, y0, sbw, sbh, dmvr_flag, bdof_flag);
             pred_regular_luma(lc, mi->hpel_if_idx, mi->hpel_if_idx, &mv, x0, y0, sbw, sbh, &orig_mv, dmvr_flag, sb_bdof_flag);
             if (fc->ps.sps->chroma_format_idc)
                 pred_regular_chroma(lc, &mv, x0, y0, sbw, sbh, &orig_mv, dmvr_flag);
@@ -1214,8 +1214,8 @@ static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
     }
 }
 
-static void derive_affine_mvc(const VVCFrameContext *fc, const MvField *mv,
-    const int x0, const int y0, const int sbw, const int sbh, MvField *mvc)
+static void derive_affine_mvc(MvField *mvc, const VVCFrameContext *fc, const MvField *mv,
+    const int x0, const int y0, const int sbw, const int sbh)
 {
     const int hs = fc->ps.sps->hshift[1];
     const int vs = fc->ps.sps->vshift[1];
@@ -1266,7 +1266,7 @@ static void pred_affine_blk(VVCLocalContext *lc)
             if (fc->ps.sps->chroma_format_idc) {
                 if (!av_mod_uintp2(sby, vs) && !av_mod_uintp2(sbx, hs)) {
                     MvField mvc;
-                    derive_affine_mvc(fc, mv, x, y, sbw, sbh, &mvc);
+                    derive_affine_mvc(&mvc, fc, mv, x, y, sbw, sbh);
                     pred_regular_chroma(lc, &mvc, x, y, sbw<<hs, sbh<<vs, NULL, 0);
 
                 }
