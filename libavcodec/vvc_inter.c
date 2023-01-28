@@ -264,7 +264,7 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
 
  static void luma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
     const AVFrame *ref0, const Mv *mv0, const int x_off, const int y_off, const int block_w, const int block_h,
-    const AVFrame *ref1, const Mv *mv1, const MvField *current_mv, const int hf_idx, const int vf_idx,
+    const AVFrame *ref1, const Mv *mv1, const MvField *mvf, const int hf_idx, const int vf_idx,
     const MvField *orig_mv, const int dmvr_flag, const int sb_bdof_flag)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -301,7 +301,7 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
         int denom, w0, w1, o0, o1;
         fc->vvcdsp.put_vvc_luma[!!my0][!!mx0](lc->tmp, src0, src0_stride,
             block_h, mx0, my0, block_w, hf_idx, vf_idx);
-        if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, current_mv, LUMA, dmvr_flag)) {
+        if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, dmvr_flag)) {
             fc->vvcdsp.put_vvc_luma_bi_w[!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
                 block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, hf_idx, vf_idx);
         } else {
@@ -343,7 +343,7 @@ static void chroma_mc_uni(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst
 
 static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
     const AVFrame *ref0, const AVFrame *ref1, const int x_off, const int y_off,
-    const int block_w, const int block_h,  const MvField *current_mv, const int c_idx,
+    const int block_w, const int block_h,  const MvField *mvf, const int c_idx,
     const int hf_idx, const int vf_idx, const MvField *orig_mv, const int dmvr_flag, const int ciip_flag)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -351,8 +351,8 @@ static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
     const uint8_t *src1         = ref1->data[c_idx];
     ptrdiff_t src0_stride       = ref0->linesize[c_idx];
     ptrdiff_t src1_stride       = ref1->linesize[c_idx];
-    const Mv *mv0               = &current_mv->mv[0];
-    const Mv *mv1               = &current_mv->mv[1];
+    const Mv *mv0               = &mvf->mv[0];
+    const Mv *mv1               = &mvf->mv[1];
     const int hs                = fc->ps.sps->hshift[1];
     const int vs                = fc->ps.sps->vshift[1];
 
@@ -388,7 +388,7 @@ static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
 
     fc->vvcdsp.put_vvc_chroma[!!my0][!!mx0](lc->tmp, src0, src0_stride,
                                                 block_h, _mx0, _my0, block_w, hf_idx, vf_idx);
-    if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, current_mv, c_idx, dmvr_flag)) {
+    if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, c_idx, dmvr_flag)) {
         fc->vvcdsp.put_vvc_chroma_bi_w[!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
             block_h, denom, w0, w1, o0, o1, _mx1, _my1, block_w, hf_idx, vf_idx);
     } else {
@@ -433,7 +433,7 @@ static void luma_prof_uni(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst
 }
 
 static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
-    const AVFrame *ref0, const AVFrame *ref1, const MvField *current_mv, const int x_off, const int y_off,
+    const AVFrame *ref0, const AVFrame *ref1, const MvField *mvf, const int x_off, const int y_off,
     const int block_w, const int block_h)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -441,8 +441,8 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
     ptrdiff_t src0_stride       = ref0->linesize[0];
     ptrdiff_t src1_stride       = ref1->linesize[0];
     uint16_t *prof_tmp          = lc->tmp1 + 1 + MAX_PB_SIZE;
-    const Mv *mv0               = current_mv->mv + L0;
-    const Mv *mv1               = current_mv->mv + L1;
+    const Mv *mv0               = mvf->mv + L0;
+    const Mv *mv1               = mvf->mv + L1;
     const int mx0               = mv0->x & 0xf;
     const int my0               = mv0->y & 0xf;
     const int mx1               = mv1->x & 0xf;
@@ -456,7 +456,7 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
     const uint8_t *src1  = ref1->data[0] + y_off1 * src1_stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
 
     int denom, w0, w1, o0, o1;
-    const int weight_flag      = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, current_mv, LUMA, 0);
+    const int weight_flag      = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, 0);
 
     EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src0, &src0_stride, x_off0, y_off0);
     EMULATED_EDGE_LUMA(lc->edge_emu_buffer2, &src1, &src1_stride, x_off1, y_off1);
