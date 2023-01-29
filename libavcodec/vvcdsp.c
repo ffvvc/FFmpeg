@@ -288,15 +288,9 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     FUNC(ff_vvc_inter_dsp_init, depth)(&vvcdsp->inter);                         \
     FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
     FUNC(ff_vvc_lmcs_dsp_init, depth)(&vvcdsp->lmcs);                           \
+    FUNC(ff_vvc_lf_dsp_init, depth)(&vvcdsp->lf);                               \
     FUNC(ff_vvc_sao_dsp_init, depth)(&vvcdsp->sao);                             \
     FUNC(ff_vvc_alf_dsp_init, depth)(&vvcdsp->alf);                             \
-                                                                                \
-    vvcdsp->vvc_h_loop_ladf_level      = FUNC(vvc_h_loop_ladf_level, depth);    \
-    vvcdsp->vvc_v_loop_ladf_level      = FUNC(vvc_v_loop_ladf_level, depth);    \
-    vvcdsp->vvc_h_loop_filter_luma     = FUNC(vvc_h_loop_filter_luma, depth);   \
-    vvcdsp->vvc_v_loop_filter_luma     = FUNC(vvc_v_loop_filter_luma, depth);   \
-    vvcdsp->vvc_h_loop_filter_chroma   = FUNC(vvc_h_loop_filter_chroma, depth); \
-    vvcdsp->vvc_v_loop_filter_chroma   = FUNC(vvc_v_loop_filter_chroma, depth); \
 
     switch (bit_depth) {
     case 10:

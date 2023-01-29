@@ -2839,6 +2839,16 @@ static void FUNC(ff_vvc_lmcs_dsp_init)(VVCLMCSDSPContext *const lmcs)
     lmcs->filter = FUNC(lmcs_filter_luma);
 }
 
+static void FUNC(ff_vvc_lf_dsp_init)(VVCLFDSPContext *const lf)
+{
+    lf->ladf_level[0]      = FUNC(vvc_h_loop_ladf_level);
+    lf->ladf_level[1]      = FUNC(vvc_v_loop_ladf_level);
+    lf->filter_luma[0]     = FUNC(vvc_h_loop_filter_luma);
+    lf->filter_luma[1]     = FUNC(vvc_v_loop_filter_luma);
+    lf->filter_chroma[0]   = FUNC(vvc_h_loop_filter_chroma);
+    lf->filter_chroma[1]   = FUNC(vvc_v_loop_filter_chroma);
+}
+
 static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)
 {
     for (int i = 0; i < FF_ARRAY_ELEMS(sao->band_filter); i++)

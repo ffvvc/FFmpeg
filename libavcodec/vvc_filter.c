@@ -864,7 +864,7 @@ static int get_qp_y(const VVCFrameContext *fc, const uint8_t *src, const int x, 
     if (!sps->ladf_enabled_flag)
         return qp;
 
-    level = (vertical ? fc->vvcdsp.vvc_v_loop_ladf_level : fc->vvcdsp.vvc_h_loop_ladf_level)(src, fc->frame->linesize[LUMA]);
+    level = fc->vvcdsp.lf.ladf_level[vertical](src, fc->frame->linesize[LUMA]);
     qp_offset = sps->ladf_lowest_interval_qp_offset;
     for (int i = 0; i < sps->num_ladf_intervals - 1 && level > sps->ladf_interval_lower_bound[i + 1]; i++)
         qp_offset = sps->ladf_qp_offset[i];
@@ -935,10 +935,10 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
                     max_filter_length(fc, x, y, c_idx, 1, 0, bs, &max_len_p, &max_len_q);
 
                     if (!c_idx) {
-                        fc->vvcdsp.vvc_v_loop_filter_luma(src,
+                        fc->vvcdsp.lf.filter_luma[1](src,
                             fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
                     } else {
-                        fc->vvcdsp.vvc_v_loop_filter_chroma(src,
+                        fc->vvcdsp.lf.filter_chroma[1](src,
                             fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);
                     }
                 }
@@ -1004,10 +1004,10 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
                     max_filter_length(fc, x, y, c_idx, 0, horizontal_ctu_edge, bs, &max_len_p, &max_len_q);
 
                     if (!c_idx) {
-                        fc->vvcdsp.vvc_h_loop_filter_luma(src, fc->frame->linesize[c_idx],
+                        fc->vvcdsp.lf.filter_luma[0](src, fc->frame->linesize[c_idx],
                             beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
                     } else {
-                        fc->vvcdsp.vvc_h_loop_filter_chroma(src, fc->frame->linesize[c_idx], beta,
+                        fc->vvcdsp.lf.filter_chroma[0](src, fc->frame->linesize[c_idx], beta,
                             tc, no_p, no_q, hs, max_len_p, max_len_q);
                     }
                 }
