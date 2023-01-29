@@ -2759,6 +2759,56 @@ static int FUNC(vvc_v_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride)
 #undef TQ6
 #undef TQ7
 
+#define PEL_FUNC(dst, idx1, idx2, idx3, a)                                      \
+        inter->dst[idx1][idx2][idx3] = FUNC(a)                                  \
+
+#define DIR_FUNCS(d, C, c)                                                      \
+        PEL_FUNC(put_##d, C, 0, 0, put_vvc_pel_##d##_pixels);                   \
+        PEL_FUNC(put_##d, C, 0, 1, put_vvc_##c##_##d##_h);                      \
+        PEL_FUNC(put_##d, C, 1, 0, put_vvc_##c##_##d##_v);                      \
+        PEL_FUNC(put_##d, C, 1, 1, put_vvc_##c##_##d##_hv);                     \
+        PEL_FUNC(put_##d##_w, C, 0, 0, put_vvc_pel_##d##_w_pixels);             \
+        PEL_FUNC(put_##d##_w, C, 0, 1, put_vvc_##c##_##d##_w_h);                \
+        PEL_FUNC(put_##d##_w, C, 1, 0, put_vvc_##c##_##d##_w_v);                \
+        PEL_FUNC(put_##d##_w, C, 1, 1, put_vvc_##c##_##d##_w_hv);
+
+#define FUNCS(C, c)                                                             \
+        PEL_FUNC(put, C, 0, 0, put_vvc_pel_pixels);                             \
+        PEL_FUNC(put, C, 0, 1, put_vvc_##c##_h);                                \
+        PEL_FUNC(put, C, 1, 0, put_vvc_##c##_v);                                \
+        PEL_FUNC(put, C, 1, 1, put_vvc_##c##_hv);                               \
+        DIR_FUNCS(uni, C, c);                                                   \
+        DIR_FUNCS(bi, C, c);                                                    \
+
+static void FUNC(ff_vvc_inter_dsp_init)(VVCInterDSPContext *const inter)
+{
+    FUNCS(LUMA, luma);
+    FUNCS(CHROMA, chroma);
+
+    inter->dmvr[0][0]           = FUNC(dmvr_vvc_luma);
+    inter->dmvr[0][1]           = FUNC(dmvr_vvc_luma_h);
+    inter->dmvr[1][0]           = FUNC(dmvr_vvc_luma_v);
+    inter->dmvr[1][1]           = FUNC(dmvr_vvc_luma_hv);
+
+    inter->put_ciip             = FUNC(put_vvc_ciip);
+    inter->put_gpm              = FUNC(put_vvc_gpm);
+
+    inter->fetch_samples        = FUNC(fetch_samples);
+    inter->bdof_fetch_samples   = FUNC(bdof_fetch_samples);
+    inter->apply_prof           = FUNC(apply_prof);
+    inter->apply_prof_uni       = FUNC(apply_prof_uni);
+    inter->apply_prof_uni_w     = FUNC(apply_prof_uni_w);
+    inter->apply_prof_bi        = FUNC(apply_prof_bi);
+    inter->apply_prof_bi_w      = FUNC(apply_prof_bi_w);
+    inter->apply_bdof           = FUNC(apply_bdof);
+    inter->prof_grad_filter     = FUNC(prof_grad_filter);
+    inter->sad                  = vvc_sad;
+}
+
+#undef FUNCS
+#undef PEL_FUNC
+#undef DMVR_FUNCS
+
 static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
 {
 #define VVC_ITX(TYPE, type, s)                                                  \

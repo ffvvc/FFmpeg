@@ -69,6 +69,60 @@ typedef struct ALFParams {
     uint8_t applied[3];
 } ALFParams;
 
+typedef struct VVCInterDSPContext {
+    void (*put[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
+        int16_t *dst, const uint8_t *src, ptrdiff_t src_stride,
+        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+
+    void (*put_uni[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
+        uint8_t *dst, ptrdiff_t dst_stride,
+        const uint8_t *src, ptrdiff_t src_stride, int height,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+    void (*put_uni_w[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
+        uint8_t *dst, ptrdiff_t dst_stride,
+        const uint8_t *src, ptrdiff_t src_stride, int height, int denom, int wx, int ox,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+
+    void (*put_bi[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
+        uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, const int16_t *src2,
+        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+    void (*put_bi_w[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
+        uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
+        int height, int denom, int wx0, int wx1, int ox0, int ox1,
+        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
+
+    void (*put_ciip)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
+        const uint8_t *inter, ptrdiff_t inter_stride, int inter_weight);
+
+    void (*put_gpm)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
+        const int16_t *tmp, const int16_t *tmp1, const ptrdiff_t tmp_stride,
+        const uint8_t *weights, int step_x, int step_y);
+
+    void (*fetch_samples)(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int x_frac, int y_frac);
+    void (*bdof_fetch_samples)(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int x_frac, int y_frac,
+        int width, int height);
+
+    void (*prof_grad_filter)(int16_t *gradient_h, int16_t *gradient_v, const ptrdiff_t gradient_stride,
+        const int16_t *src, const ptrdiff_t src_stride, int width, int height, const int pad);
+    void (*apply_prof)(int16_t *dst, const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y);
+
+    void (*apply_prof_uni)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src,
+        const int16_t *diff_mv_x, const int16_t *diff_mv_y);
+    void (*apply_prof_uni_w)(uint8_t *dst, const ptrdiff_t dst_stride, const int16_t *src,
+        const int16_t *diff_mv_x, const int16_t *diff_mv_y, int denom, int wx, int ox);
+
+    void (*apply_prof_bi)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src0, const int16_t *src1,
+        const int16_t *diff_mv_x, const int16_t *diff_mv_y);
+    void (*apply_prof_bi_w)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src0, const int16_t *src1,
+        const int16_t *diff_mv_x, const int16_t *diff_mv_y, int denom, int w0, int w1, int o0, int o1);
+
+    void (*apply_bdof)(uint8_t *dst, ptrdiff_t dst_stride, int16_t *src0, int16_t *src1, int block_w, int block_h);
+
+    int (*sad)(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+    void (*dmvr[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int height,
+        intptr_t mx, intptr_t my, int width);
+} VVCInterDSPContext;
+
 typedef struct VVCItxDSPContext {
     void (*add_residual)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride);
     void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
@@ -110,78 +164,11 @@ typedef struct VVCALFDSPContext {
 } VVCALFDSPContext;
 
 typedef struct VVCDSPContext {
+    VVCInterDSPContext inter;
     VVCItxDSPContext itx;
     VVCLMCSDSPContext lmcs;
     VVCSAODSPContext sao;
     VVCALFDSPContext alf;
-
-    void (*put_vvc_luma[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
-    void (*put_vvc_luma_uni[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *src, ptrdiff_t src_stride, int height,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_vvc_luma_uni_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *src, ptrdiff_t src_stride, int height, int denom, int wx, int ox,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
-    void (*put_vvc_luma_bi[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_vvc_luma_bi_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
-        int height, int denom, int wx0, int wx1, int ox0, int ox1,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
-    void (*put_vvc_chroma[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
-    void (*put_vvc_chroma_uni[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *_src, ptrdiff_t _src_stride, int height,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_vvc_chroma_uni_w[2][2])(uint8_t *_dst, ptrdiff_t _dst_stride,
-        const uint8_t *_src, ptrdiff_t _src_stride, int height, int denom, int wx, int ox,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
-    void (*put_vvc_chroma_bi[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_vvc_chroma_bi_w[2][2])(uint8_t *dst, ptrdiff_t dst_stride,
-        const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
-        int height, int denom, int wx0, int ox0, int wx1, int ox1,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
-    void (*put_vvc_ciip)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
-        const uint8_t *inter, ptrdiff_t inter_stride, int inter_weight);
-
-    void (*put_vvc_gpm)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
-        const int16_t *tmp, const int16_t *tmp1, const ptrdiff_t tmp_stride,
-        const uint8_t *weights, int step_x, int step_y);
-
-    void (*fetch_samples)(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int x_frac, int y_frac);
-    void (*bdof_fetch_samples)(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int x_frac, int y_frac,
-        int width, int height);
-
-    void (*prof_grad_filter)(int16_t *gradient_h, int16_t *gradient_v, const ptrdiff_t gradient_stride,
-        const int16_t *src, const ptrdiff_t src_stride, const int _width, const int _height, const int pad);
-    void (*apply_prof)(int16_t *dst, const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y);
-
-    void (*apply_prof_uni)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src,
-        const int16_t *diff_mv_x, const int16_t *diff_mv_y);
-    void (*apply_prof_uni_w)(uint8_t *dst, const ptrdiff_t dst_stride, const int16_t *src,
-        const int16_t *diff_mv_x, const int16_t *diff_mv_y, int denom, int wx, int ox);
-
-    void (*apply_prof_bi)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src0, const int16_t *src1,
-        const int16_t *diff_mv_x, const int16_t *diff_mv_y);
-    void (*apply_prof_bi_w)(uint8_t *dst, ptrdiff_t dst_stride, const int16_t *src0, const int16_t *src1,
-        const int16_t *diff_mv_x, const int16_t *diff_mv_y, int denom, int w0, int w1, int o0, int o1);
-
-    void (*apply_bdof)(uint8_t *dst, ptrdiff_t dst_stride, int16_t *src0, int16_t *src1, int block_w, int block_h);
-
-    int (*vvc_sad)(const int16_t *src0, const int16_t *src1, int dx, int dy, const int block_w, const int block_h);
-    void (*dmvr_vvc_luma[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int height,
-        intptr_t mx, intptr_t my, int width);
-
 
     int (*vvc_h_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride);
     int (*vvc_v_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride);

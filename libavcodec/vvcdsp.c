@@ -284,101 +284,12 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 #undef FUNC
 #define FUNC(a, depth) a ## _ ## depth
 
-#undef PEL_FUNC
-#define PEL_FUNC(dst, idx1, idx2, a, depth)                                     \
-    vvcdsp->dst[idx1][idx2] = a ## _ ## depth;                                  \
-
-#undef CHROMA_FUNCS
-#define CHROMA_FUNCS(depth)                                                     \
-    PEL_FUNC(put_vvc_chroma, 0, 0, put_vvc_pel_pixels, depth);                  \
-    PEL_FUNC(put_vvc_chroma, 0, 1, put_vvc_chroma_h, depth);                    \
-    PEL_FUNC(put_vvc_chroma, 1, 0, put_vvc_chroma_v, depth);                    \
-    PEL_FUNC(put_vvc_chroma, 1, 1, put_vvc_chroma_hv, depth)
-
-#undef CHROMA_UNI_FUNCS
-#define CHROMA_UNI_FUNCS(depth)                                                 \
-    PEL_FUNC(put_vvc_chroma_uni, 0, 0, put_vvc_pel_uni_pixels, depth);          \
-    PEL_FUNC(put_vvc_chroma_uni, 0, 1, put_vvc_chroma_uni_h, depth);            \
-    PEL_FUNC(put_vvc_chroma_uni, 1, 0, put_vvc_chroma_uni_v, depth);            \
-    PEL_FUNC(put_vvc_chroma_uni, 1, 1, put_vvc_chroma_uni_hv, depth);           \
-    PEL_FUNC(put_vvc_chroma_uni_w, 0, 0, put_vvc_pel_uni_w_pixels, depth);      \
-    PEL_FUNC(put_vvc_chroma_uni_w, 0, 1, put_vvc_chroma_uni_w_h, depth);        \
-    PEL_FUNC(put_vvc_chroma_uni_w, 1, 0, put_vvc_chroma_uni_w_v, depth);        \
-    PEL_FUNC(put_vvc_chroma_uni_w, 1, 1, put_vvc_chroma_uni_w_hv, depth)
-
-#undef CHROMA_BI_FUNCS
-#define CHROMA_BI_FUNCS(depth)                                                  \
-    PEL_FUNC(put_vvc_chroma_bi, 0, 0, put_vvc_pel_bi_pixels, depth);            \
-    PEL_FUNC(put_vvc_chroma_bi, 0, 1, put_vvc_chroma_bi_h, depth);              \
-    PEL_FUNC(put_vvc_chroma_bi, 1, 0, put_vvc_chroma_bi_v, depth);              \
-    PEL_FUNC(put_vvc_chroma_bi, 1, 1, put_vvc_chroma_bi_hv, depth);             \
-    PEL_FUNC(put_vvc_chroma_bi_w, 0, 0, put_vvc_pel_bi_w_pixels, depth);        \
-    PEL_FUNC(put_vvc_chroma_bi_w, 0, 1, put_vvc_chroma_bi_w_h, depth);          \
-    PEL_FUNC(put_vvc_chroma_bi_w, 1, 0, put_vvc_chroma_bi_w_v, depth);          \
-    PEL_FUNC(put_vvc_chroma_bi_w, 1, 1, put_vvc_chroma_bi_w_hv, depth)
-
-#undef LUMA_FUNCS
-#define LUMA_FUNCS(depth)                                                       \
-    PEL_FUNC(put_vvc_luma, 0, 0, put_vvc_pel_pixels, depth);                    \
-    PEL_FUNC(put_vvc_luma, 0, 1, put_vvc_luma_h, depth);                        \
-    PEL_FUNC(put_vvc_luma, 1, 0, put_vvc_luma_v, depth);                        \
-    PEL_FUNC(put_vvc_luma, 1, 1, put_vvc_luma_hv, depth)
-
-
-#undef LUMA_UNI_FUNCS
-#define LUMA_UNI_FUNCS(depth)                                                   \
-    PEL_FUNC(put_vvc_luma_uni, 0, 0, put_vvc_pel_uni_pixels, depth);            \
-    PEL_FUNC(put_vvc_luma_uni, 0, 1, put_vvc_luma_uni_h, depth);                \
-    PEL_FUNC(put_vvc_luma_uni, 1, 0, put_vvc_luma_uni_v, depth);                \
-    PEL_FUNC(put_vvc_luma_uni, 1, 1, put_vvc_luma_uni_hv, depth);               \
-    PEL_FUNC(put_vvc_luma_uni_w, 0, 0, put_vvc_pel_uni_w_pixels, depth);        \
-    PEL_FUNC(put_vvc_luma_uni_w, 0, 1, put_vvc_luma_uni_w_h, depth);            \
-    PEL_FUNC(put_vvc_luma_uni_w, 1, 0, put_vvc_luma_uni_w_v, depth);            \
-    PEL_FUNC(put_vvc_luma_uni_w, 1, 1, put_vvc_luma_uni_w_hv, depth)
-
-#undef LUMA_BI_FUNCS
-#define LUMA_BI_FUNCS(depth)                                                    \
-    PEL_FUNC(put_vvc_luma_bi, 0, 0, put_vvc_pel_bi_pixels, depth);              \
-    PEL_FUNC(put_vvc_luma_bi, 0, 1, put_vvc_luma_bi_h, depth);                  \
-    PEL_FUNC(put_vvc_luma_bi, 1, 0, put_vvc_luma_bi_v, depth);                  \
-    PEL_FUNC(put_vvc_luma_bi, 1, 1, put_vvc_luma_bi_hv, depth);                 \
-    PEL_FUNC(put_vvc_luma_bi_w, 0, 0, put_vvc_pel_bi_w_pixels, depth);          \
-    PEL_FUNC(put_vvc_luma_bi_w, 0, 1, put_vvc_luma_bi_w_h, depth);              \
-    PEL_FUNC(put_vvc_luma_bi_w, 1, 0, put_vvc_luma_bi_w_v, depth);              \
-    PEL_FUNC(put_vvc_luma_bi_w, 1, 1, put_vvc_luma_bi_w_hv, depth)
-
-#undef DMVR_FUNCS
-#define DMVR_FUNCS(depth)                                                       \
-        PEL_FUNC(dmvr_vvc_luma, 0, 0, dmvr_vvc_luma, depth);                    \
-        PEL_FUNC(dmvr_vvc_luma, 0, 1, dmvr_vvc_luma_h, depth);                  \
-        PEL_FUNC(dmvr_vvc_luma, 1, 0, dmvr_vvc_luma_v, depth);                  \
-        PEL_FUNC(dmvr_vvc_luma, 1, 1, dmvr_vvc_luma_hv, depth)
-
 #define VVC_DSP(depth)                                                          \
+    FUNC(ff_vvc_inter_dsp_init, depth)(&vvcdsp->inter);                         \
     FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
     FUNC(ff_vvc_lmcs_dsp_init, depth)(&vvcdsp->lmcs);                           \
     FUNC(ff_vvc_sao_dsp_init, depth)(&vvcdsp->sao);                             \
     FUNC(ff_vvc_alf_dsp_init, depth)(&vvcdsp->alf);                             \
-    vvcdsp->fetch_samples               = FUNC(fetch_samples, depth);           \
-    vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
-    vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
-    vvcdsp->apply_prof_uni              = FUNC(apply_prof_uni, depth);          \
-    vvcdsp->apply_prof_uni_w            = FUNC(apply_prof_uni_w, depth);        \
-    vvcdsp->apply_prof_bi               = FUNC(apply_prof_bi, depth);           \
-    vvcdsp->apply_prof_bi_w             = FUNC(apply_prof_bi_w, depth);         \
-    vvcdsp->apply_bdof                  = FUNC(apply_bdof, depth);              \
-    vvcdsp->prof_grad_filter            = FUNC(prof_grad_filter, depth);        \
-    vvcdsp->vvc_sad                     = vvc_sad;                              \
-                                                                                \
-                                                                                \
-                                                                                \
-    LUMA_FUNCS(depth)                                                           \
-    LUMA_UNI_FUNCS(depth)                                                       \
-    CHROMA_FUNCS(depth)                                                         \
-    CHROMA_UNI_FUNCS(depth)                                                     \
-    LUMA_BI_FUNCS(depth)                                                        \
-    CHROMA_BI_FUNCS(depth)                                                      \
-    DMVR_FUNCS(depth)                                                           \
                                                                                 \
     vvcdsp->vvc_h_loop_ladf_level      = FUNC(vvc_h_loop_ladf_level, depth);    \
     vvcdsp->vvc_v_loop_ladf_level      = FUNC(vvc_v_loop_ladf_level, depth);    \
@@ -386,8 +297,6 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->vvc_v_loop_filter_luma     = FUNC(vvc_v_loop_filter_luma, depth);   \
     vvcdsp->vvc_h_loop_filter_chroma   = FUNC(vvc_h_loop_filter_chroma, depth); \
     vvcdsp->vvc_v_loop_filter_chroma   = FUNC(vvc_v_loop_filter_chroma, depth); \
-    vvcdsp->put_vvc_ciip               = FUNC(put_vvc_ciip, depth);             \
-    vvcdsp->put_vvc_gpm                = FUNC(put_vvc_gpm, depth);              \
 
     switch (bit_depth) {
     case 10:
