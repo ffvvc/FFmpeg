@@ -803,7 +803,6 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
             goto fail;
         export_frame_params(fc);
         ff_vvc_dsp_init (&fc->vvcdsp, fc->ps.sps->bit_depth);
-        ff_vvc_pred_init (&fc->hpc, fc->ps.sps->bit_depth);
         ff_videodsp_init (&fc->vdsp, fc->ps.sps->bit_depth);
         ret = vvc_frame_start(s, fc, sc);
         if (ret < 0)

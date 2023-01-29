@@ -25,6 +25,7 @@
 
 #include "bit_depth_template.c"
 #include "vvcdsp.h"
+#include "vvc_intra_template.c"
 
 #if 0
 static void FUNC(put_pcm)(uint8_t *_dst, ptrdiff_t stride, int width, int height,

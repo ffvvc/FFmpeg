@@ -253,7 +253,6 @@ struct VVCFrameContext {
 
     VVCFrame *ref;
 
-    VVCPredContext hpc;
     VVCDSPContext vvcdsp;
     VideoDSPContext vdsp;
 

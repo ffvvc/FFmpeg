@@ -1066,7 +1066,7 @@ static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
                                           ((tb->x0 >> hs) << fc->ps.sps->pixel_shift)];
     if (chroma_scale) {
         fc->vvcdsp.itx.pred_residual_joint(tb->coeffs, tb->tb_width, tb->tb_height, c_sign, shift);
-        fc->hpc.lmcs_scale_chroma(lc, tb->coeffs, tb->coeffs, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
+        fc->vvcdsp.intra.lmcs_scale_chroma(lc, tb->coeffs, tb->coeffs, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
         fc->vvcdsp.itx.add_residual(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride);
     } else {
         fc->vvcdsp.itx.add_residual_joint(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride, c_sign, shift);
@@ -1143,7 +1143,7 @@ static void predict_intra(VVCLocalContext *lc, const TransformUnit *tu, const in
     if (!target_ch_type && tree_type != DUAL_TREE_CHROMA) {
         if (get_luma_predict_unit(cu, tu, idx, &x0, &y0, &w, &h)) {
             ff_vvc_set_neighbour_available(lc, x0, y0, w, h);
-            fc->hpc.intra_pred(lc, x0, y0, w, h, 0);
+            fc->vvcdsp.intra.intra_pred(lc, x0, y0, w, h, 0);
             add_reconstructed_area(lc, 0, x0, y0, w, h);
         }
     }
@@ -1151,10 +1151,10 @@ static void predict_intra(VVCLocalContext *lc, const TransformUnit *tu, const in
         if (get_chroma_predict_unit(cu, tu, idx, &x0, &y0, &w, &h)){
             ff_vvc_set_neighbour_available(lc, x0, y0, w, h);
             if (is_cclm(cu->intra_pred_mode_c)) {
-                fc->hpc.intra_cclm_pred(lc, x0, y0, w, h);
+                fc->vvcdsp.intra.intra_cclm_pred(lc, x0, y0, w, h);
             } else {
-                fc->hpc.intra_pred(lc, x0, y0, w, h, 1);
-                fc->hpc.intra_pred(lc, x0, y0, w, h, 2);
+                fc->vvcdsp.intra.intra_pred(lc, x0, y0, w, h, 1);
+                fc->vvcdsp.intra.intra_pred(lc, x0, y0, w, h, 2);
             }
             add_reconstructed_area(lc, 1, x0, y0, w, h);
         }
@@ -1408,7 +1408,7 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
             }
 
             if (chroma_scale)
-                fc->hpc.lmcs_scale_chroma(lc, temp, tb->coeffs, w, h, cu->x0, cu->y0);
+                fc->vvcdsp.intra.lmcs_scale_chroma(lc, temp, tb->coeffs, w, h, cu->x0, cu->y0);
             fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->coeffs, w, h, stride);
 
             if (tu->joint_cbcr_residual_flag && tb->c_idx)
