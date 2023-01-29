@@ -135,6 +135,14 @@ typedef struct VVCLMCSDSPContext {
     void (*filter)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height, const uint8_t *lut);
 } VVCLMCSDSPContext;
 
+typedef struct VVCLFDSPContext {
+    int (*ladf_level[2 /* h, v */])(const uint8_t *pix, ptrdiff_t stride);
+    void (*filter_luma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
+        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
+    void (*filter_chroma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
+        uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
+} VVCLFDSPContext;
+
 typedef struct VVCSAODSPContext {
     void (*band_filter[9])(uint8_t *_dst, uint8_t *_src, ptrdiff_t _dst_stride, ptrdiff_t _src_stride,
         int16_t *sao_offset_val, int sao_left_class, int width, int height);
@@ -167,21 +175,9 @@ typedef struct VVCDSPContext {
     VVCInterDSPContext inter;
     VVCItxDSPContext itx;
     VVCLMCSDSPContext lmcs;
+    VVCLFDSPContext lf;
     VVCSAODSPContext sao;
     VVCALFDSPContext alf;
-
-    int (*vvc_h_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride);
-    int (*vvc_v_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride);
-
-    void (*vvc_h_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
-    void (*vvc_v_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
-
-    void (*vvc_h_loop_filter_chroma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
-    void (*vvc_v_loop_filter_chroma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
 } VVCDSPContext;
 
 void ff_vvc_dsp_init(VVCDSPContext *hpc, int bit_depth);
