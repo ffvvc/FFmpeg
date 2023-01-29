@@ -70,25 +70,11 @@ typedef struct ALFParams {
 } ALFParams;
 
 typedef struct VVCDSPContext {
-#if 0
-    void (*put_pcm)(uint8_t *_dst, ptrdiff_t _stride, int width, int height,
-                    struct GetBitContext *gb, int pcm_bit_depth);
-#endif
     void (*add_residual)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride);
     void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
     void (*pred_residual_joint)(int *buf, int width, int height, int c_sign, int shift);
     void (*itx[N_TX_TYPE][N_TX_SIZE])(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step);
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int depth);
-#if 0
-    void (*dequant)(int16_t *coeffs, int16_t log2_size);
-
-
-    void (*transform_4x4_luma)(int16_t *coeffs);
-
-    void (*idct[4])(int16_t *coeffs, int col_limit);
-
-    void (*idct_dc[4])(int16_t *coeffs);
-#endif
 
     void (*lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, int width, int height, const uint8_t *lut);
 
@@ -201,16 +187,6 @@ typedef struct VVCDSPContext {
     void (*vvc_h_loop_filter_chroma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
     void (*vvc_v_loop_filter_chroma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
-
-    void (*vvc_h_loop_filter_luma_c)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
-    void (*vvc_v_loop_filter_luma_c)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q);
-
-    void (*vvc_h_loop_filter_chroma_c)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
-    void (*vvc_v_loop_filter_chroma_c)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
 } VVCDSPContext;
 
