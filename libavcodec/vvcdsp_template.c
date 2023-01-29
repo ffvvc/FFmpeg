@@ -2758,3 +2758,28 @@ static int FUNC(vvc_v_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride)
 #undef TQ5
 #undef TQ6
 #undef TQ7
+
+static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
+{
+#define VVC_ITX(TYPE, type, s)                                                  \
+        itx->itx[TYPE][TX_SIZE_##s]      = itx_##type##_##s;                    \
+
+#define VVC_ITX_COMMON(TYPE, type)                                              \
+        VVC_ITX(TYPE, type, 4);                                                 \
+        VVC_ITX(TYPE, type, 8);                                                 \
+        VVC_ITX(TYPE, type, 16);                                                \
+        VVC_ITX(TYPE, type, 32);
+
+    itx->add_residual                = FUNC(add_residual);
+    itx->add_residual_joint          = FUNC(add_residual_joint);
+    itx->pred_residual_joint         = FUNC(pred_residual_joint);
+    itx->transform_bdpcm             = FUNC(transform_bdpcm);
+    VVC_ITX(DCT2, dct2, 2)
+    VVC_ITX(DCT2, dct2, 64)
+    VVC_ITX_COMMON(DCT2, dct2)
+    VVC_ITX_COMMON(DCT8, dct8)
+    VVC_ITX_COMMON(DST7, dst7)
+
+#undef VVC_ITX
+#undef VVC_ITX_COMMON
+}

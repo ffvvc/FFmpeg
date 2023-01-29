@@ -69,15 +69,18 @@ typedef struct ALFParams {
     uint8_t applied[3];
 } ALFParams;
 
-typedef struct VVCDSPContext {
+typedef struct VVCItxDSPContext {
     void (*add_residual)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride);
     void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
     void (*pred_residual_joint)(int *buf, int width, int height, int c_sign, int shift);
     void (*itx[N_TX_TYPE][N_TX_SIZE])(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step);
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int depth);
+} VVCItxDSPContext;
+
+typedef struct VVCDSPContext {
+    VVCItxDSPContext itx;
 
     void (*lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, int width, int height, const uint8_t *lut);
-
 
     void (*sao_band_filter[9])(uint8_t *_dst, uint8_t *_src, ptrdiff_t _dst_stride, ptrdiff_t _src_stride,
         int16_t *sao_offset_val, int sao_left_class, int width, int height);

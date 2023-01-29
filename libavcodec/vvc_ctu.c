@@ -1065,11 +1065,11 @@ static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
     uint8_t *dst = &fc->frame->data[c_idx][(tb->y0 >> vs) * stride +
                                           ((tb->x0 >> hs) << fc->ps.sps->pixel_shift)];
     if (chroma_scale) {
-        fc->vvcdsp.pred_residual_joint(tb->coeffs, tb->tb_width, tb->tb_height, c_sign, shift);
+        fc->vvcdsp.itx.pred_residual_joint(tb->coeffs, tb->tb_width, tb->tb_height, c_sign, shift);
         fc->hpc.lmcs_scale_chroma(lc, tb->coeffs, tb->coeffs, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
-        fc->vvcdsp.add_residual(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride);
+        fc->vvcdsp.itx.add_residual(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride);
     } else {
-        fc->vvcdsp.add_residual_joint(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride, c_sign, shift);
+        fc->vvcdsp.itx.add_residual_joint(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride, c_sign, shift);
     }
 }
 
@@ -1337,11 +1337,11 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     const int nzw       = tb->max_scan_x + 1;
 
     for (int x = 0; x < nzw; x++)
-        fc->vvcdsp.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w);
+        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w);
     scale_clip(temp, nzw, w, h, 7);
 
     for (int y = 0; y < h; y++)
-        fc->vvcdsp.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1);
+        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1);
     scale(tb->coeffs, tb->coeffs, w, h, 20 - sps->bit_depth);
 }
 
@@ -1352,9 +1352,9 @@ static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     const int h         = tb->tb_height;
 
     if (w > 1)
-        fc->vvcdsp.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1);
+        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1);
     else
-        fc->vvcdsp.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1);
+        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1);
     scale(tb->coeffs, temp, w, h, 21 - sps->bit_depth);
 }
 
@@ -1362,7 +1362,7 @@ static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const
 {
     const IntraPredMode mode = tb->c_idx ? cu->intra_pred_mode_c : cu->intra_pred_mode_y;
     const int vertical       = mode == INTRA_VERT;
-    lc->fc->vvcdsp.transform_bdpcm(tb->coeffs, tb->tb_width, tb->tb_height, vertical, 15);
+    lc->fc->vvcdsp.itx.transform_bdpcm(tb->coeffs, tb->tb_width, tb->tb_height, vertical, 15);
     if (vertical)
         tb->max_scan_y = tb->tb_height - 1;
     else
@@ -1409,7 +1409,7 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
 
             if (chroma_scale)
                 fc->hpc.lmcs_scale_chroma(lc, temp, tb->coeffs, w, h, cu->x0, cu->y0);
-            fc->vvcdsp.add_residual(dst, chroma_scale ? temp : tb->coeffs, w, h, stride);
+            fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->coeffs, w, h, stride);
 
             if (tu->joint_cbcr_residual_flag && tb->c_idx)
                 add_residual_for_joint_coding_chroma(lc, tu, tb, chroma_scale);
