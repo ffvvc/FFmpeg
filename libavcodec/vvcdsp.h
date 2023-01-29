@@ -176,7 +176,7 @@ typedef struct VVCDSPContext {
     void (*vvc_h_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
     void (*vvc_v_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q);
+        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
 
     void (*vvc_h_loop_filter_chroma)(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
