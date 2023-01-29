@@ -253,14 +253,6 @@ static int vvc_sad(const int16_t *src0, const int16_t *src1, int dx, int dy,
     return sad;
 }
 
-#define BIT_DEPTH 8
-#include "vvcdsp_template.c"
-#undef BIT_DEPTH
-
-#define BIT_DEPTH 10
-#include "vvcdsp_template.c"
-#undef BIT_DEPTH
-
 #define itx_fn(type, s)                                                                         \
 static void itx_##type##_##s(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step)    \
 {                                                                                               \
@@ -279,12 +271,18 @@ itx_fn_common(dct8);
 itx_fn(dct2, 2);
 itx_fn(dct2, 64);
 
+#define BIT_DEPTH 8
+#include "vvcdsp_template.c"
+#undef BIT_DEPTH
+
+#define BIT_DEPTH 10
+#include "vvcdsp_template.c"
+#undef BIT_DEPTH
 
 void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 {
 #undef FUNC
 #define FUNC(a, depth) a ## _ ## depth
-
 
 #undef PEL_FUNC
 #define PEL_FUNC(dst, idx1, idx2, a, depth)                                     \
@@ -356,22 +354,8 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
         PEL_FUNC(dmvr_vvc_luma, 1, 0, dmvr_vvc_luma_v, depth);                  \
         PEL_FUNC(dmvr_vvc_luma, 1, 1, dmvr_vvc_luma_hv, depth)
 
-#define VVC_ITX(TYPE, type, s)                                                  \
-    vvcdsp->itx[TYPE][TX_SIZE_##s]      = itx_##type##_##s;                     \
-
-#define VVC_ITX_COMMON(TYPE, type)                                              \
-    VVC_ITX(TYPE, type, 4);                                                     \
-    VVC_ITX(TYPE, type, 8);                                                     \
-    VVC_ITX(TYPE, type, 16);                                                    \
-    VVC_ITX(TYPE, type, 32);                                                    \
-
-#define VVC_ITX_DCT2()
-
 #define VVC_DSP(depth)                                                          \
-    vvcdsp->add_residual                = FUNC(add_residual, depth);            \
-    vvcdsp->add_residual_joint          = FUNC(add_residual_joint, depth);      \
-    vvcdsp->pred_residual_joint         = FUNC(pred_residual_joint, depth);     \
-    vvcdsp->transform_bdpcm             = FUNC(transform_bdpcm, depth);         \
+    FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
     vvcdsp->fetch_samples               = FUNC(fetch_samples, depth);           \
     vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
     vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
@@ -412,11 +396,6 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
                                                                                 \
     vvcdsp->lmcs_filter_luma    = FUNC(lmcs_filter_luma, depth);                \
                                                                                 \
-    VVC_ITX(DCT2, dct2, 2)                                                      \
-    VVC_ITX(DCT2, dct2, 64)                                                     \
-    VVC_ITX_COMMON(DCT2, dct2)                                                  \
-    VVC_ITX_COMMON(DCT8, dct8)                                                  \
-    VVC_ITX_COMMON(DST7, dst7)                                                  \
     LUMA_FUNCS(depth)                                                           \
     LUMA_UNI_FUNCS(depth)                                                       \
     CHROMA_FUNCS(depth)                                                         \
