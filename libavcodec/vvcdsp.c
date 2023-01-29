@@ -431,10 +431,6 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->vvc_v_loop_filter_luma     = FUNC(vvc_v_loop_filter_luma, depth);   \
     vvcdsp->vvc_h_loop_filter_chroma   = FUNC(vvc_h_loop_filter_chroma, depth); \
     vvcdsp->vvc_v_loop_filter_chroma   = FUNC(vvc_v_loop_filter_chroma, depth); \
-    vvcdsp->vvc_h_loop_filter_luma_c   = FUNC(vvc_h_loop_filter_luma, depth);   \
-    vvcdsp->vvc_v_loop_filter_luma_c   = FUNC(vvc_v_loop_filter_luma, depth);   \
-    vvcdsp->vvc_h_loop_filter_chroma_c = FUNC(vvc_h_loop_filter_chroma, depth); \
-    vvcdsp->vvc_v_loop_filter_chroma_c = FUNC(vvc_v_loop_filter_chroma, depth); \
     vvcdsp->put_vvc_ciip               = FUNC(put_vvc_ciip, depth);             \
     vvcdsp->put_vvc_gpm                = FUNC(put_vvc_gpm, depth);              \
 
