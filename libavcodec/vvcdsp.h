@@ -77,10 +77,13 @@ typedef struct VVCItxDSPContext {
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int depth);
 } VVCItxDSPContext;
 
+typedef struct VVCLMCSDSPContext {
+    void (*filter)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height, const uint8_t *lut);
+} VVCLMCSDSPContext;
+
 typedef struct VVCDSPContext {
     VVCItxDSPContext itx;
-
-    void (*lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, int width, int height, const uint8_t *lut);
+    VVCLMCSDSPContext lmcs;
 
     void (*sao_band_filter[9])(uint8_t *_dst, uint8_t *_src, ptrdiff_t _dst_stride, ptrdiff_t _src_stride,
         int16_t *sao_offset_val, int sao_left_class, int width, int height);

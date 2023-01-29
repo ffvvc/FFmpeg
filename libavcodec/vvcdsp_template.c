@@ -2783,3 +2783,8 @@ static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
 #undef VVC_ITX
 #undef VVC_ITX_COMMON
 }
+
+static void FUNC(ff_vvc_lmcs_dsp_init)(VVCLMCSDSPContext *const lmcs)
+{
+    lmcs->filter = FUNC(lmcs_filter_luma);
+}
