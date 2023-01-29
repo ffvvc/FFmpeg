@@ -358,6 +358,7 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
     FUNC(ff_vvc_lmcs_dsp_init, depth)(&vvcdsp->lmcs);                           \
     FUNC(ff_vvc_sao_dsp_init, depth)(&vvcdsp->sao);                             \
+    FUNC(ff_vvc_alf_dsp_init, depth)(&vvcdsp->alf);                             \
     vvcdsp->fetch_samples               = FUNC(fetch_samples, depth);           \
     vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
     vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
@@ -369,12 +370,6 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->prof_grad_filter            = FUNC(prof_grad_filter, depth);        \
     vvcdsp->vvc_sad                     = vvc_sad;                              \
                                                                                 \
-    vvcdsp->alf_filter_luma         = FUNC(alf_filter_luma, depth);             \
-    vvcdsp->alf_filter_luma_vb      = FUNC(alf_filter_luma_vb, depth);          \
-    vvcdsp->alf_filter_chroma       = FUNC(alf_filter_chroma, depth);           \
-    vvcdsp->alf_filter_chroma_vb    = FUNC(alf_filter_chroma_vb, depth);        \
-    vvcdsp->alf_filter_cc           = FUNC(alf_filter_cc, depth);               \
-    vvcdsp->alf_get_coeff_and_clip  = FUNC(alf_get_coeff_and_clip, depth);      \
                                                                                 \
                                                                                 \
     LUMA_FUNCS(depth)                                                           \
