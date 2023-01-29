@@ -939,7 +939,7 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
         const int intra_weight = ciip_derive_intra_weight(lc, x0, y0, sbw, sbh);
         fc->hpc.intra_pred(lc, x0, y0, sbw, sbh, 0);
         if (sc->sh.lmcs_used_flag)
-            fc->vvcdsp.lmcs_filter_luma(inter, inter_stride, sbw, sbh, fc->ps.ph->lmcs_fwd_lut);
+            fc->vvcdsp.lmcs.filter(inter, inter_stride, sbw, sbh, fc->ps.ph->lmcs_fwd_lut);
         fc->vvcdsp.put_vvc_ciip(dst, dst_stride, sbw, sbh, inter, inter_stride, intra_weight);
 
     }
@@ -1313,7 +1313,7 @@ static void predict_inter(VVCLocalContext *lc)
         pred_regular_blk(lc, 1);    //intra block is not ready yet, skip ciip
     if (lc->sc->sh.lmcs_used_flag && !cu->ciip_flag) {
         uint8_t* dst0 = POS(0, cu->x0, cu->y0);
-        fc->vvcdsp.lmcs_filter_luma(dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.ph->lmcs_fwd_lut);
+        fc->vvcdsp.lmcs.filter(dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.ph->lmcs_fwd_lut);
     }
 }
 

@@ -356,6 +356,7 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 
 #define VVC_DSP(depth)                                                          \
     FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
+    FUNC(ff_vvc_lmcs_dsp_init, depth)(&vvcdsp->lmcs);                           \
     vvcdsp->fetch_samples               = FUNC(fetch_samples, depth);           \
     vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
     vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
@@ -394,7 +395,6 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->alf_filter_cc           = FUNC(alf_filter_cc, depth);               \
     vvcdsp->alf_get_coeff_and_clip  = FUNC(alf_get_coeff_and_clip, depth);      \
                                                                                 \
-    vvcdsp->lmcs_filter_luma    = FUNC(lmcs_filter_luma, depth);                \
                                                                                 \
     LUMA_FUNCS(depth)                                                           \
     LUMA_UNI_FUNCS(depth)                                                       \
