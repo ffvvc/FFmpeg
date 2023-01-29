@@ -357,6 +357,7 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 #define VVC_DSP(depth)                                                          \
     FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
     FUNC(ff_vvc_lmcs_dsp_init, depth)(&vvcdsp->lmcs);                           \
+    FUNC(ff_vvc_sao_dsp_init, depth)(&vvcdsp->sao);                             \
     vvcdsp->fetch_samples               = FUNC(fetch_samples, depth);           \
     vvcdsp->bdof_fetch_samples          = FUNC(bdof_fetch_samples, depth);      \
     vvcdsp->apply_prof                  = FUNC(apply_prof, depth);              \
@@ -367,26 +368,6 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     vvcdsp->apply_bdof                  = FUNC(apply_bdof, depth);              \
     vvcdsp->prof_grad_filter            = FUNC(prof_grad_filter, depth);        \
     vvcdsp->vvc_sad                     = vvc_sad;                              \
-    vvcdsp->sao_band_filter[0] =                                                \
-    vvcdsp->sao_band_filter[1] =                                                \
-    vvcdsp->sao_band_filter[2] =                                                \
-    vvcdsp->sao_band_filter[3] =                                                \
-    vvcdsp->sao_band_filter[4] =                                                \
-    vvcdsp->sao_band_filter[5] =                                                \
-    vvcdsp->sao_band_filter[6] =                                                \
-    vvcdsp->sao_band_filter[7] =                                                \
-    vvcdsp->sao_band_filter[8] = FUNC(sao_band_filter, depth);                  \
-    vvcdsp->sao_edge_filter[0] =                                                \
-    vvcdsp->sao_edge_filter[1] =                                                \
-    vvcdsp->sao_edge_filter[2] =                                                \
-    vvcdsp->sao_edge_filter[3] =                                                \
-    vvcdsp->sao_edge_filter[4] =                                                \
-    vvcdsp->sao_edge_filter[5] =                                                \
-    vvcdsp->sao_edge_filter[6] =                                                \
-    vvcdsp->sao_edge_filter[7] =                                                \
-    vvcdsp->sao_edge_filter[8] = FUNC(sao_edge_filter, depth);                  \
-    vvcdsp->sao_edge_restore[0] = FUNC(sao_edge_restore_0, depth);              \
-    vvcdsp->sao_edge_restore[1] = FUNC(sao_edge_restore_1, depth);              \
                                                                                 \
     vvcdsp->alf_filter_luma         = FUNC(alf_filter_luma, depth);             \
     vvcdsp->alf_filter_luma_vb      = FUNC(alf_filter_luma_vb, depth);          \

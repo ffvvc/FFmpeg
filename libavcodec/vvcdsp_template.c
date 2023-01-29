@@ -2788,3 +2788,14 @@ static void FUNC(ff_vvc_lmcs_dsp_init)(VVCLMCSDSPContext *const lmcs)
 {
     lmcs->filter = FUNC(lmcs_filter_luma);
 }
+
+static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)
+{
+    for (int i = 0; i < FF_ARRAY_ELEMS(sao->band_filter); i++)
+        sao->band_filter[i] = FUNC(sao_band_filter);
+    for (int i = 0; i < FF_ARRAY_ELEMS(sao->edge_filter); i++)
+        sao->edge_filter[i] = FUNC(sao_edge_filter);
+    sao->edge_restore[0] = FUNC(sao_edge_restore_0);
+    sao->edge_restore[1] = FUNC(sao_edge_restore_1);
+}
+

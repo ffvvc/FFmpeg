@@ -205,9 +205,8 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
         switch (sao->type_idx[c_idx]) {
         case SAO_BAND:
             copy_CTB_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx, x_ctb, y_ctb);
-            fc->vvcdsp.sao_band_filter[tab](src, src, src_stride, src_stride,
+            fc->vvcdsp.sao.band_filter[tab](src, src, src_stride, src_stride,
                 sao->offset_val[c_idx], sao->band_position[c_idx], width, height);
-
             sao->type_idx[c_idx] = SAO_APPLIED;
             break;
         case SAO_EDGE:
@@ -306,9 +305,9 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
 
             copy_CTB_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx,
                            x_ctb, y_ctb);
-            fc->vvcdsp.sao_edge_filter[tab](src, dst, src_stride, sao->offset_val[c_idx],
+            fc->vvcdsp.sao.edge_filter[tab](src, dst, src_stride, sao->offset_val[c_idx],
                                             sao->eo_class[c_idx], width, height);
-            fc->vvcdsp.sao_edge_restore[restore](src, dst,
+            fc->vvcdsp.sao.edge_restore[restore](src, dst,
                                                 src_stride, dst_stride,
                                                 sao,
                                                 edges, width,
