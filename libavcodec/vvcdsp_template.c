@@ -2799,3 +2799,12 @@ static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)
     sao->edge_restore[1] = FUNC(sao_edge_restore_1);
 }
 
+static void FUNC(ff_vvc_alf_dsp_init)(VVCALFDSPContext *const alf)
+{
+    alf->filter[LUMA]       = FUNC(alf_filter_luma);
+    alf->filter[CHROMA]     = FUNC(alf_filter_chroma);
+    alf->filter_vb[LUMA]    = FUNC(alf_filter_luma_vb);
+    alf->filter_vb[CHROMA]  = FUNC(alf_filter_chroma_vb);
+    alf->filter_cc          = FUNC(alf_filter_cc);
+    alf->get_coeff_and_clip = FUNC(alf_get_coeff_and_clip);
+}
