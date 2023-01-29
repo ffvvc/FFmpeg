@@ -936,7 +936,7 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
 
                     if (!c_idx) {
                         fc->vvcdsp.vvc_v_loop_filter_luma(src,
-                            fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q);
+                            fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
                     } else {
                         fc->vvcdsp.vvc_v_loop_filter_chroma(src,
                             fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);

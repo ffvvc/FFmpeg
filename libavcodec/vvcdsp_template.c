@@ -2700,10 +2700,10 @@ static void FUNC(vvc_h_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride,
 
 static void FUNC(vvc_v_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride,
                                           int beta, int32_t tc, uint8_t no_p,
-                                          uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q)
+                                          uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge)
 {
     FUNC(vvc_loop_filter_luma)(pix, sizeof(pixel), stride,
-                                beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
+                                beta, tc, no_p, no_q, max_len_p, max_len_q, hor_ctu_edge);
 }
 
 static int FUNC(vvc_loop_ladf_level)(const uint8_t *_pix, const ptrdiff_t _xstride, const ptrdiff_t _ystride)
