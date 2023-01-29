@@ -937,7 +937,7 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
 
     if (ciip_flag) {
         const int intra_weight = ciip_derive_intra_weight(lc, x0, y0, sbw, sbh);
-        fc->hpc.intra_pred(lc, x0, y0, sbw, sbh, 0);
+        fc->vvcdsp.intra.intra_pred(lc, x0, y0, sbw, sbh, 0);
         if (sc->sh.lmcs_used_flag)
             fc->vvcdsp.lmcs.filter(inter, inter_stride, sbw, sbh, fc->ps.ph->lmcs_fwd_lut);
         fc->vvcdsp.inter.put_ciip(dst, dst_stride, sbw, sbh, inter, inter_stride, intra_weight);
@@ -994,8 +994,8 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
     }
     if (do_ciip) {
         const int intra_weight = ciip_derive_intra_weight(lc, x0, y0, sbw, sbh);
-        fc->hpc.intra_pred(lc, x0, y0, sbw, sbh, 1);
-        fc->hpc.intra_pred(lc, x0, y0, sbw, sbh, 2);
+        fc->vvcdsp.intra.intra_pred(lc, x0, y0, sbw, sbh, 1);
+        fc->vvcdsp.intra.intra_pred(lc, x0, y0, sbw, sbh, 2);
         fc->vvcdsp.inter.put_ciip(dst1, dst1_stride, w_c, h_c, inter1, inter1_stride, intra_weight);
         fc->vvcdsp.inter.put_ciip(dst2, dst2_stride, w_c, h_c, inter2, inter2_stride, intra_weight);
 

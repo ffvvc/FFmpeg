@@ -123,6 +123,29 @@ typedef struct VVCInterDSPContext {
         intptr_t mx, intptr_t my, int width);
 } VVCInterDSPContext;
 
+struct VVCLocalContext;
+
+typedef struct VVCIntraDSPContext {
+    void (*intra_cclm_pred)(const struct VVCLocalContext *lc, int x0, int y0, int w, int h);
+    void (*lmcs_scale_chroma)(struct VVCLocalContext *lc, int *dst, const int *coeff, int w, int h, int x0_cu, int y0_cu);
+    void (*intra_pred)(const struct VVCLocalContext *lc, int x0, int y0, int w, int h, int c_idx);
+
+    void (*pred_planar)(uint8_t *src, const uint8_t *top, const uint8_t *left,
+                        int w, int h, ptrdiff_t stride);
+    void (*pred_mip)(uint8_t *src, const uint8_t *top, const uint8_t *left,
+                        int w, int h, ptrdiff_t stride, int mode_id, int is_transpose);
+    void (*pred_dc)(uint8_t *src, const uint8_t *top, const uint8_t *left,
+                        int w, int h, ptrdiff_t stride);
+    void (*pred_v)(uint8_t *_src, const uint8_t *_top, int w, int h, ptrdiff_t stride);
+    void (*pred_h)(uint8_t *_src, const uint8_t *_left, int w, int h, ptrdiff_t stride);
+    void (*pred_angular_v)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                           int w, int h, ptrdiff_t stride, int c_idx, int mode,
+                           int ref_idx, int filter_flag, int need_pdpc);
+    void (*pred_angular_h)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                           int w, int h, ptrdiff_t stride, int c_idx, int mode,
+                           int ref_idx, int filter_flag, int need_pdpc);
+} VVCIntraDSPContext;
+
 typedef struct VVCItxDSPContext {
     void (*add_residual)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride);
     void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
@@ -173,6 +196,7 @@ typedef struct VVCALFDSPContext {
 
 typedef struct VVCDSPContext {
     VVCInterDSPContext inter;
+    VVCIntraDSPContext intra;
     VVCItxDSPContext itx;
     VVCLMCSDSPContext lmcs;
     VVCLFDSPContext lf;

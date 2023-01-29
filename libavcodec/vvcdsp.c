@@ -21,6 +21,7 @@
  */
 
 #include "vvcdsp.h"
+#include "vvc_ctu.h"
 #include "vvc_itx_1d.h"
 
 #define VVC_SIGN(v) (v < 0 ? -1 : !!v)
@@ -271,6 +272,17 @@ itx_fn_common(dct8);
 itx_fn(dct2, 2);
 itx_fn(dct2, 64);
 
+typedef struct IntraEdgeParams {
+    uint8_t* top;
+    uint8_t* left;
+    int filter_flag;
+
+    uint16_t left_array[3 * MAX_TB_SIZE + 3];
+    uint16_t filtered_left_array[3 * MAX_TB_SIZE + 3];
+    uint16_t top_array[3 * MAX_TB_SIZE + 3];
+    uint16_t filtered_top_array[3 * MAX_TB_SIZE + 3];
+} IntraEdgeParams;
+
 #define BIT_DEPTH 8
 #include "vvcdsp_template.c"
 #undef BIT_DEPTH
@@ -286,6 +298,7 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 
 #define VVC_DSP(depth)                                                          \
     FUNC(ff_vvc_inter_dsp_init, depth)(&vvcdsp->inter);                         \
+    FUNC(ff_vvc_intra_dsp_init, depth)(&vvcdsp->intra);                         \
     FUNC(ff_vvc_itx_dsp_init, depth)(&vvcdsp->itx);                             \
     FUNC(ff_vvc_lmcs_dsp_init, depth)(&vvcdsp->lmcs);                           \
     FUNC(ff_vvc_lf_dsp_init, depth)(&vvcdsp->lf);                               \

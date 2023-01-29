@@ -23,67 +23,6 @@
 #include "vvcpred.h"
 #include "vvc_ctu.h"
 
-typedef struct IntraEdgeParams {
-    uint8_t* top;
-    uint8_t* left;
-    int filter_flag;
-
-    uint16_t left_array[3 * MAX_TB_SIZE + 3];
-    uint16_t filtered_left_array[3 * MAX_TB_SIZE + 3];
-    uint16_t top_array[3 * MAX_TB_SIZE + 3];
-    uint16_t filtered_top_array[3 * MAX_TB_SIZE + 3];
-} IntraEdgeParams;
-
-#define BIT_DEPTH 8
-#include "vvcpred_template.c"
-#undef BIT_DEPTH
-
-#define BIT_DEPTH 9
-#include "vvcpred_template.c"
-#undef BIT_DEPTH
-
-#define BIT_DEPTH 10
-#include "vvcpred_template.c"
-#undef BIT_DEPTH
-
-#define BIT_DEPTH 12
-#include "vvcpred_template.c"
-#undef BIT_DEPTH
-
-void ff_vvc_pred_init(VVCPredContext *hpc, int bit_depth)
-{
-#undef FUNC
-#define FUNC(a, depth) a ## _ ## depth
-
-#define VVC_PRED(depth)                                         \
-    hpc->lmcs_scale_chroma  = FUNC(lmcs_scale_chroma, depth);   \
-    hpc->intra_cclm_pred    = FUNC(intra_cclm_pred, depth);     \
-    hpc->intra_pred         = FUNC(intra_pred, depth);          \
-    hpc->pred_planar        = FUNC(pred_planar, depth);         \
-    hpc->pred_mip           = FUNC(pred_mip, depth);            \
-    hpc->pred_dc            = FUNC(pred_dc, depth);             \
-    hpc->pred_v             = FUNC(pred_v, depth);              \
-    hpc->pred_h             = FUNC(pred_h, depth);              \
-    hpc->pred_angular_v     = FUNC(pred_angular_v, depth);      \
-    hpc->pred_angular_h     = FUNC(pred_angular_h, depth);      \
-
-
-    switch (bit_depth) {
-    case 9:
-        VVC_PRED(9);
-        break;
-    case 10:
-        VVC_PRED(10);
-        break;
-    case 12:
-        VVC_PRED(12);
-        break;
-    default:
-        VVC_PRED(8);
-        break;
-    }
-}
-
 int ff_vvc_get_mip_size_id(const int w, const int h)
 {
     if (w == 4 && h == 4)

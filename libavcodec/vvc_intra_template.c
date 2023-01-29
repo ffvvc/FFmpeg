@@ -632,23 +632,23 @@ static void FUNC(intra_pred)(const VVCLocalContext *lc, int x0, int y0,
         int intra_mip_transposed_flag = SAMPLE_CTB(fc->tab.imtf, x_cb, y_cb);
         int intra_mip_mode = SAMPLE_CTB(fc->tab.imm, x_cb, y_cb);
 
-        fc->hpc.pred_mip((uint8_t *)src, edge.top, edge.left,
+        fc->vvcdsp.intra.pred_mip((uint8_t *)src, edge.top, edge.left,
                         w, h, stride, intra_mip_mode, intra_mip_transposed_flag);
     } else if (mode == INTRA_PLANAR) {
-        fc->hpc.pred_planar((uint8_t *)src, edge.top, edge.left, w, h, stride);
+        fc->vvcdsp.intra.pred_planar((uint8_t *)src, edge.top, edge.left, w, h, stride);
     } else if (mode == INTRA_DC) {
-        fc->hpc.pred_dc((uint8_t *)src, edge.top, edge.left, w, h, stride);
+        fc->vvcdsp.intra.pred_dc((uint8_t *)src, edge.top, edge.left, w, h, stride);
     } else if (mode == INTRA_VERT) {
-        fc->hpc.pred_v((uint8_t *)src, edge.top, w, h, stride);
+        fc->vvcdsp.intra.pred_v((uint8_t *)src, edge.top, w, h, stride);
     } else if (mode == INTRA_HORZ) {
-        fc->hpc.pred_h((uint8_t *)src, edge.left, w, h, stride);
+        fc->vvcdsp.intra.pred_h((uint8_t *)src, edge.left, w, h, stride);
     } else {
         if (mode >= INTRA_DIAG) {
-            fc->hpc.pred_angular_v((uint8_t *)src, edge.top, edge.left,
+            fc->vvcdsp.intra.pred_angular_v((uint8_t *)src, edge.top, edge.left,
                                   w, h, stride, c_idx, mode, ref_idx,
                                   edge.filter_flag, need_pdpc);
         } else {
-            fc->hpc.pred_angular_h((uint8_t *)src, edge.top, edge.left,
+            fc->vvcdsp.intra.pred_angular_h((uint8_t *)src, edge.top, edge.left,
                                   w, h, stride, c_idx, mode, ref_idx,
                                   edge.filter_flag, need_pdpc);
         }
@@ -1002,4 +1002,18 @@ static void FUNC(pred_angular_h)(uint8_t *_src, const uint8_t *_top, const uint8
         if (need_pdpc)
             inv_angle_sum += inv_angle;
     }
+}
+
+static void FUNC(ff_vvc_intra_dsp_init)(VVCIntraDSPContext *const intra)
+{
+    intra->lmcs_scale_chroma  = FUNC(lmcs_scale_chroma);
+    intra->intra_cclm_pred    = FUNC(intra_cclm_pred);
+    intra->intra_pred         = FUNC(intra_pred);
+    intra->pred_planar        = FUNC(pred_planar);
+    intra->pred_mip           = FUNC(pred_mip);
+    intra->pred_dc            = FUNC(pred_dc);
+    intra->pred_v             = FUNC(pred_v);
+    intra->pred_h             = FUNC(pred_h);
+    intra->pred_angular_v     = FUNC(pred_angular_v);
+    intra->pred_angular_h     = FUNC(pred_angular_h);
 }
