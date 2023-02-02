@@ -1774,14 +1774,17 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         (tree_type != DUAL_TREE_CHROMA ? 16 : (16 << hs << vs))) &&
         (mode_type != MODE_TYPE_INTRA || tree_type != DUAL_TREE_CHROMA)) {
         pred_mode_plt_flag = ff_vvc_pred_mode_plt_flag(lc);
-        if (pred_mode_plt_flag)
+        if (pred_mode_plt_flag) {
+            avpriv_report_missing_feature(lc->fc->avctx, "Palette");
             return AVERROR_PATCHWELCOME;
+        }
     }
     if (cu->pred_mode == MODE_INTRA && sps->act_enabled_flag && tree_type == SINGLE_TREE)
         av_assert0(0 && "fix me");
     if (cu->pred_mode == MODE_INTRA || cu->pred_mode == MODE_PLT) {
         if (tree_type == SINGLE_TREE || tree_type == DUAL_TREE_LUMA) {
             if (pred_mode_plt_flag) {
+                avpriv_report_missing_feature(lc->fc->avctx, "Palette");
                 return AVERROR_PATCHWELCOME;
             } else {
                 intra_luma_pred_modes(lc, cu_act_enabled_flag);
@@ -1789,9 +1792,10 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
             ff_vvc_set_intra_mvf(lc);
         }
         if ((tree_type == SINGLE_TREE || tree_type == DUAL_TREE_CHROMA) && sps->chroma_format_idc) {
-            if (pred_mode_plt_flag && tree_type == DUAL_TREE_CHROMA)
+            if (pred_mode_plt_flag && tree_type == DUAL_TREE_CHROMA) {
+                avpriv_report_missing_feature(lc->fc->avctx, "Palette");
                 return AVERROR_PATCHWELCOME;
-            else if (!pred_mode_plt_flag) {
+            } else if (!pred_mode_plt_flag) {
                 if (!cu->act_enabled_flag)
                     intra_chroma_pred_modes(lc);
             }
