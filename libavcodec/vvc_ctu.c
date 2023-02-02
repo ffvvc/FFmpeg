@@ -1435,9 +1435,9 @@ static int reconstruct(VVCLocalContext *lc)
     return 0;
 }
 
-static void intra_luma_pred_modes(VVCLocalContext *lc, const int cu_act_enabled_flag)
+static void intra_luma_pred_modes(VVCLocalContext *lc)
 {
-    VVCFrameContext *fc                   = lc->fc;
+    VVCFrameContext *fc             = lc->fc;
     const VVCSPS *sps               = fc->ps.sps;
     const VVCPPS *pps               = fc->ps.pps;
     CodingUnit *cu                  = lc->cu;
@@ -1477,7 +1477,7 @@ static void intra_luma_pred_modes(VVCLocalContext *lc, const int cu_act_enabled_
             if (sps->isp_enabled_flag && !cu->intra_luma_ref_idx &&
                 (cb_width <= sps->max_tb_size_y && cb_height <= sps->max_tb_size_y) &&
                 (cb_width * cb_height > min_tb_size_y * min_tb_size_y) &&
-                !cu_act_enabled_flag)
+                !cu->act_enabled_flag)
                 intra_subpartitions_mode_flag = ff_vvc_intra_subpartitions_mode_flag(lc);
             if (!(x0 & 63) && !(y0 & 63))
                 TAB_ISPMF(fc, x0, y0) = intra_subpartitions_mode_flag;
@@ -1755,7 +1755,6 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
     const int vs                = sps->vshift[CHROMA];
     const int is_128            = cb_width > 64 || cb_height > 64;
     int pred_mode_plt_flag = 0;
-    int cu_act_enabled_flag = 0;
     int ret;
 
     CodingUnit *cu = add_cu(lc, x0, y0, cb_width, cb_height, cqt_depth, tree_type);
@@ -1779,15 +1778,17 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
             return AVERROR_PATCHWELCOME;
         }
     }
-    if (cu->pred_mode == MODE_INTRA && sps->act_enabled_flag && tree_type == SINGLE_TREE)
-        av_assert0(0 && "fix me");
+    if (cu->pred_mode == MODE_INTRA && sps->act_enabled_flag && tree_type == SINGLE_TREE) {
+        avpriv_report_missing_feature(fc->avctx, "Adaptive Color Transform");
+        return AVERROR_PATCHWELCOME;
+    }
     if (cu->pred_mode == MODE_INTRA || cu->pred_mode == MODE_PLT) {
         if (tree_type == SINGLE_TREE || tree_type == DUAL_TREE_LUMA) {
             if (pred_mode_plt_flag) {
                 avpriv_report_missing_feature(lc->fc->avctx, "Palette");
                 return AVERROR_PATCHWELCOME;
             } else {
-                intra_luma_pred_modes(lc, cu_act_enabled_flag);
+                intra_luma_pred_modes(lc);
             }
             ff_vvc_set_intra_mvf(lc);
         }
@@ -1811,8 +1812,10 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
 
     if (cu->coded_flag) {
         sbt_info(lc, sps);
-        if (sps->act_enabled_flag && cu->pred_mode != MODE_INTRA && tree_type == SINGLE_TREE)
-            av_assert0(0 && "fix me");
+        if (sps->act_enabled_flag && cu->pred_mode != MODE_INTRA && tree_type == SINGLE_TREE) {
+            avpriv_report_missing_feature(fc->avctx, "Adaptive Color Transform");
+            return AVERROR_PATCHWELCOME;
+        }
         lc->parse.lfnst_dc_only = 1;
         lc->parse.lfnst_zero_out_sig_coeff_flag = 1;
         lc->parse.mts_dc_only = 1;
