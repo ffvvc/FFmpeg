@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "libavutil/imgutils.h"
+#include "libavutil/internal.h"
 #include "golomb.h"
 #include "vvc_data.h"
 #include "vvc_ps.h"
@@ -282,7 +283,7 @@ static int sps_parse_pic_resampling(VVCSPS *sps, GetBitContext *gb, void *log_ct
     if (sps->ref_pic_resampling_enabled_flag)
         sps->res_change_in_clvs_allowed_flag = get_bits1(gb);
     if (sps->res_change_in_clvs_allowed_flag) {
-        av_log(log_ctx, AV_LOG_ERROR, "res_change_in_clvs_allowed_flag is not supported yet.\n");
+        avpriv_request_sample(log_ctx, "res_change_in_clvs_allowed_flag");
         return AVERROR_PATCHWELCOME;
     }
 
