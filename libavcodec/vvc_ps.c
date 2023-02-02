@@ -3223,7 +3223,7 @@ static int sh_parse_entry_points(VVCSH *sh, const int curr_subpic_idx,
         }
 
         if (sh->num_entry_points > VVC_MAX_ENTRY_POINTS) {
-            av_log(log_ctx, AV_LOG_ERROR, "Too many entry points: "
+            avpriv_request_sample(log_ctx, "Too many entry points: "
                    "%"PRIu16".\n", sh->num_entry_points);
             return AVERROR_PATCHWELCOME;
         }
