@@ -568,8 +568,8 @@ static int hls_merge_data(VVCLocalContext *lc)
     pu->merge_gpm_flag = 0;
     mi->num_sb_x = mi->num_sb_y = 1;
     if (cu->pred_mode == MODE_IBC) {
-        av_assert0(0 && "fix me");
-        return 0;
+        avpriv_report_missing_feature(lc->fc->avctx, "Intra Block Copy");
+        return AVERROR_PATCHWELCOME;
     } else {
         if (ph->max_num_subblock_merge_cand > 0 && cb_width >= 8 && cb_height >= 8) {
             pu->merge_subblock_flag = ff_vvc_merge_subblock_flag(lc);
@@ -1290,7 +1290,8 @@ int ff_vvc_inter_data(VVCLocalContext *lc)
     if (pu->general_merge_flag) {
         hls_merge_data(lc);
     } else if (cu->pred_mode == MODE_IBC){
-        av_assert0(0 && "fixme");
+        avpriv_report_missing_feature(lc->fc->avctx, "Intra Block Copy");
+        return AVERROR_PATCHWELCOME;
     } else {
         ret = mvp_data(lc);
     }
