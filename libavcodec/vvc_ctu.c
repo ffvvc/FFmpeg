@@ -1797,7 +1797,8 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
             }
         }
     } else if (tree_type != DUAL_TREE_CHROMA) { /* MODE_INTER or MODE_IBC */
-        ff_vvc_inter_data(lc);
+        if ((ret = ff_vvc_inter_data(lc)) < 0)
+            return ret;
     }
     if (cu->pred_mode != MODE_INTRA && !pred_mode_plt_flag && !lc->cu->pu.general_merge_flag)
         cu->coded_flag = ff_vvc_cu_coded_flag(lc);
