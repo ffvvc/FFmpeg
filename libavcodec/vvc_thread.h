@@ -68,7 +68,7 @@ int ff_vvc_task_run(Task *t, void *local_context, void *user_data);
 int ff_vvc_frame_thread_init(VVCFrameContext *fc);
 void ff_vvc_frame_thread_free(VVCFrameContext *fc);
 
-void ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
+int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
 
 void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t);
 
