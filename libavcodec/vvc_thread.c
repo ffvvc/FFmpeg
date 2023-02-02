@@ -36,7 +36,9 @@ typedef struct VVCColThread {
 } VVCColThread;
 
 struct VVCFrameThread {
-    atomic_uchar abort;
+    // error return for tasks
+    atomic_int ret;
+
     atomic_uchar *avails;
 
     VVCRowThread *rows;
@@ -186,7 +188,7 @@ int ff_vvc_task_ready(const Task *_t, void *user_data)
         is_alf_ready,
     };
 
-    if (atomic_load(&ft->abort))
+    if (atomic_load(&ft->ret))
         return 1;
     ready = is_ready[t->type](t->fc, t);
 
@@ -563,8 +565,16 @@ int ff_vvc_task_run(Task *_t, void *local_context, void *user_data)
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d, %s(%3d, %3d)\r\n", (int)t->fc->decode_order, task_name[t->type], t->rx, t->ry);
 #endif
 
-    if (!atomic_load(&ft->abort))
-        ret = run[t->type](s, lc, t);
+    if (!atomic_load(&ft->ret)) {
+        if ((ret = run[t->type](s, lc, t)) < 0) {
+#ifdef WIN32
+            intptr_t zero = 0;
+#else
+            int zero = 0;
+#endif
+            atomic_compare_exchange_strong(&ft->ret, &zero, ret);
+        }
+    }
 
     // t->type may changed bun run(), we use a local copy of t->type
     finished_one_task(ft, type);
@@ -655,7 +665,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
         }
     }
 
-    ft->abort = 0;
+    ft->ret = 0;
     for (int y = 0; y < ft->ctu_height; y++) {
         VVCRowThread *row = ft->rows + y;
 
@@ -708,7 +718,7 @@ void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t)
     ff_executor_execute(s->executor, &t->task);
 }
 
-void ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
+int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
 {
     VVCFrameThread *ft = fc->frame_thread;
     int check_missed_slices = 1;
@@ -721,7 +731,7 @@ void ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
             for (int rs = 0; rs < ft->ctu_count; rs++){
                 atomic_uchar mask = 1 << VVC_TASK_TYPE_PARSE;
                 if (!(atomic_load(ft->avails + rs) & mask)) {
-                    atomic_store(&ft->abort, 1);
+                    atomic_store(&ft->ret, AVERROR_INVALIDDATA);
                     // maybe all thread are waiting, let us wake up them
                     ff_executor_wakeup(s->executor);
                     break;
@@ -738,7 +748,7 @@ void ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
 #ifdef VVC_THREAD_DEBUG
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d done\r\n", (int)fc->decode_order);
 #endif
-
+    return ft->ret;
 }
 
 void ff_vvc_report_progress(VVCFrame *frame, int n)

@@ -1001,19 +1001,17 @@ static int set_output_format(const VVCContext *s, const AVFrame *output)
 static int wait_delayed_frame(VVCContext *s, AVFrame *output, int *got_output)
 {
     VVCFrameContext *delayed = get_frame_context(s, s->fcs, s->nb_frames - s->nb_delayed);
+    int ret = ff_vvc_frame_wait(s, delayed);
 
-    ff_vvc_frame_wait(s, delayed);
-
-    if (delayed->output_frame->buf[0]) {
-        int ret;
+    if (!ret && delayed->output_frame->buf[0]) {
         av_frame_move_ref(output, delayed->output_frame);
-        if ((ret = set_output_format(s, output)) < 0)
-            return ret;
-        *got_output = 1;
+        ret = set_output_format(s, output);
+        if (!ret)
+            *got_output = 1;
     }
     s->nb_delayed--;
 
-    return 0;
+    return ret;
 }
 
 static int submit_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *output, int *got_output)
