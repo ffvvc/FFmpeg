@@ -2531,8 +2531,6 @@ static int ph_parse(VVCPH *ph, VVCParamSets *ps, const int poc_tid0, const int i
     ph_parse_sao(ph, sps, pps, gb);
     ph_parse_dbf(ph, pps, gb, log_ctx);
 
-    av_assert0(!pps->picture_header_extension_present_flag && "fixme");
-
     if (get_bits_left(gb) < 0) {
         av_log(log_ctx, AV_LOG_ERROR,
                "Overread PH by %d bits\n", -get_bits_left(gb));
