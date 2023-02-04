@@ -601,6 +601,7 @@ static int rpls_parse(VVCRefPicListStruct *rpls, GetBitContext *gb,
                 rpls->num_ltrp_entries++;
             }
         } else {
+            avpriv_request_sample(log_ctx, "Inter layer ref");
             return AVERROR_PATCHWELCOME;
         }
     }
