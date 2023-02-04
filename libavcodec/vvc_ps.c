@@ -468,8 +468,10 @@ static int sps_parse_subpic(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
 static int sps_parse_bit_depth(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
 {
     sps->bit_depth = get_ue_golomb_long(gb) + 8;
-    if (sps->bit_depth > 10)
+    if (sps->bit_depth > 10) {
+        avpriv_report_missing_feature(log_ctx, "%d bits", sps->bit_depth);
         return AVERROR_PATCHWELCOME;
+    }
 
     sps->qp_bd_offset = 6 * (sps->bit_depth - 8);
     return map_pixel_format(sps, log_ctx);
