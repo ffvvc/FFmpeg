@@ -1292,6 +1292,7 @@ void ff_vvc_alf_copy_ctu_to_hv(VVCLocalContext* lc, const int x0, const int y0)
 void ff_vvc_alf_filter(VVCLocalContext *lc, const int x0, const int y0)
 {
     VVCFrameContext *fc     = lc->fc;
+    const VVCPPS *pps       = fc->ps.pps;
     const int x_ctb         = x0 >> fc->ps.sps->ctb_log2_size_y;
     const int y_ctb         = y0 >> fc->ps.sps->ctb_log2_size_y;
     const int ctb_size_y    = fc->ps.sps->ctb_size_y;
@@ -1300,12 +1301,21 @@ void ff_vvc_alf_filter(VVCLocalContext *lc, const int x0, const int y0)
     const int padded_offset = padded_stride * ALF_PADDING_SIZE + (ALF_PADDING_SIZE << ps);
     const int c_end         = fc->ps.sps->chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
     ALFParams *alf          = &CTB(fc->tab.alf, x_ctb, y_ctb);
-    int edges[4];  // 0 left 1 top 2 right 3 bottom
+    int edges[MAX_EDGES]    = { x_ctb == 0, y_ctb == 0, x_ctb == pps->ctb_width - 1, y_ctb == pps->ctb_height - 1 };
 
-    edges[0]   = x_ctb == 0;
-    edges[1]   = y_ctb == 0;
-    edges[2]   = x_ctb == fc->ps.pps->ctb_width  - 1;
-    edges[3]   = y_ctb == fc->ps.pps->ctb_height - 1;
+    if (!pps->loop_filter_across_tiles_enabled_flag) {
+        edges[LEFT] = edges[LEFT] || (lc->boundary_flags & BOUNDARY_LEFT_TILE);
+        edges[TOP]  = edges[TOP] || (lc->boundary_flags & BOUNDARY_UPPER_TILE);
+        edges[RIGHT] = edges[RIGHT] || pps->ctb_to_col_bd[x_ctb] != pps->ctb_to_col_bd[x_ctb + 1];
+        edges[BOTTOM] = edges[BOTTOM] || pps->ctb_to_row_bd[y_ctb] != pps->ctb_to_row_bd[y_ctb + 1];
+    }
+
+    if (!pps->loop_filter_across_slices_enabled_flag) {
+        edges[LEFT] = edges[LEFT] || (lc->boundary_flags & BOUNDARY_LEFT_SLICE);
+        edges[TOP] = edges[TOP] || (lc->boundary_flags & BOUNDARY_UPPER_SLICE);
+        edges[RIGHT] = edges[RIGHT] || CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb + 1, y_ctb);
+        edges[BOTTOM] = edges[BOTTOM] || CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb, y_ctb + 1);
+    }
 
     for (int c_idx = 0; c_idx < c_end; c_idx++) {
         const int hs = fc->ps.sps->hshift[c_idx];

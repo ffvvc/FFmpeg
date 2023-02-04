@@ -496,7 +496,9 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     if (fc->ps.sps->alf_enabled_flag) {
         const int slice_idx = CTB(fc->tab.slice_idx, t->rx, t->ry);
         if (slice_idx != -1) {
+            const int rs = t->ry * fc->ps.pps->ctb_width + t->rx;
             lc->sc = fc->slices[slice_idx];
+            ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, rs);
             ff_vvc_alf_filter(lc, x0, y0);
         }
     }
