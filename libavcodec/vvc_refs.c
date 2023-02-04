@@ -459,6 +459,7 @@ int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc)
                 if (ret < 0)
                     goto fail;
             } else {
+                avpriv_request_sample(fc->avctx, "Inter layer ref");
                 ret = AVERROR_PATCHWELCOME;
                 goto fail;
             }
