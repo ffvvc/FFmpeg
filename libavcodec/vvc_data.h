@@ -30,8 +30,6 @@ extern const uint8_t ff_vvc_scaling_pred_8[8 * 8];
 extern const uint8_t ff_vvc_scaling_pred_16[8 * 8];
 extern const int ff_vvc_scaling_list0[8 * 8];
 
-#define DCT2_MAX_SIZE 64
-extern const int8_t ff_vvc_dct2[DCT2_MAX_SIZE][DCT2_MAX_SIZE];
 extern const int8_t ff_vvc_dct8_4x4[4][4];
 extern const int8_t ff_vvc_dct8_8x8[8][8];
 extern const int8_t ff_vvc_dct8_16x16[16][16];
