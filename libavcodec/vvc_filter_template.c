@@ -233,7 +233,7 @@ static av_always_inline int16_t FUNC(alf_clip)(pixel curr, pixel v0, pixel v1, i
     return av_clip(v0 - curr, -clip, clip) + av_clip(v1 - curr, -clip, clip);
 }
 
-static void FUNC(alf_filter_luma)(uint8_t *_dst, const uint8_t *_src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+static void FUNC(alf_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t src_stride,
     const int width, const int height, const int8_t *filter, const int16_t *clip)
 {
     const pixel *src    = (pixel *)_src;
@@ -300,7 +300,7 @@ static void FUNC(alf_filter_luma)(uint8_t *_dst, const uint8_t *_src, ptrdiff_t 
     }
 }
 
-static void FUNC(alf_filter_luma_vb)(uint8_t *_dst, const uint8_t *_src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+static void FUNC(alf_filter_luma_vb)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t src_stride,
     const int width, const int height, const int8_t *filter, const int16_t *clip, const int vb_pos)
 {
     const pixel *src    = (pixel *)_src;
@@ -394,7 +394,7 @@ static void FUNC(alf_filter_luma_vb)(uint8_t *_dst, const uint8_t *_src, ptrdiff
     }
 }
 
-static void FUNC(alf_filter_chroma)(uint8_t* _dst, const uint8_t* _src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+static void FUNC(alf_filter_chroma)(uint8_t* _dst, ptrdiff_t dst_stride, const uint8_t* _src, ptrdiff_t src_stride,
     const int width, const int height, const int8_t* filter, const int16_t* clip)
 {
     const pixel *src = (pixel *)_src;
@@ -453,7 +453,7 @@ static void FUNC(alf_filter_chroma)(uint8_t* _dst, const uint8_t* _src, ptrdiff_
     }
 }
 
-static void FUNC(alf_filter_chroma_vb)(uint8_t* _dst, const uint8_t* _src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+static void FUNC(alf_filter_chroma_vb)(uint8_t* _dst, ptrdiff_t dst_stride, const uint8_t* _src, ptrdiff_t src_stride,
     const int width, const int height, const int8_t* filter, const int16_t* clip, const int vb_pos)
 {
     const pixel *src = (pixel *)_src;
@@ -539,7 +539,7 @@ static void FUNC(alf_filter_chroma_vb)(uint8_t* _dst, const uint8_t* _src, ptrdi
     }
 }
 
-static void FUNC(alf_filter_cc)(uint8_t *_dst, const uint8_t *_luma, ptrdiff_t dst_stride, const ptrdiff_t luma_stride,
+static void FUNC(alf_filter_cc)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8_t *_luma, const ptrdiff_t luma_stride,
     const int width, const int height, const int hs, const int vs, const int8_t *filter, const int vb_pos)
 {
     const ptrdiff_t stride = luma_stride / sizeof(pixel);
@@ -591,7 +591,7 @@ static void FUNC(alf_filter_cc)(uint8_t *_dst, const uint8_t *_luma, ptrdiff_t d
 #define ALF_DIR_DIGA1       3
 #define ALF_NUM_DIR         4
 
-static void FUNC(alf_get_idx)(const int *sum, const int ac, int *filt_idx, int *transpose_idx)
+static void FUNC(alf_get_idx)(int *filt_idx, int *transpose_idx, const int *sum, const int ac)
 {
     static const int arg_var[] = {0, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4 };
     static const int transpose_table[] = { 0, 1, 0, 2, 2, 3, 1, 3 };
@@ -641,7 +641,7 @@ static void FUNC(alf_get_idx)(const int *sum, const int ac, int *filt_idx, int *
     }
 }
 
-static void FUNC(alf_reconstruct_coeff_and_clip)(const int8_t *src_coeff, const uint8_t *clip_idx, const int transpose_idx, int8_t *coeff, int16_t *clip)
+static void FUNC(alf_reconstruct_coeff_and_clip)(int8_t *coeff, int16_t *clip, const int8_t *src_coeff, const uint8_t *clip_idx, const int transpose_idx)
 {
     const static int index[][ALF_NUM_COEFF_LUMA] = {
         { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 },
@@ -661,10 +661,9 @@ static void FUNC(alf_reconstruct_coeff_and_clip)(const int8_t *src_coeff, const 
     }
 }
 
-static void FUNC(alf_get_coeff_and_clip)(const uint8_t *_src, ptrdiff_t src_stride,
-    const int x0, const int y0, const int width, const int height, const int vb_pos,
-    const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt,
-    int8_t *coeff, int16_t *clip)
+static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
+    const uint8_t *_src, ptrdiff_t src_stride, const int x0, const int y0, const int width, const int height,
+    const int vb_pos, const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
 {
     int gradient[ALF_NUM_DIR][ALF_GRADIENT_SIZE][ALF_GRADIENT_SIZE] = {0};
 
@@ -734,9 +733,10 @@ static void FUNC(alf_get_coeff_and_clip)(const uint8_t *_src, ptrdiff_t src_stri
                     sum[ALF_DIR_DIGA1] += gradient[ALF_DIR_DIGA1][yg + i][xg + j];
                 }
             }
-            FUNC(alf_get_idx)(sum, ac, &class_idx, &transpose_idx);
-            FUNC(alf_reconstruct_coeff_and_clip)(&coeff_set[class_to_filt[class_idx] * ALF_NUM_COEFF_LUMA],
-                &clip_idx_set[class_idx * ALF_NUM_COEFF_LUMA], transpose_idx, coeff, clip);
+            FUNC(alf_get_idx)(&class_idx, &transpose_idx, sum, ac);
+            FUNC(alf_reconstruct_coeff_and_clip)(coeff, clip,
+                &coeff_set[class_to_filt[class_idx] * ALF_NUM_COEFF_LUMA],
+                &clip_idx_set[class_idx * ALF_NUM_COEFF_LUMA], transpose_idx);
 
             coeff += ALF_NUM_COEFF_LUMA;
             clip  += ALF_NUM_COEFF_LUMA;

@@ -1194,10 +1194,10 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *_dst, const uint8_t *_
             const int w = FFMIN(width  - x, ALF_SUBBLOCK_SIZE);
             const int h = FFMIN(no_vb_height - y, ALF_SUBBLOCK_SIZE);
 
-            fc->vvcdsp.alf.get_coeff_and_clip(src, src_stride, x0 + x, y0 + y, w, h,
-                vb_pos, coeff_set, clip_idx_set, class_to_filt, coeff, clip);
+            fc->vvcdsp.alf.get_coeff_and_clip(coeff, clip, src, src_stride, x0 + x, y0 + y, w, h,
+                vb_pos, coeff_set, clip_idx_set, class_to_filt);
 
-            fc->vvcdsp.alf.filter[LUMA](dst, src, dst_stride, src_stride, w, h, coeff, clip);
+            fc->vvcdsp.alf.filter[LUMA](dst, dst_stride, src, src_stride, w, h, coeff, clip);
         }
     }
 
@@ -1209,9 +1209,10 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *_dst, const uint8_t *_
             const int w = FFMIN(width  - x, ALF_SUBBLOCK_SIZE);
             const int h = height - y;
 
-            fc->vvcdsp.alf.get_coeff_and_clip(src, src_stride, x0 + x, y0 + y, w, h, vb_pos, coeff_set, clip_idx_set, class_to_filt, coeff, clip);
+            fc->vvcdsp.alf.get_coeff_and_clip(coeff, clip, src, src_stride,
+                x0 + x, y0 + y, w, h, vb_pos, coeff_set, clip_idx_set, class_to_filt);
 
-            fc->vvcdsp.alf.filter_vb[LUMA](dst, src, dst_stride, src_stride, w, h, coeff, clip, vb_pos - y0 - y);
+            fc->vvcdsp.alf.filter_vb[LUMA](dst, dst_stride, src, src_stride, w, h, coeff, clip, vb_pos - y0 - y);
         }
     }
 }
@@ -1239,11 +1240,11 @@ static void alf_filter_chroma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *
     for (int i = 0; i < ALF_NUM_COEFF_CHROMA; i++)
         clip[i] = alf_clip_from_idx(fc, aps->chroma_clip_idx[off + i]);
 
-    fc->vvcdsp.alf.filter[CHROMA](dst, src, dst_stride, src_stride, width, no_vb_height, coeff, clip);
+    fc->vvcdsp.alf.filter[CHROMA](dst, dst_stride, src, src_stride, width, no_vb_height, coeff, clip);
     if (no_vb_height < height) {
         dst += dst_stride * no_vb_height;
         src += src_stride * no_vb_height;
-        fc->vvcdsp.alf.filter_vb[CHROMA](dst, src, dst_stride, src_stride, width, height - no_vb_height, coeff, clip, vb_pos - no_vb_height);
+        fc->vvcdsp.alf.filter_vb[CHROMA](dst, dst_stride, src, src_stride, width, height - no_vb_height, coeff, clip, vb_pos - no_vb_height);
     }
 }
 
@@ -1261,7 +1262,7 @@ static void alf_filter_cc(VVCLocalContext *lc, uint8_t *dst, const uint8_t *luma
         const int off       = (alf->ctb_cc_idc[idx] - 1)* ALF_NUM_COEFF_CC;
         const int8_t *coeff = aps->cc_coeff[idx] + off;
 
-        fc->vvcdsp.alf.filter_cc(dst, luma, dst_stride, luma_stride, width, height, hs, vs, coeff, vb_pos);
+        fc->vvcdsp.alf.filter_cc(dst, dst_stride, luma, luma_stride, width, height, hs, vs, coeff, vb_pos);
     }
 }
 
