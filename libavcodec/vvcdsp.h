@@ -180,18 +180,18 @@ typedef struct VVCSAODSPContext {
 } VVCSAODSPContext;
 
 typedef struct VVCALFDSPContext {
-    void (*filter[2 /* luma, chroma */])(uint8_t *dst, const uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+    void (*filter[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
         int width, int height, const int8_t *filter, const int16_t *clip);
-    void (*filter_vb[2 /* luma, chroma */])(uint8_t *dst, const uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+
+    void (*filter_vb[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src,  ptrdiff_t src_stride,
         int width, int height, const int8_t *filter, const int16_t *clip, int vb_pos);
 
-    void (*filter_cc)(uint8_t *dst, const uint8_t *luma, ptrdiff_t dst_stride, ptrdiff_t luma_stride,
+    void (*filter_cc)(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *luma, ptrdiff_t luma_stride,
         int width, int height, int hs, int vs, const int8_t *filter, int vb_pos);
 
-    void (*get_coeff_and_clip)(const uint8_t *src, ptrdiff_t src_stride,
-        int x0, int y0, int width, int height, int vb_pos,
-        const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt,
-        int8_t *coeff, int16_t *clip);
+    void (*get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
+        const uint8_t *src, ptrdiff_t src_stride, int x0, int y0, int width, int height, int vb_pos,
+        const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt);
 } VVCALFDSPContext;
 
 typedef struct VVCDSPContext {
