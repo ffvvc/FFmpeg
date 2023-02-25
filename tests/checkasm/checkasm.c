@@ -171,6 +171,9 @@ static const struct {
     #if CONFIG_VORBIS_DECODER
         { "vorbisdsp", checkasm_check_vorbisdsp },
     #endif
+    #if CONFIG_VVC_DECODER
+        { "vvc_alf", checkasm_check_vvc_alf },
+    #endif
 #endif
 #if CONFIG_AVFILTER
     #if CONFIG_AFIR_FILTER
