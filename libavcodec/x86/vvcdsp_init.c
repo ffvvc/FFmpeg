@@ -30,6 +30,7 @@
 #include "libavcodec/vvcdsp.h"
 #include "libavcodec/x86/vvcdsp.h"
 
+#define PIXEL_MAX_8  ((1 << 8)  - 1)
 #define PIXEL_MAX_10 ((1 << 10) - 1)
 #define PIXEL_MAX_12 ((1 << 12) - 1)
 
@@ -59,6 +60,24 @@ static void alf_filter_luma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const ui
     alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, PIXEL_MAX_10);
 }
 
+static void alf_filter_luma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int8_t *filter, const int16_t *clip)
+{
+    const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
+    int w;
+
+    for (w = 0; w + 16 <= width; w += 16) {
+        const int param_offset = w * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE;
+        ff_vvc_alf_filter_luma_w16_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
+            height, filter + param_offset, clip + param_offset, param_stride, PIXEL_MAX_8);
+    }
+    for ( /* nothing */; w < width; w += 4) {
+        const int param_offset = w * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE;
+        ff_vvc_alf_filter_luma_w4_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
+            height, filter + param_offset, clip + param_offset, param_stride, PIXEL_MAX_8);
+    }
+}
+
 static void alf_filter_chroma_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int8_t *filter, const int16_t *clip, const int pixel_max)
 {
@@ -69,7 +88,7 @@ static void alf_filter_chroma_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride, con
         ff_vvc_alf_filter_chroma_w16_16bpc_avx2(dst + (w << ps), dst_stride, src + (w << ps), src_stride,
             height, filter, clip, 0, pixel_max);
     }
-    for ( /* nothing */; w < width; w += 4) {
+    for ( /* nothing */ ; w < width; w += 4) {
         ff_vvc_alf_filter_chroma_w4_16bpc_avx2(dst + (w << ps), dst_stride, src + (w << ps), src_stride,
             height, filter, clip, 0, pixel_max);
     }
@@ -81,14 +100,40 @@ static void alf_filter_chroma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const 
     alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, PIXEL_MAX_10);
 }
 
+static void alf_filter_chroma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int8_t *filter, const int16_t *clip)
+{
+    int w;
+
+    for (w = 0; w + 16 <= width; w += 16) {
+        ff_vvc_alf_filter_chroma_w16_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
+            height, filter, clip, 0, PIXEL_MAX_8);
+    }
+    for ( /* nothing */ ; w < width; w += 4) {
+        ff_vvc_alf_filter_chroma_w4_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
+            height, filter, clip, 0, PIXEL_MAX_8);
+    }
+}
+
+#define ALF_DSP(depth) do {                                                     \
+        c->alf.filter[LUMA] = alf_filter_luma_##depth##_avx2;                   \
+        c->alf.filter[CHROMA] = alf_filter_chroma_##depth##_avx2;               \
+    } while (0)
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
 {
     const int cpu_flags = av_get_cpu_flags();
 
     if (EXTERNAL_AVX2(cpu_flags)) {
-        if (bit_depth == 10) {
-            c->alf.filter[LUMA] = alf_filter_luma_10_avx2;
-            c->alf.filter[CHROMA] = alf_filter_chroma_10_avx2;
+        switch (bit_depth) {
+            case 8:
+                ALF_DSP(8);
+                break;
+            case 10:
+                ALF_DSP(10);
+                break;
+            default:
+                break;
         }
     }
 }

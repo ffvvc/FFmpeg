@@ -199,8 +199,7 @@ SECTION .text
 
 %define SHIFT 7
 
-;LOAD_PIXELS(dest, src, tmp)
-%macro LOAD_PIXELS 3
+%macro LOAD_PIXELS_16 3
     %if WIDTH == 16
         movu            m%1, [%2]
     %else
@@ -212,8 +211,24 @@ SECTION .text
     %endif
 %endmacro
 
-;STORE_PIXELS(dest, src, tmp)
-%macro STORE_PIXELS 3
+%macro LOAD_PIXELS_8 3
+    %if WIDTH == 16
+        vpmovzxbw       m%1,  [%2]
+    %else
+        pinsrd          xm%1, [%2], 0
+        pinsrd          xm%1, [%2 + src_strideq], 1
+        pinsrd          xm%1, [%2 + src_strideq * 2], 2
+        pinsrd          xm%1, [%2 + src_stride3q], 3
+        vpmovzxbw       m%1,  xm%1
+    %endif
+%endmacro
+
+;LOAD_PIXELS(dest, src, tmp)
+%macro LOAD_PIXELS 3
+    LOAD_PIXELS_%+BPC %1, %2, %3
+%endmacro
+
+%macro STORE_PIXELS_16 3
     %if WIDTH == 16
         movu            [%1], m%2
     %else
@@ -225,24 +240,43 @@ SECTION .text
     %endif
 %endmacro
 
-;FILTER_LUMA(width)
-%macro ALF_FILTER_16BPP 2
-%ifidn %1, luma
+%macro STORE_PIXELS_8 3
+    vperm2i128          m%3, m%2, m%3, 1
+    packuswb            m%2, m%3
+    %if WIDTH == 16
+        movu            [%1], xm%2
+    %else
+        pextrd          [%1], xm%2, 0
+        pextrd          [%1 + src_strideq], xm%2, 1
+        pextrd          [%1 + src_strideq * 2], xm%2, 2
+        pextrd          [%1 + src_stride3q], xm%2, 3
+    %endif
+%endmacro
+
+;STORE_PIXELS(dest, src, tmp)
+%macro STORE_PIXELS 3
+    STORE_PIXELS_%+BPC %1, %2, %3
+%endmacro
+
+;FILTER(bpc, luma/chroma, width)
+%macro ALF_FILTER 3
+%xdefine BPC   %1
+%ifidn %2, luma
     %xdefine LUMA 1
 %else
     %xdefine LUMA 0
 %endif
-%xdefine WIDTH %2
-; void vvc_alf_filter_%1_w%2_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
+%xdefine WIDTH %3
+; void vvc_alf_filter_%2_w%3_%1bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
 ;    const uint8_t *src, ptrdiff_t src_stride, int height,
 ;    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, uint16_t pixel_max);
 
 ; see c code for p0 to p6
 
-INIT_YMM avx2
-cglobal vvc_alf_filter_%1_w%2_16bpc, 9, 13, 15, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
+cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 13, 15, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
     tmp, offset, src_stride3, src_stride0
-%define ps 2
+;pixel size
+%define ps (%1 / 8)
     lea             src_stride3q, [src_strideq * 2 + src_strideq]
 
     ;avoid "warning : absolute address can not be RIP-relative""
@@ -290,10 +324,20 @@ cglobal vvc_alf_filter_%1_w%2_16bpc, 9, 13, 15, dst, dst_stride, src, src_stride
     RET
 %endmacro
 
-ALF_FILTER_16BPP luma, 16
-ALF_FILTER_16BPP luma, 4
-ALF_FILTER_16BPP chroma, 16
-ALF_FILTER_16BPP chroma, 4
+;FILTER(bpc, luma/chroma)
+%macro ALF_FILTER 2
+    ALF_FILTER  %1, %2, 16
+    ALF_FILTER  %1, %2, 4
+%endmacro
 
+;FILTER(bpc)
+%macro ALF_FILTER 1
+    ALF_FILTER  %1, luma
+    ALF_FILTER  %1, chroma
+%endmacro
+
+INIT_YMM avx2
+ALF_FILTER  16
+ALF_FILTER  8
 %endif
 
