@@ -662,7 +662,7 @@ static void FUNC(alf_reconstruct_coeff_and_clip)(int8_t *coeff, int16_t *clip, c
 }
 
 static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
-    const uint8_t *_src, ptrdiff_t src_stride, const int x0, const int y0, const int width, const int height,
+    const uint8_t *_src, ptrdiff_t src_stride, const int width, const int height,
     const int vb_pos, const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
 {
     int gradient[ALF_NUM_DIR][ALF_GRADIENT_SIZE][ALF_GRADIENT_SIZE] = {0};
@@ -681,9 +681,9 @@ static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
         const pixel *s2  = s1 + src_stride;
         const pixel *s3  = s2 + src_stride;
 
-        if (y0 + y == vb_pos)          //above
+        if (y == vb_pos)          //above
             s3 = s2;
-        else if (y0 + y == vb_pos + ALF_GRADIENT_BORDER)
+        else if (y == vb_pos + ALF_GRADIENT_BORDER)
             s0 = s1;
 
         for (int x = 0; x < w; x += ALF_GRADIENT_STEP) {
@@ -711,10 +711,10 @@ static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
         int start = 0;
         int end   = (ALF_BLOCK_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP;
         int ac    = 2;
-        if (y0 + y + ALF_BLOCK_SIZE == vb_pos) {
+        if (y + ALF_BLOCK_SIZE == vb_pos) {
             end -= ALF_GRADIENT_BORDER / ALF_GRADIENT_STEP;
             ac = 3;
-        } else if (y0 + y == vb_pos) {
+        } else if (y == vb_pos) {
             start += ALF_GRADIENT_BORDER / ALF_GRADIENT_STEP;
             ac = 3;
         }
