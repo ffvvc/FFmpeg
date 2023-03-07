@@ -190,7 +190,7 @@ typedef struct VVCALFDSPContext {
         int width, int height, int hs, int vs, const int8_t *filter, int vb_pos);
 
     void (*get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
-        const uint8_t *src, ptrdiff_t src_stride, int x0, int y0, int width, int height, int vb_pos,
+        const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos,
         const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt);
 } VVCALFDSPContext;
 
