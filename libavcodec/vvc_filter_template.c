@@ -661,9 +661,9 @@ static void FUNC(alf_reconstruct_coeff_and_clip)(int8_t *coeff, int16_t *clip, c
     }
 }
 
-static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
-    const uint8_t *_src, ptrdiff_t src_stride, const int width, const int height,
-    const int vb_pos, const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
+static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
+    const uint8_t *_src, const ptrdiff_t _src_stride, const int width, const int height,
+    const int vb_pos)
 {
     int gradient[ALF_NUM_DIR][ALF_GRADIENT_SIZE][ALF_GRADIENT_SIZE] = {0};
 
@@ -671,8 +671,8 @@ static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
     const int w = width  + ALF_GRADIENT_BORDER * 2;
     const int size = (ALF_BLOCK_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP;
 
-    const pixel *src = (const pixel *)_src;
-    src_stride /= sizeof(pixel);
+    const pixel *src           = (const pixel *)_src;
+    const ptrdiff_t src_stride = _src_stride / sizeof(pixel);
     src -= (ALF_GRADIENT_BORDER + 1) * src_stride + ALF_GRADIENT_BORDER;
 
     for (int y = 0; y < h; y += ALF_GRADIENT_STEP) {
@@ -722,7 +722,6 @@ static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
             const int xg = x / ALF_GRADIENT_STEP;
             const int yg = y / ALF_GRADIENT_STEP;
             int sum[ALF_NUM_DIR] = { 0 };
-            int class_idx, transpose_idx;
 
             //todo: optimize this
             for (int i = start; i < end; i++) {
@@ -733,14 +732,29 @@ static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
                     sum[ALF_DIR_DIGA1] += gradient[ALF_DIR_DIGA1][yg + i][xg + j];
                 }
             }
-            FUNC(alf_get_idx)(&class_idx, &transpose_idx, sum, ac);
-            FUNC(alf_reconstruct_coeff_and_clip)(coeff, clip,
-                &coeff_set[class_to_filt[class_idx] * ALF_NUM_COEFF_LUMA],
-                &clip_idx_set[class_idx * ALF_NUM_COEFF_LUMA], transpose_idx);
+            FUNC(alf_get_idx)(class_idx, transpose_idx, sum, ac);
 
-            coeff += ALF_NUM_COEFF_LUMA;
-            clip  += ALF_NUM_COEFF_LUMA;
+            class_idx++;
+            transpose_idx++;
         }
+    }
+
+}
+
+static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
+    const uint8_t *src, ptrdiff_t src_stride, const int width, const int height,
+    const int vb_pos, const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
+{
+    int class_idx[ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE * ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE];
+    int transpose_idx[ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE * ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE];
+    FUNC(alf_classify)(class_idx, transpose_idx, src, src_stride, width, height, vb_pos);
+
+    for (int i = 0; i < width / ALF_BLOCK_SIZE * height / ALF_BLOCK_SIZE; i++) {
+        FUNC(alf_reconstruct_coeff_and_clip)(coeff, clip,
+            &coeff_set[class_to_filt[class_idx[i]] * ALF_NUM_COEFF_LUMA],
+            &clip_idx_set[class_idx[i] * ALF_NUM_COEFF_LUMA], transpose_idx[i]);
+        coeff += ALF_NUM_COEFF_LUMA;
+        clip  += ALF_NUM_COEFF_LUMA;
     }
 }
 
