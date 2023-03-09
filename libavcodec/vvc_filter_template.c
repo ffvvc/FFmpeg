@@ -641,26 +641,6 @@ static void FUNC(alf_get_idx)(int *filt_idx, int *transpose_idx, const int *sum,
     }
 }
 
-static void FUNC(alf_reconstruct_coeff_and_clip)(int8_t *coeff, int16_t *clip, const int8_t *src_coeff, const uint8_t *clip_idx, const int transpose_idx)
-{
-    const static int index[][ALF_NUM_COEFF_LUMA] = {
-        { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 },
-        { 9, 4, 10, 8, 1, 5, 11, 7, 3, 0, 2, 6 },
-        { 0, 3, 2, 1, 8, 7, 6, 5, 4, 9, 10, 11 },
-        { 9, 8, 10, 4, 3, 7, 11, 5, 1, 0, 2, 6 },
-    };
-
-    const int16_t clip_set[] = {
-        1 << BIT_DEPTH, 1 << (BIT_DEPTH - 3), 1 << (BIT_DEPTH - 5), 1 << (BIT_DEPTH - 7)
-    };
-
-    for (int i = 0; i < ALF_NUM_COEFF_LUMA; i++) {
-        const int idx = index[transpose_idx][i];
-        coeff[i] = src_coeff[idx];
-        clip[i]  = clip_set[clip_idx[idx]];
-    }
-}
-
 static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int width, const int height,
     const int vb_pos)
@@ -741,20 +721,30 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
 
 }
 
-static void FUNC(alf_get_coeff_and_clip)(int8_t *coeff, int16_t *clip,
-    const uint8_t *src, ptrdiff_t src_stride, const int width, const int height,
-    const int vb_pos, const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
+static void FUNC(alf_recon_coeff_and_clip)(int8_t *coeff, int16_t *clip,
+    const int *class_idx, const int *transpose_idx, const int size,
+    const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
 {
-    int class_idx[ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE * ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE];
-    int transpose_idx[ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE * ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE];
-    FUNC(alf_classify)(class_idx, transpose_idx, src, src_stride, width, height, vb_pos);
+    const static int index[][ALF_NUM_COEFF_LUMA] = {
+        { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 },
+        { 9, 4, 10, 8, 1, 5, 11, 7, 3, 0, 2, 6 },
+        { 0, 3, 2, 1, 8, 7, 6, 5, 4, 9, 10, 11 },
+        { 9, 8, 10, 4, 3, 7, 11, 5, 1, 0, 2, 6 },
+    };
 
-    for (int i = 0; i < width / ALF_BLOCK_SIZE * height / ALF_BLOCK_SIZE; i++) {
-        FUNC(alf_reconstruct_coeff_and_clip)(coeff, clip,
-            &coeff_set[class_to_filt[class_idx[i]] * ALF_NUM_COEFF_LUMA],
-            &clip_idx_set[class_idx[i] * ALF_NUM_COEFF_LUMA], transpose_idx[i]);
-        coeff += ALF_NUM_COEFF_LUMA;
-        clip  += ALF_NUM_COEFF_LUMA;
+    const int16_t clip_set[] = {
+        1 << BIT_DEPTH, 1 << (BIT_DEPTH - 3), 1 << (BIT_DEPTH - 5), 1 << (BIT_DEPTH - 7)
+    };
+
+    for (int i = 0; i < size; i++) {
+        const int8_t  *src_coeff = coeff_set + class_to_filt[class_idx[i]] * ALF_NUM_COEFF_LUMA;
+        const uint8_t *clip_idx  = clip_idx_set + class_idx[i] * ALF_NUM_COEFF_LUMA;
+
+        for (int j = 0; j < ALF_NUM_COEFF_LUMA; j++) {
+            const int idx = index[transpose_idx[i]][j];
+            *coeff++ = src_coeff[idx];
+            *clip++  = clip_set[clip_idx[idx]];
+        }
     }
 }
 
@@ -1249,5 +1239,6 @@ static void FUNC(ff_vvc_alf_dsp_init)(VVCALFDSPContext *const alf)
     alf->filter_vb[LUMA]    = FUNC(alf_filter_luma_vb);
     alf->filter_vb[CHROMA]  = FUNC(alf_filter_chroma_vb);
     alf->filter_cc          = FUNC(alf_filter_cc);
-    alf->get_coeff_and_clip = FUNC(alf_get_coeff_and_clip);
+    alf->classify           = FUNC(alf_classify);
+    alf->recon_coeff_and_clip = FUNC(alf_recon_coeff_and_clip);
 }

@@ -1168,6 +1168,9 @@ static void alf_get_coeff_and_clip(VVCLocalContext *lc, int8_t *coeff, int16_t *
     const int8_t  *coeff_set;
     const uint8_t *clip_idx_set;
     const uint8_t *class_to_filt;
+    const int size = width * height / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE;
+    int class_idx[ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE * ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE];
+    int transpose_idx[ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE * ALF_SUBBLOCK_SIZE / ALF_BLOCK_SIZE];
 
     if (alf->ctb_filt_set_idx_y < 16) {
         coeff_set = &ff_vvc_alf_fix_filt_coeff[0][0];
@@ -1180,9 +1183,9 @@ static void alf_get_coeff_and_clip(VVCLocalContext *lc, int8_t *coeff, int16_t *
         clip_idx_set = aps->luma_clip_idx;
         class_to_filt = ff_vvc_alf_aps_class_to_filt_map;
     }
-    fc->vvcdsp.alf.get_coeff_and_clip(coeff, clip, src, src_stride, width, height,
-        vb_pos, coeff_set, clip_idx_set, class_to_filt);
-
+    fc->vvcdsp.alf.classify(class_idx, transpose_idx, src, src_stride, width, height, vb_pos);
+    fc->vvcdsp.alf.recon_coeff_and_clip(coeff, clip, class_idx, transpose_idx, size,
+        coeff_set, clip_idx_set, class_to_filt);
 }
 
 static void alf_filter_luma(VVCLocalContext *lc, uint8_t *_dst, const uint8_t *_src,
