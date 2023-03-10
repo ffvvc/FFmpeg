@@ -190,7 +190,8 @@ typedef struct VVCALFDSPContext {
         int width, int height, int hs, int vs, const int8_t *filter, int vb_pos);
 
     void (*classify)(int *class_idx, int *transpose_idx,
-        const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos);
+        const uint8_t *src, ptrdiff_t src_stride, int width, int height,
+        int vb_pos, int *gradient_tmp);
 
     void (*recon_coeff_and_clip)(int8_t *coeff, int16_t *clip,
         const int *class_idx, const int *transpose_idx, int size,

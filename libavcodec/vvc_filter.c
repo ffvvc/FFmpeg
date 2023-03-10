@@ -1183,7 +1183,8 @@ static void alf_get_coeff_and_clip(VVCLocalContext *lc, int8_t *coeff, int16_t *
         clip_idx_set = aps->luma_clip_idx;
         class_to_filt = ff_vvc_alf_aps_class_to_filt_map;
     }
-    fc->vvcdsp.alf.classify(class_idx, transpose_idx, src, src_stride, width, height, vb_pos);
+    fc->vvcdsp.alf.classify(class_idx, transpose_idx, src, src_stride, width, height,
+        vb_pos, lc->alf_gradient_tmp);
     fc->vvcdsp.alf.recon_coeff_and_clip(coeff, clip, class_idx, transpose_idx, size,
         coeff_set, clip_idx_set, class_to_filt);
 }

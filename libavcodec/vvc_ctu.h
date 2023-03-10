@@ -288,6 +288,7 @@ struct VVCLocalContext {
     DECLARE_ALIGNED(32, uint8_t, sao_buffer)[(MAX_CTU_SIZE + 2 * SAO_PADDING_SIZE) * EDGE_EMU_BUFFER_STRIDE * 2];
     DECLARE_ALIGNED(32, uint8_t, alf_buffer_luma)[(MAX_CTU_SIZE + 2 * ALF_PADDING_SIZE) * EDGE_EMU_BUFFER_STRIDE * 2];
     DECLARE_ALIGNED(32, uint8_t, alf_buffer_chroma)[(MAX_CTU_SIZE + 2 * ALF_PADDING_SIZE) * EDGE_EMU_BUFFER_STRIDE * 2];
+    DECLARE_ALIGNED(32, int32_t, alf_gradient_tmp)[ALF_GRADIENT_SIZE * ALF_GRADIENT_SIZE * ALF_NUM_DIR];
 
     struct {
         int sbt_num_fourths_tb0;                ///< SbtNumFourthsTb0
