@@ -645,7 +645,7 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int width, const int height,
     const int vb_pos)
 {
-    int gradient[ALF_NUM_DIR][ALF_GRADIENT_SIZE][ALF_GRADIENT_SIZE] = {0};
+    int gradient[ALF_GRADIENT_SIZE][ALF_GRADIENT_SIZE][ALF_NUM_DIR];
 
     const int h = height + ALF_GRADIENT_BORDER * 2;
     const int w = width  + ALF_GRADIENT_BORDER * 2;
@@ -680,10 +680,10 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
             const pixel *b1  = s3 + x + 1;
             const int val1   = (*p1) << 1;
 
-            gradient[ALF_DIR_VERT] [yg][xg] = FFABS(val0 - *a0 - *b0) + FFABS(val1 - *a1 - *b1);
-            gradient[ALF_DIR_HORZ] [yg][xg] = FFABS(val0 - *(p0 - 1) - *(p0 + 1)) + FFABS(val1 - *(p1 - 1) - *(p1 + 1));
-            gradient[ALF_DIR_DIGA0][yg][xg] = FFABS(val0 - *(a0 - 1) - *(b0 + 1)) + FFABS(val1 - *(a1 - 1) - *(b1 + 1));
-            gradient[ALF_DIR_DIGA1][yg][xg] = FFABS(val0 - *(a0 + 1) - *(b0 - 1)) + FFABS(val1 - *(a1 + 1) - *(b1 - 1));
+            gradient[yg][xg][ALF_DIR_VERT]  = FFABS(val0 - *a0 - *b0) + FFABS(val1 - *a1 - *b1);
+            gradient[yg][xg][ALF_DIR_HORZ]  = FFABS(val0 - *(p0 - 1) - *(p0 + 1)) + FFABS(val1 - *(p1 - 1) - *(p1 + 1));
+            gradient[yg][xg][ALF_DIR_DIGA0] = FFABS(val0 - *(a0 - 1) - *(b0 + 1)) + FFABS(val1 - *(a1 - 1) - *(b1 + 1));
+            gradient[yg][xg][ALF_DIR_DIGA1] = FFABS(val0 - *(a0 + 1) - *(b0 - 1)) + FFABS(val1 - *(a1 + 1) - *(b1 - 1));
         }
     }
 
@@ -706,10 +706,10 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
             //todo: optimize this
             for (int i = start; i < end; i++) {
                 for (int j = 0; j < size; j++) {
-                    sum[ALF_DIR_VERT]  += gradient[ALF_DIR_VERT][yg + i][xg + j];
-                    sum[ALF_DIR_HORZ]  += gradient[ALF_DIR_HORZ][yg + i][xg + j];
-                    sum[ALF_DIR_DIGA0] += gradient[ALF_DIR_DIGA0][yg + i][xg + j];
-                    sum[ALF_DIR_DIGA1] += gradient[ALF_DIR_DIGA1][yg + i][xg + j];
+                    sum[ALF_DIR_VERT]  += gradient[yg + i][xg + j][ALF_DIR_VERT];
+                    sum[ALF_DIR_HORZ]  += gradient[yg + i][xg + j][ALF_DIR_HORZ];
+                    sum[ALF_DIR_DIGA0] += gradient[yg + i][xg + j][ALF_DIR_DIGA0];
+                    sum[ALF_DIR_DIGA1] += gradient[yg + i][xg + j][ALF_DIR_DIGA1];
                 }
             }
             FUNC(alf_get_idx)(class_idx, transpose_idx, sum, ac);
