@@ -105,6 +105,10 @@
 #define ALF_VB_POS_ABOVE_LUMA       4
 #define ALF_VB_POS_ABOVE_CHROMA     2
 
+#define ALF_GRADIENT_BORDER         2
+#define ALF_GRADIENT_SIZE           ((ALF_SUBBLOCK_SIZE + ALF_GRADIENT_BORDER * 2) / 2)
+#define ALF_NUM_DIR                 4
+
 #define EDGE_EMU_BUFFER_STRIDE (MAX_PB_SIZE + 32)
 
 #define AFFINE_MIN_BLOCK_SIZE 4

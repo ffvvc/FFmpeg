@@ -581,15 +581,12 @@ static void FUNC(alf_filter_cc)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8
     }
 }
 
-#define ALF_GRADIENT_BORDER 2
-#define ALF_GRADIENT_SIZE   ((ALF_SUBBLOCK_SIZE + ALF_GRADIENT_BORDER * 2) / 2)
 #define ALF_GRADIENT_STEP   2
 
 #define ALF_DIR_VERT        0
 #define ALF_DIR_HORZ        1
 #define ALF_DIR_DIGA0       2
 #define ALF_DIR_DIGA1       3
-#define ALF_NUM_DIR         4
 
 static void FUNC(alf_get_idx)(int *filt_idx, int *transpose_idx, const int *sum, const int ac)
 {
@@ -643,18 +640,20 @@ static void FUNC(alf_get_idx)(int *filt_idx, int *transpose_idx, const int *sum,
 
 static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int width, const int height,
-    const int vb_pos)
+    const int vb_pos, int *gradient_tmp)
 {
-    int gradient[ALF_GRADIENT_SIZE][ALF_GRADIENT_SIZE][ALF_NUM_DIR];
+    int *grad;
 
     const int h = height + ALF_GRADIENT_BORDER * 2;
     const int w = width  + ALF_GRADIENT_BORDER * 2;
     const int size = (ALF_BLOCK_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP;
+    const int gstride = (w / ALF_GRADIENT_STEP) * ALF_NUM_DIR;
 
     const pixel *src           = (const pixel *)_src;
     const ptrdiff_t src_stride = _src_stride / sizeof(pixel);
     src -= (ALF_GRADIENT_BORDER + 1) * src_stride + ALF_GRADIENT_BORDER;
 
+    grad = gradient_tmp;
     for (int y = 0; y < h; y += ALF_GRADIENT_STEP) {
         const pixel *s0  = src + y * src_stride;
         const pixel *s1  = s0 + src_stride;
@@ -668,8 +667,6 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
 
         for (int x = 0; x < w; x += ALF_GRADIENT_STEP) {
             //two points a time
-            const int xg = x / ALF_GRADIENT_STEP;
-            const int yg = y / ALF_GRADIENT_STEP;
             const pixel *a0  = s0 + x;
             const pixel *p0  = s1 + x;
             const pixel *b0  = s2 + x;
@@ -680,10 +677,11 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
             const pixel *b1  = s3 + x + 1;
             const int val1   = (*p1) << 1;
 
-            gradient[yg][xg][ALF_DIR_VERT]  = FFABS(val0 - *a0 - *b0) + FFABS(val1 - *a1 - *b1);
-            gradient[yg][xg][ALF_DIR_HORZ]  = FFABS(val0 - *(p0 - 1) - *(p0 + 1)) + FFABS(val1 - *(p1 - 1) - *(p1 + 1));
-            gradient[yg][xg][ALF_DIR_DIGA0] = FFABS(val0 - *(a0 - 1) - *(b0 + 1)) + FFABS(val1 - *(a1 - 1) - *(b1 + 1));
-            gradient[yg][xg][ALF_DIR_DIGA1] = FFABS(val0 - *(a0 + 1) - *(b0 - 1)) + FFABS(val1 - *(a1 + 1) - *(b1 - 1));
+            grad[ALF_DIR_VERT]  = FFABS(val0 - *a0 - *b0) + FFABS(val1 - *a1 - *b1);
+            grad[ALF_DIR_HORZ]  = FFABS(val0 - *(p0 - 1) - *(p0 + 1)) + FFABS(val1 - *(p1 - 1) - *(p1 + 1));
+            grad[ALF_DIR_DIGA0] = FFABS(val0 - *(a0 - 1) - *(b0 + 1)) + FFABS(val1 - *(a1 - 1) - *(b1 + 1));
+            grad[ALF_DIR_DIGA1] = FFABS(val0 - *(a0 + 1) - *(b0 - 1)) + FFABS(val1 - *(a1 + 1) - *(b1 - 1));
+            grad += ALF_NUM_DIR;
         }
     }
 
@@ -703,14 +701,17 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
             const int yg = y / ALF_GRADIENT_STEP;
             int sum[ALF_NUM_DIR] = { 0 };
 
-            //todo: optimize this
+            grad = gradient_tmp + (yg + start) * gstride + xg * ALF_NUM_DIR;
+            //todo: optimize this loop
             for (int i = start; i < end; i++) {
                 for (int j = 0; j < size; j++) {
-                    sum[ALF_DIR_VERT]  += gradient[yg + i][xg + j][ALF_DIR_VERT];
-                    sum[ALF_DIR_HORZ]  += gradient[yg + i][xg + j][ALF_DIR_HORZ];
-                    sum[ALF_DIR_DIGA0] += gradient[yg + i][xg + j][ALF_DIR_DIGA0];
-                    sum[ALF_DIR_DIGA1] += gradient[yg + i][xg + j][ALF_DIR_DIGA1];
+                    sum[ALF_DIR_VERT]  += grad[ALF_DIR_VERT];
+                    sum[ALF_DIR_HORZ]  += grad[ALF_DIR_HORZ];
+                    sum[ALF_DIR_DIGA0] += grad[ALF_DIR_DIGA0];
+                    sum[ALF_DIR_DIGA1] += grad[ALF_DIR_DIGA1];
+                    grad += ALF_NUM_DIR;
                 }
+                grad += gstride - size * ALF_NUM_DIR;
             }
             FUNC(alf_get_idx)(class_idx, transpose_idx, sum, ac);
 
@@ -753,7 +754,6 @@ static void FUNC(alf_recon_coeff_and_clip)(int8_t *coeff, int16_t *clip,
 #undef ALF_DIR_VERT
 #undef ALF_DIR_DIGA0
 #undef ALF_DIR_DIGA1
-#undef ALF_NUM_DIR
 
 // line zero
 #define P7 pix[-8 * xstride]
