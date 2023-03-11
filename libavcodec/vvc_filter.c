@@ -222,6 +222,7 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
 
             dst_stride = 2*MAX_PB_SIZE + AV_INPUT_BUFFER_PADDING_SIZE;
             dst = lc->sao_buffer + dst_stride + AV_INPUT_BUFFER_PADDING_SIZE;
+            memset(lc->sao_buffer, 0, (MAX_CTU_SIZE + 2 * SAO_PADDING_SIZE) * EDGE_EMU_BUFFER_STRIDE * 2);
 
             if (!top_edge) {
                 int left = 1 - left_edge;
