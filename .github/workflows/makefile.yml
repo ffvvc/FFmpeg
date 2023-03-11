@@ -30,11 +30,14 @@ jobs:
     - name: Build
       run: make -j
 
+    - name: Check Asm
+      run: make checkasm && ./tests/checkasm/checkasm --test=vvc_alf
+
     - name: Download Bitstream
       run: cd .. && git clone https://github.com/ffvvc/tests.git tests
 
-    - name: Unit test
+    - name: Conformance Test
       run: cd .. && python3 tests/tools/ffmpeg.py tests/conformance/passed
 
-    - name: Negtive test
+    - name: Negtive Test
       run: cd .. && python3 tests/tools/ffmpeg.py tests/conformance/failed || true
