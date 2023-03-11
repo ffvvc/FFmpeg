@@ -33,9 +33,9 @@
 static const uint32_t pixel_mask[3] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff };
 
 #define SIZEOF_PIXEL ((bit_depth + 7) / 8)
-#define PIXEL_STRIDE (ALF_SUBBLOCK_SIZE + 2 * ALF_PADDING_SIZE)
+#define PIXEL_STRIDE (MAX_CU_SIZE + 2 * ALF_PADDING_SIZE)
 #define BUF_SIZE (PIXEL_STRIDE * (MAX_CTU_SIZE + 3 * 2) * 2) //+3 * 2 for top and bottom row, *2 for high bit depth
-#define LUMA_PARAMS_SIZE (ALF_SUBBLOCK_SIZE / 4 * ALF_SUBBLOCK_SIZE / 4 * ALF_NUM_COEFF_LUMA)
+#define LUMA_PARAMS_SIZE (MAX_CU_SIZE * MAX_CU_SIZE / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE * ALF_NUM_COEFF_LUMA)
 
 #define randomize_buffers(buf0, buf1, size)                 \
     do {                                                    \
@@ -86,8 +86,8 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
     randomize_buffers2(filter, LUMA_PARAMS_SIZE, 1);
     randomize_buffers2(clip, LUMA_PARAMS_SIZE, 0);
 
-    for (int h = 4; h <= ALF_SUBBLOCK_SIZE; h += 4) {
-        for (int w = 4; w <= ALF_SUBBLOCK_SIZE; w += 4) {
+    for (int h = 4; h <= MAX_CU_SIZE; h += 4) {
+        for (int w = 4; w <= MAX_CU_SIZE; w += 4) {
             if (check_func(c->alf.filter[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
                 memset(dst0, 0, BUF_SIZE);
                 memset(dst1, 0, BUF_SIZE);

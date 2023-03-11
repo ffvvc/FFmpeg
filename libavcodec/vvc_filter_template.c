@@ -581,8 +581,6 @@ static void FUNC(alf_filter_cc)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8
     }
 }
 
-#define ALF_GRADIENT_STEP   2
-
 #define ALF_DIR_VERT        0
 #define ALF_DIR_HORZ        1
 #define ALF_DIR_DIGA0       2
@@ -749,7 +747,6 @@ static void FUNC(alf_recon_coeff_and_clip)(int8_t *coeff, int16_t *clip,
     }
 }
 
-#undef ALF_GRADIENT_STEP
 #undef ALF_DIR_HORZ
 #undef ALF_DIR_VERT
 #undef ALF_DIR_DIGA0
