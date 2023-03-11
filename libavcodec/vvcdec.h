@@ -96,17 +96,15 @@
 #define ALF_PADDING_SIZE      8
 #define ALF_BLOCK_SIZE        4
 
-//local size to save stack memroy
-#define ALF_SUBBLOCK_SIZE    32
-
 #define ALF_BORDER_LUMA       3
 #define ALF_BORDER_CHROMA     2
 
 #define ALF_VB_POS_ABOVE_LUMA       4
 #define ALF_VB_POS_ABOVE_CHROMA     2
 
+#define ALF_GRADIENT_STEP           2
 #define ALF_GRADIENT_BORDER         2
-#define ALF_GRADIENT_SIZE           ((ALF_SUBBLOCK_SIZE + ALF_GRADIENT_BORDER * 2) / 2)
+#define ALF_GRADIENT_SIZE           ((MAX_CU_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP)
 #define ALF_NUM_DIR                 4
 
 #define EDGE_EMU_BUFFER_STRIDE (MAX_PB_SIZE + 32)
