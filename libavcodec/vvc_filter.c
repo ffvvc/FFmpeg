@@ -1197,8 +1197,11 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *_dst, const uint8_t *_
     const int ps                = fc->ps.sps->pixel_shift;
     const int vb_pos            = _vb_pos - y0;
     const int no_vb_height      = height > vb_pos ? vb_pos - ALF_VB_POS_ABOVE_LUMA : height;
-    int8_t coeff[ALF_SUBBLOCK_FILTER_SIZE];
-    int16_t clip[ALF_SUBBLOCK_FILTER_SIZE];
+    int8_t *coeff               = (int8_t*)lc->tmp;
+    int16_t *clip               = (int16_t *)lc->tmp1;
+
+    av_assert0(ALF_SUBBLOCK_FILTER_SIZE <= sizeof(lc->tmp));
+    av_assert0(ALF_SUBBLOCK_FILTER_SIZE * sizeof(int16_t) <= sizeof(lc->tmp1));
 
     for (int y = 0; y < no_vb_height; y += ALF_SUBBLOCK_SIZE) {
         for (int x = 0; x < width; x += ALF_SUBBLOCK_SIZE) {
