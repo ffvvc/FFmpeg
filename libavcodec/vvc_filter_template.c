@@ -586,54 +586,33 @@ static void FUNC(alf_filter_cc)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8
 #define ALF_DIR_DIGA0       2
 #define ALF_DIR_DIGA1       3
 
-static void FUNC(alf_get_idx)(int *filt_idx, int *transpose_idx, const int *sum, const int ac)
+static void FUNC(alf_get_idx)(int *class_idx, int *transpose_idx, const int *sum, const int ac)
 {
     static const int arg_var[] = {0, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4 };
-    static const int transpose_table[] = { 0, 1, 0, 2, 2, 3, 1, 3 };
 
-    int hv0, hv1, dir_hv, d0, d1, dir_d, hvd1, hvd0, sum_hv;
-    int dir1, dir2, dirs; ///< mainDirection, secondaryDirection, directionStrength in vtm
-    if (sum[ALF_DIR_VERT] > sum[ALF_DIR_HORZ]) {
-        hv1 = sum[ALF_DIR_VERT];
-        hv0 = sum[ALF_DIR_HORZ];
-        dir_hv = 1;
-    } else {
-        hv1 = sum[ALF_DIR_HORZ];
-        hv0 = sum[ALF_DIR_VERT];
-        dir_hv = 3;
-    }
+    int hv0, hv1, dir_hv, d0, d1, dir_d, hvd1, hvd0, sum_hv, dir1;
 
-    if (sum[ALF_DIR_DIGA0] > sum[ALF_DIR_DIGA1]) {
-        d1 = sum[ALF_DIR_DIGA0];
-        d0 = sum[ALF_DIR_DIGA1];
-        dir_d = 0;
-    } else {
-        d1 = sum[ALF_DIR_DIGA1];
-        d0 = sum[ALF_DIR_DIGA0];
-        dir_d = 2;
-    }
+    dir_hv = sum[ALF_DIR_VERT] <= sum[ALF_DIR_HORZ];
+    hv1    = FFMAX(sum[ALF_DIR_VERT], sum[ALF_DIR_HORZ]);
+    hv0    = FFMIN(sum[ALF_DIR_VERT], sum[ALF_DIR_HORZ]);
+
+    dir_d  = sum[ALF_DIR_DIGA0] <= sum[ALF_DIR_DIGA1];
+    d1     = FFMAX(sum[ALF_DIR_DIGA0], sum[ALF_DIR_DIGA1]);
+    d0     = FFMIN(sum[ALF_DIR_DIGA0], sum[ALF_DIR_DIGA1]);
 
     //promote to avoid overflow
-    if ((uint64_t)d1 * hv0 > (uint64_t)hv1 * d0) {
-        hvd1 = d1;
-        hvd0 = d0;
-        dir1 = dir_d;
-        dir2 = dir_hv;
-    } else {
-        hvd1 = hv1;
-        hvd0 = hv0;
-        dir1 = dir_hv;
-        dir2 = dir_d;
-    }
-    dirs = (hvd1 * 2 > 9 * hvd0) ? 2 : ((hvd1 > 2 * hvd0) ? 1 : 0);
-
-    *transpose_idx = transpose_table[dir1 * 2 + (dir2 >> 1)];
+    dir1 = (uint64_t)d1 * hv0 <= (uint64_t)hv1 * d0;
+    hvd1 = dir1 ? hv1 : d1;
+    hvd0 = dir1 ? hv0 : d0;
 
     sum_hv = sum[ALF_DIR_HORZ] + sum[ALF_DIR_VERT];
-    *filt_idx = arg_var[av_clip_uintp2(sum_hv * ac >> (BIT_DEPTH - 1), 4)];
-    if (dirs) {
-        *filt_idx += (((dir1 & 0x1) << 1) + dirs) * 5;
-    }
+    *class_idx = arg_var[av_clip_uintp2(sum_hv * ac >> (BIT_DEPTH - 1), 4)];
+    if (hvd1 * 2 > 9 * hvd0)
+        *class_idx += ((dir1 << 1) + 2) * 5;
+    else if (hvd1 > 2 * hvd0)
+        *class_idx += ((dir1 << 1) + 1) * 5;
+
+    *transpose_idx = dir_d * 2 + dir_hv;
 }
 
 static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
