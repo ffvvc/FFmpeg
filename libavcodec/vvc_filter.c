@@ -249,6 +249,10 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                                SAO_APPLIED);
                     copy_pixel(dst1 + pos, src1[src_idx] + pos, sh);
                 }
+            } else {
+                int left = 1 - left_edge;
+                uint8_t *dst1 = dst - dst_stride - (left << sh);
+                memset(dst1, 0, (2 + width) << sh);
             }
             if (!bottom_edge) {
                 int left = 1 - left_edge;
