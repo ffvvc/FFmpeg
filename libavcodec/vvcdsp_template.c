@@ -28,6 +28,7 @@
 #include "vvc_inter_template.c"
 #include "vvc_intra_template.c"
 #include "vvc_filter_template.c"
+#include "vvc_dsp_init_tmpl.c"
 
 #if 0
 static void FUNC(put_pcm)(uint8_t *_dst, ptrdiff_t stride, int width, int height,

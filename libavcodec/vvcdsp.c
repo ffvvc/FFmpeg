@@ -283,13 +283,23 @@ typedef struct IntraEdgeParams {
     uint16_t filtered_top_array[3 * MAX_TB_SIZE + 3];
 } IntraEdgeParams;
 
-#define BIT_DEPTH 8
-#include "vvcdsp_template.c"
-#undef BIT_DEPTH
+#define VVC_BPC 8
+#include "vvc_dsp_tmpl.c"
+#   define BIT_DEPTH 8
+#   include "vvcdsp_template.c"
+#   undef BIT_DEPTH
+#undef VVC_BPC
 
-#define BIT_DEPTH 10
-#include "vvcdsp_template.c"
-#undef BIT_DEPTH
+#define VVC_BPC 16
+#include "vvc_dsp_tmpl.c"
+#   define BIT_DEPTH 10
+#   include "vvcdsp_template.c"
+#   undef BIT_DEPTH
+
+#   define BIT_DEPTH 12
+#   include "vvcdsp_template.c"
+#   undef BIT_DEPTH
+#undef VVC_BPC
 
 void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 {
@@ -306,6 +316,9 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     FUNC(ff_vvc_alf_dsp_init, depth)(&vvcdsp->alf);                             \
 
     switch (bit_depth) {
+    case 12:
+        VVC_DSP(12);
+        break;
     case 10:
         VVC_DSP(10);
         break;
