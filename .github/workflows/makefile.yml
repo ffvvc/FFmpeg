@@ -12,7 +12,7 @@ env:
 jobs:
 
   linux:
-    name: ${{ matrix.os }}.${{ matrix.compiler.compiler }}
+    name: Linux.${{ matrix.compiler.compiler }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,5 +36,33 @@ jobs:
     - name: Unit test
       run: cd .. && python3 tests/tools/ffmpeg.py tests/conformance/passed
 
-    - name: Negtive test
+    - name: Negative test
       run: cd .. && python3 tests/tools/ffmpeg.py tests/conformance/failed || true
+
+  windows:
+    name: Windows.MSVC
+    runs-on: windows-latest
+
+    steps:
+    - name: Get FFVS-Project-Generator
+      uses: Invoke-WebRequest -Uri https://github.com/ShiftMediaProject/FFVS-Project-Generator/releases/download/1.11.6/FFVS-Project-Generator_1.11.6_x64.zip -OutFile FFVS-Project-Generator.zip; Expand-Archive FFVS-Project-Generator.zip
+
+    - name: Get repository
+      uses: actions/checkout@v3
+      with:
+        path: main
+
+    - name: Build
+      uses: ./FFVS-Project-Generator/project_generator.exe --enable-gpl --enable-version3 --disable-bzlib --disable-iconv --disable-zlib --disable-lzma --disable-sdl --toolchain=msvc --rootdir=main
+
+    - name: Download Bitstream
+      uses: actions/checkout@v3
+      with:
+        repository: ffvvc/tests
+        path: tests
+
+    - name: Unit test
+      run: python3 tests/tools/ffmpeg.py tests/conformance/passed
+
+    - name: Negative test
+      run: python3 tests/tools/ffmpeg.py tests/conformance/failed || true
