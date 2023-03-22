@@ -45,6 +45,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Get FFVS-Project-Generator
       run: Invoke-WebRequest -Uri https://github.com/ShiftMediaProject/FFVS-Project-Generator/releases/download/1.11.6/FFVS-Project-Generator_1.11.6_x64.zip -OutFile FFVS-Project-Generator.zip; Expand-Archive FFVS-Project-Generator.zip
 
@@ -54,7 +57,7 @@ jobs:
         path: main
 
     - name: Build
-      run: .\FFVS-Project-Generator\project_generate.exe --enable-gpl --enable-version3 --disable-bzlib --disable-iconv --disable-zlib --disable-lzma --disable-sdl --toolchain=msvc --rootdir=main
+      run: .\FFVS-Project-Generator\project_generate.exe --rootdir=main --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file --enable-protocol=pipe --enable-encoder=rawvideo --enable-muxer=rawvideo --enable-muxer=md5
 
     - name: Download Bitstream
       uses: actions/checkout@v3
