@@ -54,7 +54,7 @@ jobs:
         path: main
 
     - name: Build
-      run: ./FFVS-Project-Generator/project_generator.exe --enable-gpl --enable-version3 --disable-bzlib --disable-iconv --disable-zlib --disable-lzma --disable-sdl --toolchain=msvc --rootdir=main
+      run: .\FFVS-Project-Generator\project_generate.exe --enable-gpl --enable-version3 --disable-bzlib --disable-iconv --disable-zlib --disable-lzma --disable-sdl --toolchain=msvc --rootdir=main
 
     - name: Download Bitstream
       uses: actions/checkout@v3
