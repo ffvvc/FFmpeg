@@ -43,7 +43,7 @@ jobs:
     name: Windows.MSVC
     runs-on: windows-latest
     env:
-      FFMPEG_PATH: msvc\bin
+      FFMPEG_PATH: msvc\bin\x64\ffmpeg.exe
 
     steps:
     - name: Set up MSVC
@@ -61,10 +61,10 @@ jobs:
         path: src/main
 
     - name: Generate visual studio project
-      run: .\FFVS-Project-Generator\project_generate.exe --rootdir=src/main --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file --enable-protocol=pipe --enable-encoder=rawvideo --enable-muxer=rawvideo --enable-muxer=md5
+      run: .\FFVS-Project-Generator\project_generate.exe --rootdir=src/main --disable-everything --enable-ffmpeg  --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file --enable-protocol=pipe --enable-encoder=rawvideo --enable-muxer=rawvideo --enable-muxer=md5
 
     - name: Build
-      run: msbuild src\main\SMP\ffmpeg.sln
+      run: msbuild -p:Configuration="Release" src\main\SMP\ffmpeg.sln
 
     - name: Download Bitstream
       uses: actions/checkout@v3
@@ -76,4 +76,4 @@ jobs:
       run: python3 tests/tools/ffmpeg.py tests/conformance/passed
 
     - name: Negative test
-      run: python3 tests/tools/ffmpeg.py tests/conformance/failed || true
+      run: python3 tests/tools/ffmpeg.py tests/conformance/failed; if ( $? -eq $True ) { throw }
