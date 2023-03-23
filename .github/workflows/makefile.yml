@@ -34,10 +34,10 @@ jobs:
       run: cd .. && git clone https://github.com/ffvvc/tests.git tests
 
     - name: Unit test
-      run: cd .. && python3 tests/tools/ffmpeg.py tests/conformance/passed
+      run: cd .. && python3 tests/tools/ffmpeg.py --threads 4 tests/conformance/passed
 
     - name: Negative test
-      run: cd .. && python3 tests/tools/ffmpeg.py tests/conformance/failed || true
+      run: cd .. && python3 tests/tools/ffmpeg.py --threads 4 tests/conformance/failed || true
 
   windows:
     name: Windows.MSVC
@@ -73,7 +73,7 @@ jobs:
         path: tests
 
     - name: Unit test
-      run: python3 tests/tools/ffmpeg.py tests/conformance/passed
+      run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/passed
 
     - name: Negative test
-      run: python3 tests/tools/ffmpeg.py tests/conformance/failed; if ( $? -eq $True ) { throw }
+      run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/failed; if ( $? -eq $True ) { throw }
