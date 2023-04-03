@@ -101,14 +101,8 @@ do {                                    \
 #define atomic_exchange_explicit(object, desired, order) \
     atomic_exchange(object, desired)
 
-static inline int atomic_compare_exchange_strong(intptr_t *object, intptr_t *expected,
-                                                 intptr_t desired)
-{
-    intptr_t old = *expected;
-    *expected = (intptr_t)InterlockedCompareExchangePointer(
-        (PVOID *)object, (PVOID)desired, (PVOID)old);
-    return *expected == old;
-}
+#define atomic_compare_exchange_strong(object, expected, desired)              \
+    (InterlockedCompareExchangePointer((PVOID *) object, (PVOID) desired, *((PVOID *) expected)) == *((PVOID *) expected))
 
 #define atomic_compare_exchange_strong_explicit(object, expected, desired, success, failure) \
     atomic_compare_exchange_strong(object, expected, desired)

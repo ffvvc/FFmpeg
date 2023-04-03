@@ -569,11 +569,7 @@ int ff_vvc_task_run(Task *_t, void *local_context, void *user_data)
 
     if (!atomic_load(&ft->ret)) {
         if ((ret = run[t->type](s, lc, t)) < 0) {
-#ifdef WIN32
-            intptr_t zero = 0;
-#else
             int zero = 0;
-#endif
             atomic_compare_exchange_strong(&ft->ret, &zero, ret);
         }
     }
