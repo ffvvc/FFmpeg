@@ -101,8 +101,15 @@ do {                                    \
 #define atomic_exchange_explicit(object, desired, order) \
     atomic_exchange(object, desired)
 
-#define atomic_compare_exchange_strong(object, expected, desired)              \
-    (InterlockedCompareExchangePointer((PVOID *) object, (PVOID) desired, *((PVOID *) expected)) == *((PVOID *) expected))
+#define atomic_compare_exchange_strong(object, expected, desired)                                              \
+    (sizeof(*object) == 2 ?                                                                                    \
+        InterlockedCompareExchange16((SHORT *) object, (SHORT) desired, *((SHORT *) expected)) == *expected    \
+    : sizeof(*object) == 4 ?                                                                                   \
+        InterlockedCompareExchange((LONG *) object, (LONG) desired, *((LONG *) expected)) == *expected         \
+    : sizeof(*object) == 8 ?                                                                                   \
+        InterlockedCompareExchange64((LONG64 *) object, (LONG64) desired, *((LONG64 *) expected)) == *expected \
+    : 0)
+
 
 #define atomic_compare_exchange_strong_explicit(object, expected, desired, success, failure) \
     atomic_compare_exchange_strong(object, expected, desired)
