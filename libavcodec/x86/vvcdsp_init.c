@@ -115,9 +115,26 @@ static void alf_filter_chroma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const u
     }
 }
 
+static void alf_classify_8_avx2(int *class_idx, int *transpose_idx,
+    const uint8_t *src, ptrdiff_t src_stride, int width, int height,
+    int vb_pos, int *gradient_tmp)
+{
+    ff_vvc_alf_classify_grad_8bpc_avx2(gradient_tmp, src, src_stride, width, height, vb_pos);
+    ff_vvc_alf_classify_8bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 8);
+}
+
+static void alf_classify_10_avx2(int *class_idx, int *transpose_idx,
+    const uint8_t *src, ptrdiff_t src_stride, int width, int height,
+    int vb_pos, int *gradient_tmp)
+{
+    ff_vvc_alf_classify_grad_16bpc_avx2(gradient_tmp, src, src_stride, width, height, vb_pos);
+    ff_vvc_alf_classify_16bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 10);
+}
+
 #define ALF_DSP(depth) do {                                                     \
         c->alf.filter[LUMA] = alf_filter_luma_##depth##_avx2;                   \
         c->alf.filter[CHROMA] = alf_filter_chroma_##depth##_avx2;               \
+        c->alf.classify = alf_classify_##depth##_avx2;                          \
     } while (0)
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
@@ -137,4 +154,3 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
         }
     }
 }
-
