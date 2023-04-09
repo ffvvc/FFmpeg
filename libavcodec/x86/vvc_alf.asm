@@ -241,10 +241,10 @@ SECTION .text
         movu            [%1], m%2
     %else
         pextrq          [%1], xm%2, 0
-        pextrq          [%1 + src_strideq], xm%2, 1
+        pextrq          [%1 + dst_strideq], xm%2, 1
         vperm2f128      m%2, m%2, 1
-        pextrq          [%1 + src_strideq * 2], xm%2, 0
-        pextrq          [%1 + src_stride3q], xm%2, 1
+        pextrq          [%1 + dst_strideq * 2], xm%2, 0
+        pextrq          [%1 + dst_stride3q], xm%2, 1
     %endif
 %endmacro
 
@@ -255,9 +255,9 @@ SECTION .text
         movu            [%1], xm%2
     %else
         pextrd          [%1], xm%2, 0
-        pextrd          [%1 + src_strideq], xm%2, 1
-        pextrd          [%1 + src_strideq * 2], xm%2, 2
-        pextrd          [%1 + src_stride3q], xm%2, 3
+        pextrd          [%1 + dst_strideq], xm%2, 1
+        pextrd          [%1 + dst_strideq * 2], xm%2, 2
+        pextrd          [%1 + dst_stride3q], xm%2, 3
     %endif
 %endmacro
 
@@ -290,11 +290,12 @@ SECTION .text
 
 ; see c code for p0 to p6
 
-cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 13, 15, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
-    tmp, offset, src_stride3, src_stride0
+cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 15, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
+    tmp, offset, src_stride3, src_stride0, dst_stride3
 ;pixel size
 %define ps (%1 / 8)
     lea             src_stride3q, [src_strideq * 2 + src_strideq]
+    lea             dst_stride3q, [dst_strideq * 2 + dst_strideq]
 
     ;avoid "warning : absolute address can not be RIP-relative""
     mov             src_stride0q, 0
