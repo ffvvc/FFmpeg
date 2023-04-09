@@ -33,8 +33,10 @@
 static const uint32_t pixel_mask[3] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff };
 
 #define SIZEOF_PIXEL ((bit_depth + 7) / 8)
-#define PIXEL_STRIDE (MAX_CU_SIZE + 2 * ALF_PADDING_SIZE)
-#define BUF_SIZE (PIXEL_STRIDE * (MAX_CTU_SIZE + 3 * 2) * 2) //+3 * 2 for top and bottom row, *2 for high bit depth
+#define SRC_PIXEL_STRIDE (MAX_CU_SIZE + 2 * ALF_PADDING_SIZE)
+#define DST_PIXEL_STRIDE (SRC_PIXEL_STRIDE + 4)
+#define SRC_BUF_SIZE (SRC_PIXEL_STRIDE * (MAX_CTU_SIZE + 3 * 2) * 2) //+3 * 2 for top and bottom row, *2 for high bit depth
+#define DST_BUF_SIZE (DST_PIXEL_STRIDE * (MAX_CTU_SIZE + 3 * 2) * 2)
 #define LUMA_PARAMS_SIZE (MAX_CU_SIZE * MAX_CU_SIZE / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE * ALF_NUM_COEFF_LUMA)
 
 #define randomize_buffers(buf0, buf1, size)                 \
@@ -66,10 +68,10 @@ static const uint32_t pixel_mask[3] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff };
 
 static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
 {
-    LOCAL_ALIGNED_32(uint8_t, dst0, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(uint8_t, dst1, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(uint8_t, src0, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(uint8_t, src1, [BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, dst0, [DST_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, dst1, [DST_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, src0, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, src1, [SRC_BUF_SIZE]);
     int8_t filter[LUMA_PARAMS_SIZE];
     int16_t clip[LUMA_PARAMS_SIZE];
 
@@ -77,39 +79,40 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
         1 << bit_depth, 1 << (bit_depth - 3), 1 << (bit_depth - 5), 1 << (bit_depth - 7)
     };
 
-    ptrdiff_t stride = PIXEL_STRIDE * SIZEOF_PIXEL;
-    int offset = (3 * PIXEL_STRIDE + 3) * SIZEOF_PIXEL;
+    ptrdiff_t src_stride = SRC_PIXEL_STRIDE * SIZEOF_PIXEL;
+    ptrdiff_t dst_stride = DST_PIXEL_STRIDE * SIZEOF_PIXEL;
+    int offset = (3 * SRC_PIXEL_STRIDE + 3) * SIZEOF_PIXEL;
 
     declare_func_emms(AV_CPU_FLAG_AVX2, void, uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
         int width, int height, const int8_t *filter, const int16_t *clip);
 
-    randomize_buffers(src0, src1, BUF_SIZE);
+    randomize_buffers(src0, src1, SRC_BUF_SIZE);
     randomize_buffers2(filter, LUMA_PARAMS_SIZE, 1);
     randomize_buffers2(clip, LUMA_PARAMS_SIZE, 0);
 
     for (int h = 4; h <= MAX_CU_SIZE; h += 4) {
         for (int w = 4; w <= MAX_CU_SIZE; w += 4) {
             if (check_func(c->alf.filter[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
-                memset(dst0, 0, BUF_SIZE);
-                memset(dst1, 0, BUF_SIZE);
-                call_ref(dst0, stride, src0 + offset, stride, w, h, filter, clip);
-                call_new(dst1, stride, src1 + offset, stride, w, h, filter, clip);
+                memset(dst0, 0, DST_BUF_SIZE);
+                memset(dst1, 0, DST_BUF_SIZE);
+                call_ref(dst0, dst_stride, src0 + offset, src_stride, w, h, filter, clip);
+                call_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
                 for (int i = 0; i < h; i++) {
-                    if (memcmp(dst0 + i * stride, dst1 + i * stride, w * SIZEOF_PIXEL))
+                    if (memcmp(dst0 + i * dst_stride, dst1 + i * dst_stride, w * SIZEOF_PIXEL))
                         fail();
                 }
-                bench_new(dst1, stride, src1 + offset, stride, w, h, filter, clip);
+                bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
             }
             if (check_func(c->alf.filter[CHROMA], "vvc_alf_filter_chroma_%dx%d_%d", w, h, bit_depth)) {
-                memset(dst0, 0, BUF_SIZE);
-                memset(dst1, 0, BUF_SIZE);
-                call_ref(dst0, stride, src0 + offset, stride, w, h, filter, clip);
-                call_new(dst1, stride, src1 + offset, stride, w, h, filter, clip);
+                memset(dst0, 0, DST_BUF_SIZE);
+                memset(dst1, 0, DST_BUF_SIZE);
+                call_ref(dst0, dst_stride, src0 + offset, src_stride, w, h, filter, clip);
+                call_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
                 for (int i = 0; i < h; i++) {
-                    if (memcmp(dst0 + i * stride, dst1 + i * stride, w * SIZEOF_PIXEL))
+                    if (memcmp(dst0 + i * dst_stride, dst1 + i * dst_stride, w * SIZEOF_PIXEL))
                         fail();
                 }
-                bench_new(dst1, stride, src1 + offset, stride, w, h, filter, clip);
+                bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
             }
         }
     }
@@ -117,21 +120,21 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
 
 static void check_alf_classify(VVCDSPContext *c, const int bit_depth)
 {
-    LOCAL_ALIGNED_32(int, class_idx0, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(int, transpose_idx0, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(int, class_idx1, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(int, transpose_idx1, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(uint8_t, src0, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(uint8_t, src1, [BUF_SIZE]);
+    LOCAL_ALIGNED_32(int, class_idx0, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(int, transpose_idx0, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(int, class_idx1, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(int, transpose_idx1, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, src0, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, src1, [SRC_BUF_SIZE]);
     LOCAL_ALIGNED_32(int32_t, alf_gradient_tmp, [ALF_GRADIENT_SIZE * ALF_GRADIENT_SIZE * ALF_NUM_DIR]);
 
-    ptrdiff_t stride = PIXEL_STRIDE * SIZEOF_PIXEL;
-    int offset = (3 * PIXEL_STRIDE + 3) * SIZEOF_PIXEL;
+    ptrdiff_t stride = SRC_PIXEL_STRIDE * SIZEOF_PIXEL;
+    int offset = (3 * SRC_PIXEL_STRIDE + 3) * SIZEOF_PIXEL;
 
     declare_func_emms(AV_CPU_FLAG_AVX2, void, int *class_idx, int *transpose_idx,
         const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos, int *gradient_tmp);
 
-    randomize_buffers(src0, src1, BUF_SIZE);
+    randomize_buffers(src0, src1, SRC_BUF_SIZE);
 
     for (int h = 4; h <= MAX_CU_SIZE; h += 4) {
         for (int w = 4; w <= MAX_CU_SIZE; w += 4) {
