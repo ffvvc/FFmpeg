@@ -76,4 +76,4 @@ jobs:
       run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/passed
 
     - name: Negative test
-      run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/failed; if ( $? -eq $True ) { throw }
+      run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/failed; if ( $LASTEXITCODE -ne 0 ) { exit 0 } else { exit 1 }
