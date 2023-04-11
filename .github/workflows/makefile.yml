@@ -1,5 +1,5 @@
-name: Makefile CI
-
+name: main workflow
+run-name: ${{ github.workflow }} - "${{ github.event.head_commit.message }}"
 on:
   push:
     branches: [ main ]
@@ -7,73 +7,82 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  configure_flags: --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo --enable-muxer=rawvideo,md5
 
 jobs:
-  linux:
-    name: Linux.${{ matrix.compiler.compiler }}
+  build:
+    name: ${{ matrix.os.name }}/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - { compiler: GNU,  CC: gcc }
-          - { compiler: LLVM, CC: clang}
-    env:
-      FFMPEG_PATH: FFmpeg/ffmpeg
+        os: 
+          - { name: linux, runner: ubuntu-latest, shell: bash }
+          - { name: windows, runner: windows-latest, shell: 'msys2 {0}' }
+        compiler: 
+          - { name: gcc, flags: --cc=gcc }
+          - { name: clang, flags: --cc=clang }
+          - { name: msvc, flags: --toolchain=msvc }
+        assembler: 
+          - { name: none, flags: --disable-asm }
+          - { name: yasm, flags: --as=yasm }
+          - { name: nasm, flags: --as=nasm }
+        exclude:
+          - os: { name: linux, runner: ubuntu-latest, shell: bash }
+            compiler: { name: msvc, flags: --toolchain=msvc }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash }
+            assembler: { name: yasm, flags: --as=yasm }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash }
+            assembler: { name: nasm, flags: --as=nasm }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}' }
+            compiler: { name: gcc, flags: --cc=gcc }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}' }
+            compiler: { name: clang, flags: --cc=clang }
 
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Configure
-      run: ./configure --cc=${{ matrix.compiler.CC }} --disable-asm --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo --enable-muxer=rawvideo,md5
-
-    - name: Build
-      run: make -j
-
-    - name: Download Bitstream
-      run: cd .. && git clone https://github.com/ffvvc/tests.git tests
-
-    - name: Unit test
-      run: cd .. && python3 tests/tools/ffmpeg.py --threads 4 tests/conformance/passed
-
-    - name: Negative test
-      run: cd .. && python3 tests/tools/ffmpeg.py --threads 4 tests/conformance/failed || true
-
-  windows:
-    name: Windows.MSVC
-    runs-on: windows-latest
-    env:
-      FFMPEG_PATH: msvc\bin\x64\ffmpeg.exe
+    runs-on: ${{ matrix.os.runner }}
+    defaults:
+      run:
+        shell: ${{ matrix.os.shell }}
 
     steps:
-    - name: Set up MSVC
+    - name: Set up MSYS2
+      if: ${{ matrix.os.shell == 'msys2 {0}' }}
+      uses: msys2/setup-msys2@v2
+      with:
+        release: false
+        msystem: UCRT64
+
+    - name: Get MSVC
+      if: ${{ matrix.compiler.name == 'msvc' && matrix.os.name == 'windows' }}
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Get FFVS-Project-Generator
-      run: Invoke-WebRequest -Uri https://github.com/ShiftMediaProject/FFVS-Project-Generator/releases/download/1.11.6/FFVS-Project-Generator_1.11.6_x64.zip -OutFile FFVS-Project-Generator.zip; Expand-Archive FFVS-Project-Generator.zip
+    - name: Set path correctly
+      if: ${{ matrix.compiler.name == 'msvc' && matrix.os.name == 'windows' }}
+      run: echo $Path > $GITHUB_PATH; export PATH=$Path
 
-    - name: Get NASM
-      run: Invoke-WebRequest -Uri https://github.com/ShiftMediaProject/VSNASM/releases/download/0.9/VSNASM.zip -OutFile VSNASM.zip; Expand-Archive VSNASM.zip; Start-Process .\VSNASM\install_script.bat
+    - name: Get assembler
+      if: ${{ matrix.os.shell == 'msys2 {0}' && matrix.assembler.name != 'none' }}
+      run: pacman --noconfirm -S ${{ matrix.assembler.name }}
 
-    - name: Get repository
+    - name: Get source
       uses: actions/checkout@v3
       with:
-        path: src/main
+        path: FFmpeg
 
-    - name: Generate visual studio project
-      run: .\FFVS-Project-Generator\project_generate.exe --rootdir=src/main --disable-everything --enable-ffmpeg  --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file --enable-protocol=pipe --enable-encoder=rawvideo --enable-muxer=rawvideo --enable-muxer=md5
+    - name: Configure
+      run: cd FFmpeg && ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
 
     - name: Build
-      run: msbuild -p:Configuration="Release" src\main\SMP\ffmpeg.sln
+      run: cd FFmpeg && make -j
 
-    - name: Download Bitstream
-      uses: actions/checkout@v3
+    - name: Get tests
+      uses: actions/checkout@v3 
       with:
         repository: ffvvc/tests
         path: tests
 
     - name: Unit test
-      run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/passed
+      run: python3 tests/tools/ffmpeg.py --threads 4 --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
 
     - name: Negative test
-      run: python3 tests/tools/ffmpeg.py --threads 2 tests/conformance/failed; if ( $LASTEXITCODE -ne 0 ) { exit 0 } else { exit 1 }
+      run: python3 tests/tools/ffmpeg.py --threads 4 --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
