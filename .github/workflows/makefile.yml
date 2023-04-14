@@ -45,24 +45,21 @@ jobs:
         shell: ${{ matrix.os.shell }}
 
     steps:
+    - name: Get MSVC
+      if: ${{ matrix.compiler.name == 'msvc' && matrix.os.name == 'windows' }}
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Set up MSYS2
       if: ${{ matrix.os.shell == 'msys2 {0}' }}
       uses: msys2/setup-msys2@v2
       with:
         release: false
         msystem: UCRT64
-
-    - name: Get MSVC
-      if: ${{ matrix.compiler.name == 'msvc' && matrix.os.name == 'windows' }}
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Set path correctly
-      if: ${{ matrix.compiler.name == 'msvc' && matrix.os.name == 'windows' }}
-      run: echo $Path > $GITHUB_PATH; export PATH=$Path
+        path-type: inherit
 
     - name: Get assembler
       if: ${{ matrix.os.shell == 'msys2 {0}' && matrix.assembler.name != 'none' }}
-      run: pacman --noconfirm -S ${{ matrix.assembler.name }}
+      run: pacman --noconfirm -S ${{ matrix.assembler.name }} && ls "/c/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.34.31933/bin/HostX64/x64"
 
     - name: Get source
       uses: actions/checkout@v3
