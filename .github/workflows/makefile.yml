@@ -1,4 +1,4 @@
-name: main workflow
+name: test
 run-name: ${{ github.workflow }} - "${{ github.event.head_commit.message }}"
 on:
   push:
@@ -7,12 +7,13 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  configure_flags: --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo --enable-muxer=rawvideo,md5
 
 jobs:
-  build:
+  ffvvc-test:
     name: ${{ matrix.os.name }}/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
+    env:
+      runner_threads: 4
+      configure_flags: --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo --enable-muxer=rawvideo,md5
     strategy:
       fail-fast: false
       matrix:
@@ -56,10 +57,13 @@ jobs:
         release: false
         msystem: UCRT64
         path-type: inherit
+        install: >-
+          make
+          diffutils
 
     - name: Get assembler
       if: ${{ matrix.os.shell == 'msys2 {0}' && matrix.assembler.name != 'none' }}
-      run: pacman --noconfirm -S ${{ matrix.assembler.name }} && ls "/c/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.34.31933/bin/HostX64/x64"
+      run: pacman --noconfirm -S ${{ matrix.assembler.name }}
 
     - name: Get source
       uses: actions/checkout@v3
@@ -79,7 +83,7 @@ jobs:
         path: tests
 
     - name: Unit test
-      run: python3 tests/tools/ffmpeg.py --threads 4 --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
+      run: python3 tests/tools/ffmpeg.py --threads ${{ env.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
 
     - name: Negative test
-      run: python3 tests/tools/ffmpeg.py --threads 4 --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
+      run: python3 tests/tools/ffmpeg.py --threads ${{ env.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
