@@ -323,7 +323,7 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 15, dst, dst_stride, src, src_stride
     paddw           m0, m2
 
     ;clip to pixel
-    pinsrw          xm2, pixel_maxw, 0
+    movd          xm2, pixel_maxd
     vpbroadcastw    m2, xm2
     pxor            m1, m1
     CLIPW           m0, m1, m2
