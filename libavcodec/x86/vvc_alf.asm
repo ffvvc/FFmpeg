@@ -75,16 +75,16 @@ SECTION .text
     ;m%2 = 07 06 05 04
     ;m%3 = 11 10 09 08
 
-    vshufpd                 m%5, m%1, m%2, 0b0011       ;06 02 05 01
-    vshufpd                 m%6, m%3, m%5, 0b1001       ;06 10 01 09
+    vshufpd                 m%5, m%1, m%2, 0011b        ;06 02 05 01
+    vshufpd                 m%6, m%3, m%5, 1001b        ;06 10 01 09
 
-    vshufpd                 m%1, m%1, m%6, 0b1100       ;06 03 09 00
-    vshufpd                 m%2, m%2, m%6, 0b0110       ;10 07 01 04
-    vshufpd                 m%3, m%3, m%5, 0b0110       ;02 11 05 08
+    vshufpd                 m%1, m%1, m%6, 1100b        ;06 03 09 00
+    vshufpd                 m%2, m%2, m%6, 0110b        ;10 07 01 04
+    vshufpd                 m%3, m%3, m%5, 0110b        ;02 11 05 08
 
-    vpermpd                 m%1, m%1, 0b01_11_10_00     ;09 06 03 00
-    vshufpd                 m%2, m%2, m%2, 0b1001       ;10 07 04 01
-    vpermpd                 m%3, m%3, 0b10_00_01_11     ;11 08 05 02
+    vpermpd                 m%1, m%1, 01111000b         ;09 06 03 00
+    vshufpd                 m%2, m%2, m%2, 1001b        ;10 07 04 01
+    vpermpd                 m%3, m%3, 10000111b         ;11 08 05 02
 %endmacro
 
 %macro LOAD_LUMA_PARAMS_W4 6
@@ -488,7 +488,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
     cmp wd, 8
     jl %%w4
         SAVE_CLASSIFY_PARAM_W8 tempq, %2
-        vpermq m%2, m%2, 0b00_01_00_11
+        vpermq m%2, m%2, 00010011b
         add tempq, 8
         cmp wd, 8
         je %%end
@@ -589,7 +589,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
     vpaddd m11, m7, m7
     vpaddd m11, m4
     vpaddd m10, m11
-    vpermq m10, m10, 0b11_01_10_00
+    vpermq m10, m10, 11011000b
     SAVE_CLASSIFY_PARAM transpose_idx, 10
 
     vpsrlq    m10, m8, 32
@@ -640,7 +640,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
     pandn     m1, m7
     paddd     m1, m1                ;dir1 << 1
     paddd     m6, m1                ;class_idx
-    vpermq    m6, m6, 0b11_01_10_00
+    vpermq    m6, m6, 11011000b
 
     SAVE_CLASSIFY_PARAM class_idx, 6
 %endmacro
