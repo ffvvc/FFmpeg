@@ -1,5 +1,5 @@
 name: test
-run-name: ${{ github.workflow }} - "${{ github.event.head_commit.message }}"
+run-name: ${{ github.workflow }} - ${{ github.sha }}
 on:
   push:
     branches: [ main ]
@@ -25,7 +25,7 @@ jobs:
           - { name: clang, flags: --cc=clang }
           - { name: msvc, flags: --toolchain=msvc }
         assembler: 
-          - { name: none, flags: --disable-asm }
+          - { name: no asm, flags: --disable-asm }
           - { name: yasm, flags: --as=yasm }
           - { name: nasm, flags: --as=nasm }
         exclude:
@@ -62,7 +62,7 @@ jobs:
           diffutils
 
     - name: Get assembler
-      if: ${{ matrix.os.shell == 'msys2 {0}' && matrix.assembler.name != 'none' }}
+      if: ${{ matrix.os.shell == 'msys2 {0}' && matrix.assembler.name != 'no asm' }}
       run: pacman --noconfirm -S ${{ matrix.assembler.name }}
 
     - name: Get source
