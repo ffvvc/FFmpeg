@@ -242,7 +242,7 @@ SECTION .text
     %else
         pextrq          [%1], xm%2, 0
         pextrq          [%1 + dst_strideq], xm%2, 1
-        vperm2f128      m%2, m%2, 1
+        vperm2i128      m%2, m%2, m%2, 1
         pextrq          [%1 + dst_strideq * 2], xm%2, 0
         pextrq          [%1 + dst_stride3q], xm%2, 1
     %endif
@@ -463,21 +463,21 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
 %macro SAVE_CLASSIFY_PARAM_W16 2
     lea tempq, [%1q + xq]
     movu [tempq], xm%2
-    vperm2i128 m%2, m%2, 1
+    vperm2i128 m%2, m%2, m%2, 1
     movu [tempq + widthq], xm%2
 %endmacro
 
 ;SAVE_CLASSIFY_PARAM_W8
 %macro SAVE_CLASSIFY_PARAM_W8 2
     movq [%1], xm%2
-    vperm2i128 m%2, m%2, 1
+    vperm2i128 m%2, m%2, m%2, 1
     movq [%1 + widthq], xm%2
 %endmacro
 
 ;SAVE_CLASSIFY_PARAM_W4
 %macro SAVE_CLASSIFY_PARAM_W4 2
     movd [%1], xm%2
-    vperm2i128 m%2, m%2, 1
+    vperm2i128 m%2, m%2, m%2, 1
     movd [%1 + widthq], xm%2
 %endmacro
 
