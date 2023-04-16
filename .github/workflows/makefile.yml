@@ -10,7 +10,7 @@ on:
 
 jobs:
   ffvvc-test:
-    name: ${{ matrix.os.name }}/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
+    name: ffvvc-test / ${{ matrix.os.name }}/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
     env:
       runner_threads: 4
       configure_flags: --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo --enable-muxer=rawvideo,md5
@@ -89,7 +89,7 @@ jobs:
       run: python3 tests/tools/ffmpeg.py --threads ${{ env.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
 
   checkasm:
-    name: windows/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
+    name: checkasm / windows/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
     env:
       configure_flags: --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc
     strategy:
