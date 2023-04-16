@@ -513,7 +513,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
     pandn        m13, m11       ; y != vb_pos
 
     vpbroadcastd m14, [dw_3]
-    pblendvb     m14, [dw_2], m13    ;ac
+    pblendvb m14, m14, [dw_2], m13    ;ac
 
     pblendvb m3, m15, [gradq + sum_stride3q], m13
 
@@ -604,7 +604,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
     pmuldq    m2, m9, m5            ;d0 * hv1 low
     vpcmpgtq  m1, m2                ;dir1 - 1 low
 
-    vpblendd  m1, m10, 0xaa         ;dir1 - 1
+    vpblendd  m1, m1, m10, 0xaa     ;dir1 - 1
 
     pblendvb  m2, m5, m8, m1        ;hvd1
     pblendvb  m3, m6, m9, m1        ;hvd0
