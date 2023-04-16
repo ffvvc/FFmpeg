@@ -27,7 +27,7 @@ SECTION_RODATA
 %macro PARAM_SHUFFE 1
 %assign i (%1  * 2)
 %assign j ((i + 1) << 8) + (i)
-param_shuffe_%+%1:
+param_shuffe_ %+ %1:
 %rep 2
     times 4 dw j
     times 4 dw (j + 0x0808)
@@ -149,10 +149,10 @@ SECTION .text
     %assign i (%1 % 4)
     %assign j (%1 / 4 + 3)
     %assign k (%1 / 4 + 6)
-    %define filters m%+j
-    %define clips m%+k
+    %define filters m %+ j
+    %define clips m %+ k
 
-    pshufb          m14, clips, [param_shuffe_%+i]          ;clip
+    pshufb          m14, clips, [param_shuffe_ %+ i]          ;clip
     pxor            m13, m13
     psubw           m13, m14                                ;-clip
 
@@ -165,7 +165,7 @@ SECTION .text
     vpunpckhwd      m15, m9, m10
     vpunpcklwd      m9, m9, m10
 
-    pshufb          m14, filters, [param_shuffe_%+i]       ;filter
+    pshufb          m14, filters, [param_shuffe_ %+ i]       ;filter
     vpunpcklwd      m10, m14, m14
     vpunpckhwd      m14, m14, m14
 
@@ -233,7 +233,7 @@ SECTION .text
 
 ;LOAD_PIXELS(dest, src, tmp)
 %macro LOAD_PIXELS 3
-    LOAD_PIXELS_%+BPC %1, %2, %3
+    LOAD_PIXELS_ %+ BPC %1, %2, %3
 %endmacro
 
 %macro STORE_PIXELS_16 3
@@ -263,7 +263,7 @@ SECTION .text
 
 ;STORE_PIXELS(dest, src, tmp)
 %macro STORE_PIXELS 3
-    STORE_PIXELS_%+BPC %1, %2, %3
+    STORE_PIXELS_ %+ BPC %1, %2, %3
 %endmacro
 
 ;CLASSIFY_LOAD_PIXELS(dest, src)
