@@ -614,7 +614,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
 
     ;*class_idx = arg_var[av_clip_uintp2(sum_hv * ac >> (BIT_DEPTH - 1), 4)];
     vpmulld   m0, m14               ;sum_hv * ac
-    vpsrlvd   m0, m5
+    vpsrlvd   m0, m0, m5
     vpminsd   m0, [dw_15]
     movu      m6, [ARG_VAR_SHUFFE]
     pshufb    m6, m0                ;class_idx
