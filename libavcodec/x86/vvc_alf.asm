@@ -215,7 +215,7 @@ SECTION .text
         pinsrq          xm%1, [%2 + src_strideq], 1
         pinsrq          xm%3, [%2 + src_strideq * 2], 0
         pinsrq          xm%3, [%2 + src_stride3q], 1
-        vinsertf128     m%1, xm%3, 1
+        vinserti128     m%1, m%1, xm%3, 1
     %endif
 %endmacro
 
@@ -438,7 +438,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
         phaddw   m8,  m10                       ;di,  each word represent 2x2 pixels
         phaddw   m0,  m9, m8                    ;all = each word represent 4x2 pixels, order is v_h_d0_d1 x 4
 
-        vinserti128  m15, xm0, 1
+        vinserti128  m15, m15, xm0, 1
         vpblendw     m1,  m0, m15, 0xaa         ;t
 
         phaddw       m1,  m0                    ;each word represent 8x2 pixels, adjacent word share 4x2 pixels
