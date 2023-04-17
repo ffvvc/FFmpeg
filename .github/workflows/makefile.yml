@@ -12,14 +12,13 @@ jobs:
   ffvvc-test:
     name: ffvvc-test / ${{ matrix.os.name }}/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
     env:
-      runner_threads: 4
       configure_flags: --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo --enable-muxer=rawvideo,md5
     strategy:
       fail-fast: false
       matrix:
         os: 
-          - { name: linux, runner: ubuntu-latest, shell: bash }
-          - { name: windows, runner: windows-latest, shell: 'msys2 {0}' }
+          - { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
+          - { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
         compiler: 
           - { name: gcc, flags: --cc=gcc }
           - { name: clang, flags: --cc=clang }
@@ -29,15 +28,15 @@ jobs:
           - { name: yasm, flags: --as=yasm }
           - { name: nasm, flags: --as=nasm }
         exclude:
-          - os: { name: linux, runner: ubuntu-latest, shell: bash }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4}
             compiler: { name: msvc, flags: --toolchain=msvc }
-          - os: { name: linux, runner: ubuntu-latest, shell: bash }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
             assembler: { name: yasm, flags: --as=yasm }
-          - os: { name: linux, runner: ubuntu-latest, shell: bash }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
             assembler: { name: nasm, flags: --as=nasm }
-          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}' }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
             compiler: { name: gcc, flags: --cc=gcc }
-          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}' }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
             compiler: { name: clang, flags: --cc=clang }
 
     runs-on: ${{ matrix.os.runner }}
@@ -83,7 +82,7 @@ jobs:
         path: tests
 
     - name: Unit test
-      run: python3 tests/tools/ffmpeg.py --threads ${{ env.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
 
     - name: Negative test
       run: python3 tests/tools/ffmpeg.py --threads ${{ env.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
