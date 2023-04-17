@@ -290,7 +290,7 @@ SECTION .text
 
 ; see c code for p0 to p6
 
-cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 15, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
+cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
     tmp, offset, src_stride3, src_stride0, dst_stride3
 ;pixel size
 %define ps (%1 / 8)
@@ -361,7 +361,7 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 15, dst, dst_stride, src, src_stride
 ;void ff_vvc_alf_classify_grad(int *gradient_sum,
 ;       const uint8_t *src, ptrdiff_t src_stride, intptr_t width, intptr_t height,
 ;       intptr_t vb_pos);
-cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, width, height, vb_pos, \
+cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 16, gradient_sum, src, src_stride, width, height, vb_pos, \
     x, y, s0, s1, s2, s3, vb_pos_below, src_stride3
 
     lea src_stride3q, [src_strideq * 2 + src_strideq]
@@ -665,7 +665,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 15, gradient_sum, src, src_stride, w
 ;pixel size
 %define ps (%1 / 8)
 ALF_CLASSIFY_GRAD %1
-cglobal vvc_alf_classify_%1bpc, 7, 15, 15, class_idx, transpose_idx, gradient_sum, width, height, vb_pos, bit_depth, \
+cglobal vvc_alf_classify_%1bpc, 7, 15, 16, class_idx, transpose_idx, gradient_sum, width, height, vb_pos, bit_depth, \
     x, y, grad, sum_stride, sum_stride3, temp, w
 
     sub bit_depthq, 1
