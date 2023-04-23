@@ -130,7 +130,7 @@ jobs:
       run: ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
 
     - name: Build
-      run: make -j checkasm
+      run: make checkasm
 
     - name: Run tests
       run: ./tests/checkasm/checkasm
