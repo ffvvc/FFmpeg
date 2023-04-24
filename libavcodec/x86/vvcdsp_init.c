@@ -1,8 +1,8 @@
 /*
  * VVC DSP init for x86
  *
- * Copyright (C) 2022 Nuo Mi
- *
+ * Copyright (C) 2022-2023 Nuo Mi
+ * Copyright (c) 2023 Wu Jianhua <toqsxw@outlook.com>
  *
  * This file is part of FFmpeg.
  *
@@ -29,6 +29,8 @@
 #include "libavutil/x86/asm.h"
 #include "libavutil/x86/cpu.h"
 #include "libavcodec/x86/vvcdsp.h"
+#include <stdlib.h>
+#include <time.h>
 
 #define PIXEL_MAX_8  ((1 << 8)  - 1)
 #define PIXEL_MAX_10 ((1 << 10) - 1)
@@ -194,6 +196,10 @@ SAO_EDGE_FILTER_FUNCS(12, avx2)
     c->sao.edge_filter[8]       = ff_vvc_sao_edge_filter_128_##bitd##_##opt;    \
 } while (0)
 
+void ff_vvc_put_vvc_luma_hv_16_avx512icl(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+    const int height, const intptr_t mx, const intptr_t my, const int width,
+    const int hf_idx, const int vf_idx);
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
 {
     const int cpu_flags = av_get_cpu_flags();
@@ -231,6 +237,14 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
                 SAO_EDGE_INIT(12, avx2);
             default:
                 break;
+        }
+    }
+    if (EXTERNAL_AVX512ICL(cpu_flags)) {
+        switch (bit_depth) {
+            case 10:
+                c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_16_avx512icl;
+            default:
+            break;
         }
     }
 }
