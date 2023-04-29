@@ -84,52 +84,8 @@ jobs:
     - name: Unit test
       run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
 
+    - name: Check ASM
+      run: cd FFmpeg && make checkasm -j && ./tests/checkasm/checkasm
+
     - name: Negative test
       run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
-
-  checkasm:
-    name: checkasm / windows/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
-    env:
-      configure_flags: --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler:
-          - { name: msvc, flags: --toolchain=msvc }
-        assembler:
-          - { name: yasm, flags: --as=yasm }
-          - { name: nasm, flags: --as=nasm }
-
-    # Assembly tests are run on Windows as the Linux runner does not support AVX512
-    # See #48
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: 'msys2 {0}'
-
-    steps:
-    - name: Get MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Set up MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        release: false
-        msystem: UCRT64
-        path-type: inherit
-        install: >-
-          make
-          diffutils
-          ${{ matrix.assembler.name }}
-
-    - name: Get source
-      uses: actions/checkout@v3
-
-    - name: Configure
-      run: ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
-
-    - name: Build
-      run: make checkasm
-
-    - name: Run tests
-      run: ./tests/checkasm/checkasm
