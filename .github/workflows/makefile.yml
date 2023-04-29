@@ -73,7 +73,7 @@ jobs:
       run: cd FFmpeg && ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
 
     - name: Build
-      run: cd FFmpeg && make -j
+      run: cd FFmpeg && make
 
     - name: Get tests
       uses: actions/checkout@v3
