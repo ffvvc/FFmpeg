@@ -85,7 +85,7 @@ jobs:
       run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
 
     - name: Negative test
-      run: python3 tests/tools/ffmpeg.py --threads ${{ env.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
 
   checkasm:
     name: checkasm / windows/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
