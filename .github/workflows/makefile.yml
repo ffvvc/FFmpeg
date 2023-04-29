@@ -16,14 +16,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: 
+        os:
           - { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
           - { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
-        compiler: 
+        compiler:
           - { name: gcc, flags: --cc=gcc }
           - { name: clang, flags: --cc=clang }
           - { name: msvc, flags: --toolchain=msvc }
-        assembler: 
+        assembler:
           - { name: no asm, flags: --disable-asm }
           - { name: yasm, flags: --as=yasm }
           - { name: nasm, flags: --as=nasm }
@@ -76,7 +76,7 @@ jobs:
       run: cd FFmpeg && make -j
 
     - name: Get tests
-      uses: actions/checkout@v3 
+      uses: actions/checkout@v3
       with:
         repository: ffvvc/tests
         path: tests
@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: 
+        compiler:
           - { name: msvc, flags: --toolchain=msvc }
         assembler:
           - { name: yasm, flags: --as=yasm }
