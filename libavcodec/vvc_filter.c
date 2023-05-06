@@ -51,11 +51,11 @@ static const uint8_t betatable[64] = {
      58,  60,  62,  64,  66,  68,  70,  72,  74,  76,  78,  80,  82,  84,  86,  88,
 };
 
-int ff_vvc_get_qPy(const VVCFrameContext *fc, int xc, int yc)
+int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)
 {
-    int min_cb_log2_size_y  = fc->ps.sps->min_cb_log2_size_y;
-    int x                 = xc >> min_cb_log2_size_y;
-    int y                 = yc >> min_cb_log2_size_y;
+    const int min_cb_log2_size_y = fc->ps.sps->min_cb_log2_size_y;
+    const int x                  = xc >> min_cb_log2_size_y;
+    const int y                  = yc >> min_cb_log2_size_y;
     return fc->tab.qp[LUMA][x + y * fc->ps.pps->min_cb_width];
 }
 
