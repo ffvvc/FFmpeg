@@ -210,10 +210,6 @@ typedef struct VVCFrame {
     AVBufferRef *rpl_buf;
     AVBufferRef *progress_buf;
 
-#if 0
-    AVBufferRef *hwaccel_priv_buf;
-    void *hwaccel_picture_private;
-#endif
     /**
      * A sequence counter, so that old frames are output first
      * after a POC reset
