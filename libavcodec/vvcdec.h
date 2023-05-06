@@ -39,7 +39,7 @@
 #include "vvcpred.h"
 #include "h2645_parse.h"
 #include "vvc.h"
-#include "executor.h"
+#include "libavutil/executor.h"
 #include "vvc_ps.h"
 #include "vvcdsp.h"
 #include "internal.h"
@@ -365,7 +365,7 @@ typedef struct VVCContext {
     int apply_defdispwin;
     int nal_length_size;    ///< Number of bytes used for nal length (1, 2 or 4)
 
-    Executor *executor;
+    AVExecutor *executor;
 
     VVCFrameContext *fcs;
     int nb_fcs;

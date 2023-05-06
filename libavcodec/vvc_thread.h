@@ -40,7 +40,7 @@ typedef enum VVCTaskType {
 struct VVCTask {
     union {
         VVCTask *next;                //for executor debug only
-        Task task;
+        AVTask task;
     };
 
     VVCTaskType type;
@@ -61,9 +61,9 @@ void ff_vvc_parse_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc
     SliceContext *sc,  EntryPoint *ep, int ctu_addr);
 VVCTask* ff_vvc_task_alloc(void);
 
-int ff_vvc_task_ready(const Task* t, void* user_data);
-int ff_vvc_task_priority_higher(const Task *a, const Task *b);
-int ff_vvc_task_run(Task *t, void *local_context, void *user_data);
+int ff_vvc_task_ready(const AVTask* t, void* user_data);
+int ff_vvc_task_priority_higher(const AVTask *a, const AVTask *b);
+int ff_vvc_task_run(AVTask *t, void *local_context, void *user_data);
 
 int ff_vvc_frame_thread_init(VVCFrameContext *fc);
 void ff_vvc_frame_thread_free(VVCFrameContext *fc);
