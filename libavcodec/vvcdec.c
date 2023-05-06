@@ -368,7 +368,7 @@ static int pixel_buffer_init(VVCFrameContext *fc, const int width, const int hei
         fc->tab.width != width || fc->tab.height != height ||
         fc->tab.ctu_width != ctu_width || fc->tab.ctu_height != ctu_height) {
         pixel_buffer_free(fc);
-        for(int c_idx = 0; c_idx < c_end; c_idx++) {
+        for (int c_idx = 0; c_idx < c_end; c_idx++) {
             const int w = width >> sps->hshift[c_idx];
             const int h = height >> sps->vshift[c_idx];
             fc->tab.sao_pixel_buffer_h[c_idx] = av_malloc((w * 2 * ctu_height) << ps);
@@ -377,7 +377,7 @@ static int pixel_buffer_init(VVCFrameContext *fc, const int width, const int hei
                 return AVERROR(ENOMEM);
         }
 
-        for(int c_idx = 0; c_idx < c_end; c_idx++) {
+        for (int c_idx = 0; c_idx < c_end; c_idx++) {
             const int w = width >> sps->hshift[c_idx];
             const int h = height >> sps->vshift[c_idx];
             const int border_pixels = c_idx ? ALF_BORDER_CHROMA : ALF_BORDER_LUMA;
