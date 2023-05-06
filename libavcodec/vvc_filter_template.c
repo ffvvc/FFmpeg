@@ -33,10 +33,8 @@ static void FUNC(lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const in
     }
 }
 
-static void FUNC(sao_band_filter)(uint8_t *_dst, uint8_t *_src,
-                                  ptrdiff_t dst_stride, ptrdiff_t src_stride,
-                                  int16_t *sao_offset_val, int sao_left_class,
-                                  int width, int height)
+static void FUNC(sao_band_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+    int16_t *sao_offset_val, const int sao_left_class, const int width, const int height)
 {
     pixel *dst = (pixel *)_dst;
     pixel *src = (pixel *)_src;
@@ -59,9 +57,9 @@ static void FUNC(sao_band_filter)(uint8_t *_dst, uint8_t *_src,
 
 #define CMP(a, b) (((a) > (b)) - ((a) < (b)))
 
-static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_stride, int16_t *sao_offset_val,
-                                  int eo, int width, int height) {
-
+static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_stride,
+    int16_t *sao_offset_val, const int eo, const int width, const int height)
+{
     static const uint8_t edge_idx[] = { 1, 2, 0, 3, 4 };
     static const int8_t pos[4][2][2] = {
         { { -1,  0 }, {  1, 0 } }, // horizontal
@@ -91,10 +89,9 @@ static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_st
 }
 
 static void FUNC(sao_edge_restore_0)(uint8_t *_dst, uint8_t *_src,
-                                    ptrdiff_t dst_stride, ptrdiff_t src_stride, SAOParams *sao,
-                                    int *borders, int _width, int _height,
-                                    int c_idx, uint8_t *vert_edge,
-                                    uint8_t *horiz_edge, uint8_t *diag_edge)
+    ptrdiff_t dst_stride, ptrdiff_t src_stride, SAOParams *sao,
+    int *borders, const int _width, const int _height, const int c_idx,
+    uint8_t *vert_edge, uint8_t *horiz_edge, uint8_t *diag_edge)
 {
     int x, y;
     pixel *dst = (pixel *)_dst;
@@ -141,10 +138,9 @@ static void FUNC(sao_edge_restore_0)(uint8_t *_dst, uint8_t *_src,
 }
 
 static void FUNC(sao_edge_restore_1)(uint8_t *_dst, uint8_t *_src,
-                                    ptrdiff_t dst_stride, ptrdiff_t src_stride, SAOParams *sao,
-                                    int *borders, int _width, int _height,
-                                    int c_idx, uint8_t *vert_edge,
-                                    uint8_t *horiz_edge, uint8_t *diag_edge)
+    ptrdiff_t dst_stride, ptrdiff_t src_stride, SAOParams *sao,
+    int *borders, int _width, int _height, int c_idx,
+    uint8_t *vert_edge, uint8_t *horiz_edge, uint8_t *diag_edge)
 {
     int x, y;
     pixel *dst = (pixel *)_dst;
