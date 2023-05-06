@@ -464,7 +464,7 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
     if (!pu->cb_prof_flag[L0]) {
         fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](lc->tmp, src0, src0_stride,
             block_h, mx0, my0, block_w, 2, 2);
-    } else{
+    } else {
         fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](prof_tmp, src0, src0_stride, AFFINE_MIN_BLOCK_SIZE, mx0, my0, AFFINE_MIN_BLOCK_SIZE, 2, 2);
         fc->vvcdsp.inter.fetch_samples(prof_tmp, src0, src0_stride, mx0, my0);
         fc->vvcdsp.inter.apply_prof(lc->tmp, prof_tmp, pu->diff_mv_x[L0], pu->diff_mv_y[L0]);
@@ -1068,7 +1068,7 @@ static int parametric_mv_refine(const int *sad, const int stride)
                 num = - num;
                 sign_num = 1;
             }
-            while( counter > 0 ) {
+            while (counter > 0) {
                 counter = counter - 1;
                 quotient = quotient << 1;
                 if ( num >= denom ) {

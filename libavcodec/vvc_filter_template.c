@@ -198,20 +198,20 @@ static void FUNC(sao_edge_restore_1)(uint8_t *_dst, uint8_t *_src,
 
         // Restore pixels that can't be modified
         if (vert_edge[0] && sao_eo_class != SAO_EO_VERT) {
-            for(y = init_y+save_upper_left; y< height-save_lower_left; y++)
+            for (y = init_y+save_upper_left; y< height-save_lower_left; y++)
                 dst[y*dst_stride] = src[y*src_stride];
         }
         if (vert_edge[1] && sao_eo_class != SAO_EO_VERT) {
-            for(y = init_y+save_upper_right; y< height-save_lower_right; y++)
+            for (y = init_y+save_upper_right; y< height-save_lower_right; y++)
                 dst[y*dst_stride+width-1] = src[y*src_stride+width-1];
         }
 
         if (horiz_edge[0] && sao_eo_class != SAO_EO_HORIZ) {
-            for(x = init_x+save_upper_left; x < width-save_upper_right; x++)
+            for (x = init_x+save_upper_left; x < width-save_upper_right; x++)
                 dst[x] = src[x];
         }
         if (horiz_edge[1] && sao_eo_class != SAO_EO_HORIZ) {
-            for(x = init_x+save_lower_left; x < width-save_lower_right; x++)
+            for (x = init_x+save_lower_left; x < width-save_lower_right; x++)
                 dst[(height-1)*dst_stride+x] = src[(height-1)*src_stride+x];
         }
         if (diag_edge[0] && sao_eo_class == SAO_EO_135D)
