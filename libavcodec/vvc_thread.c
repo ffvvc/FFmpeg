@@ -578,7 +578,7 @@ int ff_vvc_task_run(Task *_t, void *local_context, void *user_data)
         }
     }
 
-    // t->type may changed bun run(), we use a local copy of t->type
+    // t->type may changed by run(), we use a local copy of t->type
     finished_one_task(ft, type);
 
     return ret;
