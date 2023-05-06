@@ -43,9 +43,31 @@ typedef struct AVTaskCallbacks {
     int (*run)(AVTask *t, void *local_context, void *user_data);
 } AVTaskCallbacks;
 
+/**
+ * Alloc executor
+ * @param callbacks callback strucutre for executor
+ * @param thread_count worker thread number
+ * @return return the executor
+ */
 AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
+
+/**
+ * Free executor
+ * @param e  pointer to executor
+ */
 void avpriv_executor_free(AVExecutor **e);
+
+/**
+ * Add task to executor
+ * @param e pointer to executor
+ * @param t pointer to task
+ */
 void avpriv_executor_execute(AVExecutor *e, AVTask *t);
+
+/**
+ * Wakeup all threads
+ * @param e pointer to executor
+ */
 void avpriv_executor_wakeup(AVExecutor *e);
 
 #endif
