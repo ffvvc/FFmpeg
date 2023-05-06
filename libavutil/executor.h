@@ -1,6 +1,4 @@
 /*
- * VVC video Decoder
- *
  * Copyright (C) 2022 Nuo Mi
  *
  * This file is part of FFmpeg.
@@ -20,34 +18,34 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVCODEC_EXECUTOR_H
-#define AVCODEC_EXECUTOR_H
+#ifndef AVUTIL_EXECUTOR_H
+#define AVUTIL_EXECUTOR_H
 
-typedef struct Executor Executor;
-typedef struct Task Task;
+typedef struct AVExecutor AVExecutor;
+typedef struct AVTask AVTask;
 
-struct Task {
-    Task *next;
+struct AVTask {
+    AVTask *next;
 };
 
-typedef struct TaskCallbacks {
+typedef struct AVTaskCallbacks {
     void *user_data;
 
-    size_t local_context_size;
+    int local_context_size;
 
     // return 1 if a's priority > b's priority
-    int (*priority_higher)(const Task *a, const Task *b);
+    int (*priority_higher)(const AVTask *a, const AVTask *b);
 
     // task is ready for run
-    int (*ready)(const Task *t, void *user_data);
+    int (*ready)(const AVTask *t, void *user_data);
 
     // run the task
-    int (*run)(Task *t, void *local_context, void *user_data);
-} TaskCallbacks;
+    int (*run)(AVTask *t, void *local_context, void *user_data);
+} AVTaskCallbacks;
 
-Executor* ff_executor_alloc(const TaskCallbacks *callbacks, int thread_count);
-void ff_executor_free(Executor **e);
-void ff_executor_execute(Executor *e, Task *t);
-void ff_executor_wakeup(Executor *e);
+AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
+void avpriv_executor_free(AVExecutor **e);
+void avpriv_executor_execute(AVExecutor *e, AVTask *t);
+void avpriv_executor_wakeup(AVExecutor *e);
 
 #endif
