@@ -27,6 +27,12 @@
 #include "vvc_ctu.h"
 #include "vvc_data.h"
 
+#define LEFT        0
+#define TOP         1
+#define RIGHT       2
+#define BOTTOM      3
+#define MAX_EDGES   4
+
 //Table 43 Derivation of threshold variables beta' and tc' from input Q
 static const uint16_t tctable[66] = {
       0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -153,38 +159,38 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
     uint8_t up_tile_edge     = 0;
     uint8_t bottom_tile_edge = 0;
 
-    edges[0]   = x_ctb == 0;
-    edges[1]   = y_ctb == 0;
-    edges[2]   = x_ctb == fc->ps.pps->ctb_width  - 1;
-    edges[3]   = y_ctb == fc->ps.pps->ctb_height - 1;
+    edges[LEFT]   = x_ctb == 0;
+    edges[TOP]    = y_ctb == 0;
+    edges[RIGHT]  = x_ctb == fc->ps.pps->ctb_width  - 1;
+    edges[BOTTOM] = y_ctb == fc->ps.pps->ctb_height - 1;
 
     if (restore) {
-        if (!edges[0]) {
+        if (!edges[LEFT]) {
             left_tile_edge  = no_tile_filter && fc->ps.pps->ctb_to_col_bd[x_ctb] == x_ctb;
             vert_edge[0]    = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb - 1, y_ctb)) || left_tile_edge;
         }
-        if (!edges[2]) {
+        if (!edges[RIGHT]) {
             right_tile_edge = no_tile_filter && fc->ps.pps->ctb_to_col_bd[x_ctb] != fc->ps.pps->ctb_to_col_bd[x_ctb + 1];
             vert_edge[1]    = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb + 1, y_ctb)) || right_tile_edge;
         }
-        if (!edges[1]) {
+        if (!edges[TOP]) {
             up_tile_edge     = no_tile_filter && fc->ps.pps->ctb_to_row_bd[y_ctb] == y_ctb;
             horiz_edge[0]    = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb, y_ctb - 1)) || up_tile_edge;
         }
-        if (!edges[3]) {
+        if (!edges[BOTTOM]) {
             bottom_tile_edge = no_tile_filter && fc->ps.pps->ctb_to_row_bd[y_ctb] != fc->ps.pps->ctb_to_row_bd[y_ctb + 1];
             horiz_edge[1]    = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb, y_ctb + 1)) || bottom_tile_edge;
         }
-        if (!edges[0] && !edges[1]) {
+        if (!edges[LEFT] && !edges[TOP]) {
             diag_edge[0] = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb - 1, y_ctb - 1)) || left_tile_edge || up_tile_edge;
         }
-        if (!edges[1] && !edges[2]) {
+        if (!edges[TOP] && !edges[RIGHT]) {
             diag_edge[1] = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb + 1, y_ctb - 1)) || right_tile_edge || up_tile_edge;
         }
-        if (!edges[2] && !edges[3]) {
+        if (!edges[RIGHT] && !edges[BOTTOM]) {
             diag_edge[2] = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb + 1, y_ctb + 1)) || right_tile_edge || bottom_tile_edge;
         }
-        if (!edges[0] && !edges[3]) {
+        if (!edges[LEFT] && !edges[BOTTOM]) {
             diag_edge[3] = (!lfase && CTB(fc->tab.slice_idx, x_ctb, y_ctb) != CTB(fc->tab.slice_idx, x_ctb - 1, y_ctb + 1)) || left_tile_edge || bottom_tile_edge;
         }
     }
@@ -213,19 +219,15 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
         {
             int w = fc->ps.sps->width >> fc->ps.sps->hshift[c_idx];
             int h = fc->ps.sps->height >> fc->ps.sps->vshift[c_idx];
-            int left_edge = edges[0];
-            int top_edge = edges[1];
-            int right_edge = edges[2];
-            int bottom_edge = edges[3];
             int sh = fc->ps.sps->pixel_shift;
             int left_pixels, right_pixels;
 
             dst_stride = 2*MAX_PB_SIZE + AV_INPUT_BUFFER_PADDING_SIZE;
             dst = lc->sao_buffer + dst_stride + AV_INPUT_BUFFER_PADDING_SIZE;
 
-            if (!top_edge) {
-                int left = 1 - left_edge;
-                int right = 1 - right_edge;
+            if (!edges[TOP]) {
+                int left = 1 - edges[LEFT];
+                int right = 1 - edges[RIGHT];
                 const uint8_t *src1[2];
                 uint8_t *dst1;
                 int src_idx, pos;
@@ -250,9 +252,9 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                     copy_pixel(dst1 + pos, src1[src_idx] + pos, sh);
                 }
             }
-            if (!bottom_edge) {
-                int left = 1 - left_edge;
-                int right = 1 - right_edge;
+            if (!edges[BOTTOM]) {
+                int left = 1 - edges[LEFT];
+                int right = 1 - edges[RIGHT];
                 const uint8_t *src1[2];
                 uint8_t *dst1;
                 int src_idx, pos;
@@ -278,7 +280,7 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                 }
             }
             left_pixels = 0;
-            if (!left_edge) {
+            if (!edges[LEFT]) {
                 if (CTB(fc->tab.sao, x_ctb-1, y_ctb).type_idx[c_idx] == SAO_APPLIED) {
                     copy_vert(dst - (1 << sh),
                               fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb - 1) * h + y0) << sh),
@@ -288,7 +290,7 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                 }
             }
             right_pixels = 0;
-            if (!right_edge) {
+            if (!edges[RIGHT]) {
                 if (CTB(fc->tab.sao, x_ctb+1, y_ctb).type_idx[c_idx] == SAO_APPLIED) {
                     copy_vert(dst + (width << sh),
                               fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb + 2) * h + y0) << sh),
@@ -1081,12 +1083,6 @@ static void alf_copy_ctb_to_hv(VVCFrameContext *fc, const uint8_t *src, const pt
             src + (offset_v[i] << ps), ps, border_pixels, height, border_pixels << ps, src_stride);
     }
 }
-
-#define LEFT        0
-#define TOP         1
-#define RIGHT       2
-#define BOTTOM      3
-#define MAX_EDGES   4
 
 static void alf_fill_border_h(uint8_t *dst, const ptrdiff_t dst_stride, const uint8_t *src, const ptrdiff_t src_stride,
     const uint8_t *border, const int width, const int border_pixels, const int ps, const int edge)
