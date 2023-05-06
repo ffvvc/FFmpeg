@@ -51,10 +51,6 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 
         frame->collocated_ref = NULL;
 
-#if 0
-        av_buffer_unref(&frame->hwaccel_priv_buf);
-        frame->hwaccel_picture_private = NULL;
-#endif
     }
 }
 
@@ -76,14 +72,6 @@ void ff_vvc_clear_refs(VVCFrameContext *fc)
                             VVC_FRAME_FLAG_SHORT_REF |
                             VVC_FRAME_FLAG_LONG_REF);
 }
-#if 0
-void ff_vvc_flush_dpb(VVCContext *s)
-{
-    int i;
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++)
-        ff_vvc_unref_frame(s, &fc->DPB[i], ~0);
-}
-#endif
 
 static void free_progress(void *opaque, uint8_t *data)
 {
@@ -157,20 +145,6 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         if (!frame->progress_buf)
             goto fail;
 
-#if 0
-        frame->frame->top_field_first  = s->sei.picture_timing.picture_struct == AV_PICTURE_STRUCTURE_TOP_FIELD;
-        frame->frame->interlaced_frame = (s->sei.picture_timing.picture_struct == AV_PICTURE_STRUCTURE_TOP_FIELD) || (s->sei.picture_timing.picture_struct == AV_PICTURE_STRUCTURE_BOTTOM_FIELD);
-        if (s->avctx->hwaccel) {
-            const AVHWAccel *hwaccel = s->avctx->hwaccel;
-            av_assert0(!frame->hwaccel_picture_private);
-            if (hwaccel->frame_priv_data_size) {
-                frame->hwaccel_priv_buf = av_buffer_allocz(hwaccel->frame_priv_data_size);
-                if (!frame->hwaccel_priv_buf)
-                    goto fail;
-                frame->hwaccel_picture_private = frame->hwaccel_priv_buf->data;
-            }
-        }
-#endif
         return frame;
 fail:
         ff_vvc_unref_frame(fc, frame, ~0);
@@ -337,12 +311,6 @@ static VVCFrame *find_ref_idx(VVCContext *s, VVCFrameContext *fc, int poc, uint8
                 return ref;
         }
     }
-
-#if 0
-    if (s->nal_unit_type != VVC_CRA_NUT && !IS_BLA(s))
-        av_log(s->avctx, AV_LOG_ERROR,
-               "Could not find ref with POC %d\n", poc);
-#endif
     return NULL;
 }
 

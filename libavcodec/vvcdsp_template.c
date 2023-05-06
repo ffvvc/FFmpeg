@@ -29,23 +29,6 @@
 #include "vvc_intra_template.c"
 #include "vvc_filter_template.c"
 
-#if 0
-static void FUNC(put_pcm)(uint8_t *_dst, ptrdiff_t stride, int width, int height,
-                          GetBitContext *gb, int pcm_bit_depth)
-{
-    int x, y;
-    pixel *dst = (pixel *)_dst;
-
-    stride /= sizeof(pixel);
-
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++)
-            dst[x] = get_bits(gb, pcm_bit_depth) << (BIT_DEPTH - pcm_bit_depth);
-        dst += stride;
-    }
-}
-#endif
-
 static void FUNC(add_residual)(uint8_t *_dst, const int *res,
     const int w, const int h, const ptrdiff_t _stride)
 {
@@ -110,33 +93,6 @@ static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height
         }
     }
 }
-
-#if 0
-static void FUNC(dequant)(int16_t *coeffs, int16_t log2_size)
-{
-    int shift  = 15 - BIT_DEPTH - log2_size;
-    int x, y;
-    int size = 1 << log2_size;
-
-    if (shift > 0) {
-        int offset = 1 << (shift - 1);
-        for (y = 0; y < size; y++) {
-            for (x = 0; x < size; x++) {
-                *coeffs = (*coeffs + offset) >> shift;
-                coeffs++;
-            }
-        }
-    } else {
-        for (y = 0; y < size; y++) {
-            for (x = 0; x < size; x++) {
-                *coeffs = *(uint16_t*)coeffs << -shift;
-                coeffs++;
-            }
-        }
-    }
-}
-
-#endif
 
 static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
 {

@@ -666,14 +666,6 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
     if (ret < 0)
         return ret;
 
-#if 0
-    if (src->needs_fg) {
-        ret = ff_thread_ref_frame(&dst->tf_grain, &src->tf_grain);
-        if (ret < 0)
-            return ret;
-        dst->needs_fg = 1;
-    }
-#endif
     dst->progress_buf = av_buffer_ref(src->progress_buf);
 
     dst->tab_mvf_buf = av_buffer_ref(src->tab_mvf_buf);
@@ -695,14 +687,6 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
     dst->flags = src->flags;
     dst->sequence = src->sequence;
 
-#if 0
-    if (src->hwaccel_picture_private) {
-        dst->hwaccel_priv_buf = av_buffer_ref(src->hwaccel_priv_buf);
-        if (!dst->hwaccel_priv_buf)
-            goto fail;
-        dst->hwaccel_picture_private = dst->hwaccel_priv_buf->data;
-    }
-#endif
     return 0;
 fail:
     ff_vvc_unref_frame(fc, dst, ~0);
@@ -846,19 +830,6 @@ static int decode_nal_unit(VVCContext *s, VVCFrameContext *fc, const H2645NAL *n
 
     switch (nal->type) {
     case VVC_VPS_NUT:
-#if 0
-        if (s->avctx->hwaccel && s->avctx->hwaccel->decode_params) {
-            ret = s->avctx->hwaccel->decode_params(s->avctx,
-                                                   nal->type,
-                                                   nal->raw_data,
-                                                   nal->raw_size);
-            if (ret < 0)
-                goto fail;
-        }
-        ret = ff_vvc_decode_nal_vps(gb, s->avctx, &s->ps);
-        if (ret < 0)
-            goto fail;
-#endif
         break;
     case VVC_SPS_NUT:
         if (s->avctx->hwaccel && s->avctx->hwaccel->decode_params) {
@@ -1219,12 +1190,6 @@ fail:
 #define PAR (AV_OPT_FLAG_DECODING_PARAM | AV_OPT_FLAG_VIDEO_PARAM)
 
 static const AVOption options[] = {
-#if 0
-    { "apply_defdispwin", "Apply default display window from VUI", OFFSET(apply_defdispwin),
-        AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, PAR },
-    { "strict-displaywin", "stricly apply default display window size", OFFSET(apply_defdispwin),
-        AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, PAR },
-#endif
     { NULL },
 };
 
