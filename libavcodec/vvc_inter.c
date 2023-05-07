@@ -21,8 +21,8 @@
  */
 
 #include "vvc_cabac.h"
-#include "vvc_ctu.h"
 #include "vvc_data.h"
+#include "vvc_inter.h"
 #include "vvc_mvs.h"
 #include "vvc_thread.h"
 
