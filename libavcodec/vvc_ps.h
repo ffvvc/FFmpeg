@@ -31,6 +31,21 @@
 #include "get_bits.h"
 #include "vvc.h"
 
+#define IS_VCL(t) ((t) <= VVC_RSV_IRAP_11 && (t) >= VVC_TRAIL_NUT)
+
+#define IS_IDR(s)  ((s)->vcl_unit_type == VVC_IDR_W_RADL || (s)->vcl_unit_type == VVC_IDR_N_LP)
+#define IS_CRA(s)  ((s)->vcl_unit_type == VVC_CRA_NUT)
+#define IS_IRAP(s) (IS_IDR(s) || IS_CRA(s))
+#define IS_GDR(s)  ((s)->vcl_unit_type == VVC_GDR_NUT)
+#define IS_CVSS(s) (IS_IRAP(s)|| IS_GDR(s))
+#define IS_CLVSS(s) (IS_CVSS(s) && s->no_output_before_recovery_flag)
+#define IS_RASL(s) ((s)->vcl_unit_type == VVC_RASL_NUT)
+#define IS_RADL(s) ((s)->vcl_unit_type == VVC_RADL_NUT)
+
+#define IS_I(sh) ((sh)->slice_type == VVC_SLICE_TYPE_I)
+#define IS_P(sh) ((sh)->slice_type == VVC_SLICE_TYPE_P)
+#define IS_B(sh) ((sh)->slice_type == VVC_SLICE_TYPE_B)
+
 #define LMCS_MAX_BIT_DEPTH  12
 #define LMCS_MAX_LUT_SIZE   (1 << LMCS_MAX_BIT_DEPTH)
 #define LMCS_MAX_BIN_SIZE 16
