@@ -275,7 +275,6 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
         11,   5,   5,  14,  10,   3,   3,   3,
         //coeff_sign_flag
         12,  17,  46,  28,  25,  46,
-
     },
     {
         //alf_ctb_flag
@@ -606,19 +605,19 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
     //shiftIdx
     {
         //alf_ctb_flag
-        0,   0,   0,   4,   0,   0,   1,   0,   0,
+         0,   0,   0,   4,   0,   0,   1,   0,   0,
         //alf_use_aps_flag
-        0,
+         0,
         //alf_ctb_cc_cb_idc
-        4,   1,   4,
+         4,   1,   4,
         //alf_ctb_cc_cr_idc
-        4,   1,   4,
+         4,   1,   4,
         //alf_ctb_filter_alt_idx
-        0,   0,
+         0,   0,
         //sao_merge_left_flag and sao_merge_up_flag
-        0,
+         0,
         //sao_type_idx_luma and sao_type_idx_chroma
-        4,
+         4,
         //split_cu_flag
         12,  13,   8,   8,  13,  12,   5,   9,   9,
         //split_qt_flag
@@ -636,11 +635,11 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
         //pred_mode_flag
          5,   1,
         //pred_mode_plt_flag
-        1,
+         1,
         //cu_act_enabled_flag
-        1,
+         1,
         //intra_bdpcm_luma_flag
-        1,
+         1,
         //intra_bdpcm_luma_dir_flag
          4,
         //intra_mip_flag
@@ -755,15 +754,15 @@ static const uint8_t init_values[4][SYNTAX_ELEMENT_LAST] = {
          0,   0,   0,   0,  12,  12,   9,  13,   4,   5,   8,   9,   8,  12,  12,   8,
          4,   0,   0,   0,   8,   8,   8,   8,   4,   0,   0,   0,  13,  13,   8,
         //par_level_flag
-          8,   9,  12,  13,  13,  13,  10,  13,  13,  13,  13,  13,  13,  13,  13,  13,
-         10,  13,  13,  13,  13,   8,  12,  12,  12,  13,  13,  13,  13,  13,  13,  13,
-          6,
+         8,   9,  12,  13,  13,  13,  10,  13,  13,  13,  13,  13,  13,  13,  13,  13,
+        10,  13,  13,  13,  13,   8,  12,  12,  12,  13,  13,  13,  13,  13,  13,  13,
+         6,
         //abs_level_gtx_flag
-          9,   5,  10,  13,  13,  10,   9,  10,  13,  13,  13,   9,  10,  10,  10,  13,
-          8,   9,  10,  10,  13,   8,   8,   9,  12,  12,  10,   5,   9,   9,   9,  13,
-          1,   5,   9,   9,   9,   6,   5,   9,  10,  10,   9,   9,   9,   9,   9,   9,
-          6,   8,   9,   9,  10,   1,   5,   8,   8,   9,   6,   6,   9,   8,   8,   9,
-          4,   2,   1,   6,   1,   1,   1,   1,
+         9,   5,  10,  13,  13,  10,   9,  10,  13,  13,  13,   9,  10,  10,  10,  13,
+         8,   9,  10,  10,  13,   8,   8,   9,  12,  12,  10,   5,   9,   9,   9,  13,
+         1,   5,   9,   9,   9,   6,   5,   9,  10,  10,   9,   9,   9,   9,   9,   9,
+         6,   8,   9,   9,  10,   1,   5,   8,   8,   9,   6,   6,   9,   8,   8,   9,
+         4,   2,   1,   6,   1,   1,   1,   1,
         //coeff_sign_flag
          1,   4,   4,   5,   8,   8,
     }

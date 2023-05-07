@@ -43,7 +43,6 @@ int ff_vvc_alf_luma_fixed_filter_idx(VVCLocalContext *lc);
 int ff_vvc_alf_ctb_filter_alt_idx(VVCLocalContext *lc, int c_idx, int num_chroma_filters);
 int ff_vvc_alf_ctb_cc_idc(VVCLocalContext *lc, int rx, int ry, int idx, int cc_filters_signalled);
 
-
 //coding_tree
 int ff_vvc_split_cu_flag(VVCLocalContext* lc, int x0, int y0, int cb_width, int cb_height,
     int ch_type, const VVCAllowedSplit *a);
