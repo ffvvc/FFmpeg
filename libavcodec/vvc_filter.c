@@ -1,5 +1,5 @@
 /*
- * VVC video decoder
+ * VVC filters
  *
  * Copyright (C) 2021 Nuo Mi
  *
@@ -26,6 +26,7 @@
 #include "cabac_functions.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
+#include "vvc_filter.h"
 
 #define LEFT        0
 #define TOP         1
