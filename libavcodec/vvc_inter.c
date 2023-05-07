@@ -1044,6 +1044,28 @@ static void derive_dmvr_bdof_flag(VVCLocalContext *lc, int *dmvr_flag, int *bdof
     }
 }
 
+void ff_vvc_apply_dmvr_info_ctb(VVCFrameContext *fc, const int x0, const int y0)
+{
+    const VVCPPS *pps = fc->ps.pps;
+    const int ctb_size = fc->ps.sps->ctb_size_y;
+    const int x_end = FFMIN(x0 + ctb_size, pps->width);
+    const int y_end = FFMIN(y0 + ctb_size, pps->height);
+
+    for (int y = y0; y < y_end; y += MIN_PU_SIZE) {
+        for (int x = x0; x < x_end; x += MIN_PU_SIZE) {
+            const int off = pps->min_pu_width * (y >> MIN_PU_LOG2) + (x >> MIN_PU_LOG2);
+            const DMVRInfo *di = &fc->tab.dmvr[off];
+            if (di->dmvr_enabled) {
+                MvField *mvf = &fc->ref->tab_mvf[off];
+                if (mvf->pred_flag & PF_L0)
+                    mvf->mv[L0] = di->mv[L0];
+                if (mvf->pred_flag & PF_L1)
+                    mvf->mv[L1] = di->mv[L1];
+            }
+        }
+    }
+}
+
 // 8.5.3.5 Parametric motion vector refinement process
 static int parametric_mv_refine(const int *sad, const int stride)
 {
@@ -1158,6 +1180,24 @@ static void dmvr_mv_refine(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, i
         *sb_bdof_flag = 0;
     }
 }
+
+static void set_dmvr_info(VVCFrameContext *fc, const int x0, const int y0,
+    const int width, const int height, const MvField *mvf)
+{
+    const VVCPPS *pps = fc->ps.pps;
+
+    for (int y = y0; y < y0 + height; y += MIN_PU_SIZE) {
+        for (int x = x0; x < x0 + width; x += MIN_PU_SIZE) {
+            DMVRInfo *di = &fc->tab.dmvr[pps->min_pu_width * (y >> MIN_PU_LOG2) + (x >> MIN_PU_LOG2)];
+            di->dmvr_enabled = 1;
+            if (mvf->pred_flag & PF_L0)
+                di->mv[L0] = mvf->mv[L0];
+            if (mvf->pred_flag & PF_L1)
+                di->mv[L1] = mvf->mv[L1];
+        }
+    }
+}
+
 static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int *sb_bdof_flag,
     const int x0, const int y0, const int sbw, const int sbh, const int dmvr_flag, const int bdof_flag)
 {
@@ -1171,7 +1211,7 @@ static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int
         if (pred_await_progress(fc, ref, mv, y0, sbh) < 0)
             return;
         dmvr_mv_refine(lc, mv, orig_mv, sb_bdof_flag, ref[0]->frame, ref[1]->frame, x0, y0, sbw, sbh);
-        ff_vvc_set_dmvr_info(fc, x0, y0, sbw, sbh, mv);
+        set_dmvr_info(fc, x0, y0, sbw, sbh, mv);
     }
 }
 
