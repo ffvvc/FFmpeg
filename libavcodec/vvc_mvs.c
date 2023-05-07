@@ -23,6 +23,7 @@
 #include "vvc.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
+#include "vvc_refs.h"
 #include "vvc_thread.h"
 #include "vvc_mvs.h"
 
