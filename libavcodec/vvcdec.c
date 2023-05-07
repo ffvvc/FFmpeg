@@ -43,6 +43,7 @@
 #include "vvcdec.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
+#include "vvc_refs.h"
 #include "vvc_thread.h"
 #include "profiles.h"
 #include "thread.h"

@@ -140,10 +140,6 @@
 #define IS_P(sh) ((sh)->slice_type == VVC_SLICE_TYPE_P)
 #define IS_B(sh) ((sh)->slice_type == VVC_SLICE_TYPE_B)
 
-#define INV_POC INT_MIN
-#define GDR_IS_RECOVERED(s)  (s->gdr_recovery_point_poc == INV_POC)
-#define GDR_SET_RECOVERED(s) (s->gdr_recovery_point_poc =  INV_POC)
-
 typedef struct VVCLocalContext VVCLocalContext;
 typedef struct SliceContext SliceContext;
 typedef struct VVCFrameContext  VVCFrameContext;
@@ -179,11 +175,6 @@ typedef struct RefPicList {
 typedef struct RefPicListTab {
     RefPicList refPicList[2];
 } RefPicListTab;
-
-#define VVC_FRAME_FLAG_OUTPUT    (1 << 0)
-#define VVC_FRAME_FLAG_SHORT_REF (1 << 1)
-#define VVC_FRAME_FLAG_LONG_REF  (1 << 2)
-#define VVC_FRAME_FLAG_BUMPING   (1 << 3)
 
 typedef struct FrameProgress {
     atomic_int progress;
@@ -375,16 +366,6 @@ typedef struct VVCContext {
     // delayed frames
     int nb_delayed;
 }  VVCContext ;
-
-//dpb
-int ff_vvc_output_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *out, int no_output_of_prior_pics_flag, int flush);
-void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc);
-int ff_vvc_set_new_ref(VVCContext *s, VVCFrameContext *fc, AVFrame **frame);
-const RefPicList *ff_vvc_get_ref_list(const VVCFrameContext *fc, const VVCFrame *ref, int x0, int y0);
-int ff_vvc_frame_rpl(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc);
-int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc);
-void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags);
-void ff_vvc_clear_refs(VVCFrameContext *fc);
 
 int ff_vvc_get_qPy(const VVCFrameContext *fc, int xc, int yc);
 

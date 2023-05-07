@@ -27,6 +27,7 @@
 #include "vvc_ctu.h"
 #include "vvc_data.h"
 #include "vvc_filter.h"
+#include "vvc_refs.h"
 
 #define LEFT        0
 #define TOP         1

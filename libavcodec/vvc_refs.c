@@ -26,8 +26,14 @@
 #include "internal.h"
 #include "thread.h"
 #include "vvc_thread.h"
+#include "vvc_refs.h"
 #include "vvc.h"
 #include "vvcdec.h"
+
+#define VVC_FRAME_FLAG_OUTPUT    (1 << 0)
+#define VVC_FRAME_FLAG_SHORT_REF (1 << 1)
+#define VVC_FRAME_FLAG_LONG_REF  (1 << 2)
+#define VVC_FRAME_FLAG_BUMPING   (1 << 3)
 
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 {
