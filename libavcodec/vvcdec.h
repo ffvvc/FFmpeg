@@ -367,11 +367,4 @@ typedef struct VVCContext {
     int nb_delayed;
 }  VVCContext ;
 
-int ff_vvc_get_qPy(const VVCFrameContext *fc, int xc, int yc);
-
-int ff_vvc_get_top_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
-int ff_vvc_get_left_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
-
-void ff_vvc_ctu_free_cus(CTU *ctu);
-
 #endif /* AVCODEC_VVCDEC_H */
