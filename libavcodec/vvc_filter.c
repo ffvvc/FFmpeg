@@ -63,10 +63,10 @@ int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)
 
 static int get_qPc(const VVCFrameContext *fc, const int x0, const int y0, const int chroma)
 {
-    const int x             = x0 >> MIN_TB_LOG2;
-    const int y             = y0 >> MIN_TB_LOG2;
-    const int min_tb_width  = fc->ps.pps->min_tb_width;
-    return fc->tab.qp[chroma][x + y * min_tb_width];
+    const int x             = x0 >> MIN_TU_LOG2;
+    const int y             = y0 >> MIN_TU_LOG2;
+    const int min_tu_width  = fc->ps.pps->min_tu_width;
+    return fc->tab.qp[chroma][x + y * min_tu_width];
 }
 
 static void copy_CTB(uint8_t *dst, const uint8_t *src, const int width, const int height,
@@ -404,8 +404,8 @@ static void derive_max_filter_length_luma(const VVCFrameContext *fc, const int q
     const int px =  vertical ? qx - 1 : qx;
     const int py = !vertical ? qy - 1 : qy;
     const uint8_t *tb_size = vertical ? fc->tab.tb_width[LUMA] : fc->tab.tb_height[LUMA];
-    const int size_p = tb_size[(py >> MIN_TB_LOG2) * fc->ps.pps->min_tb_width + (px >> MIN_TB_LOG2)];
-    const int size_q = tb_size[(qy >> MIN_TB_LOG2) * fc->ps.pps->min_tb_width + (qx >> MIN_TB_LOG2)];
+    const int size_p = tb_size[(py >> MIN_TU_LOG2) * fc->ps.pps->min_tu_width + (px >> MIN_TU_LOG2)];
+    const int size_q = tb_size[(qy >> MIN_TU_LOG2) * fc->ps.pps->min_tu_width + (qx >> MIN_TU_LOG2)];
     const int min_cb_log2 = fc->ps.sps->min_cb_log2_size_y;
     const int off_p = (py >> min_cb_log2) * fc->ps.pps->min_cb_width + (px >> min_cb_log2);
     if (size_p <= 4 || size_q <= 4) {
@@ -511,9 +511,9 @@ static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
     const VVCFrameContext *fc        = lc->fc;
     MvField *tab_mvf           = fc->ref->tab_mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
-    const int log2_min_tu_size = MIN_TB_LOG2;
+    const int log2_min_tu_size = MIN_TU_LOG2;
     const int min_pu_width     = fc->ps.pps->min_pu_width;
-    const int min_tu_width     = fc->ps.pps->min_tb_width;
+    const int min_tu_width     = fc->ps.pps->min_tu_width;
     const int min_cb_log2      = fc->ps.sps->min_cb_log2_size_y;
     const int min_cb_width     = fc->ps.pps->min_cb_width;
     int is_intra = tab_mvf[(y0 >> log2_min_pu_size) * min_pu_width +
@@ -594,9 +594,9 @@ static void vvc_deblock_bs_luma_horizontal(const VVCLocalContext *lc,
     const VVCFrameContext *fc  = lc->fc;
     MvField *tab_mvf           = fc->ref->tab_mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
-    const int log2_min_tu_size = MIN_TB_LOG2;
+    const int log2_min_tu_size = MIN_TU_LOG2;
     const int min_pu_width     = fc->ps.pps->min_pu_width;
-    const int min_tu_width     = fc->ps.pps->min_tb_width;
+    const int min_tu_width     = fc->ps.pps->min_tu_width;
     const int min_cb_log2      = fc->ps.sps->min_cb_log2_size_y;
     const int min_cb_width     = fc->ps.pps->min_cb_width;
     int is_intra = tab_mvf[(y0 >> log2_min_pu_size) * min_pu_width +
@@ -678,7 +678,7 @@ static void vvc_deblock_bs_chroma_vertical(const VVCLocalContext *lc,
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_PU_LOG2;
     const int min_pu_width     = fc->ps.pps->min_pu_width;
-    const int min_tu_width     = fc->ps.pps->min_tb_width;
+    const int min_tu_width     = fc->ps.pps->min_tu_width;
     int boundary_left, i;
 
     // bs for vertical TU boundaries
@@ -734,7 +734,7 @@ static void vvc_deblock_bs_chroma_horizontal(const VVCLocalContext *lc,
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_PU_LOG2;
     const int min_pu_width = fc->ps.pps->min_pu_width;
-    const int min_tu_width = fc->ps.pps->min_tb_width;
+    const int min_tu_width = fc->ps.pps->min_tu_width;
     int boundary_upper;
     int i;
 
@@ -791,8 +791,8 @@ static void vvc_deblock_bs(const VVCLocalContext *lc, const int x0, const int y0
     const VVCSPS *sps   = fc->ps.sps;
     const VVCPPS *pps   = fc->ps.pps;
     const int ctb_size  = sps->ctb_size_y;
-    const int x_end     = FFMIN(x0 + ctb_size, pps->width) >> MIN_TB_LOG2;
-    const int y_end     = FFMIN(y0 + ctb_size, pps->height) >> MIN_TB_LOG2;
+    const int x_end     = FFMIN(x0 + ctb_size, pps->width) >> MIN_TU_LOG2;
+    const int y_end     = FFMIN(y0 + ctb_size, pps->height) >> MIN_TU_LOG2;
     deblock_bs_fn deblock_bs[2][2] = {
         { vvc_deblock_bs_luma_horizontal, vvc_deblock_bs_chroma_horizontal },
         { vvc_deblock_bs_luma_vertical,   vvc_deblock_bs_chroma_vertical   }
@@ -801,11 +801,11 @@ static void vvc_deblock_bs(const VVCLocalContext *lc, const int x0, const int y0
     for (int is_chroma = 0; is_chroma <= 1; is_chroma++) {
         const int hs = sps->hshift[is_chroma];
         const int vs = sps->vshift[is_chroma];
-        for (int y = y0 >> MIN_TB_LOG2; y < y_end; y++) {
-            for (int x = x0 >> MIN_TB_LOG2; x < x_end; x++) {
-                const int off = y * fc->ps.pps->min_tb_width + x;
-                if ((fc->tab.tb_pos_x0[is_chroma][off] >> MIN_TB_LOG2) == x && (fc->tab.tb_pos_y0[is_chroma][off] >> MIN_TB_LOG2) == y) {
-                    deblock_bs[vertical][is_chroma](lc, x << MIN_TB_LOG2, y << MIN_TB_LOG2,
+        for (int y = y0 >> MIN_TU_LOG2; y < y_end; y++) {
+            for (int x = x0 >> MIN_TU_LOG2; x < x_end; x++) {
+                const int off = y * fc->ps.pps->min_tu_width + x;
+                if ((fc->tab.tb_pos_x0[is_chroma][off] >> MIN_TU_LOG2) == x && (fc->tab.tb_pos_y0[is_chroma][off] >> MIN_TU_LOG2) == y) {
+                    deblock_bs[vertical][is_chroma](lc, x << MIN_TU_LOG2, y << MIN_TU_LOG2,
                         fc->tab.tb_width[is_chroma][off] << hs, fc->tab.tb_height[is_chroma][off] << vs);
                 }
             }
@@ -831,8 +831,8 @@ static void max_filter_length_chroma(const VVCFrameContext *fc, const int qx, co
     const int py = !vertical ? qy - 1 : qy;
     const uint8_t *tb_size = vertical ? fc->tab.tb_width[CHROMA] : fc->tab.tb_height[CHROMA];
 
-    const int size_p = tb_size[(py >> MIN_TB_LOG2) * fc->ps.pps->min_tb_width + (px >> MIN_TB_LOG2)];
-    const int size_q = tb_size[(qy >> MIN_TB_LOG2) * fc->ps.pps->min_tb_width + (qx >> MIN_TB_LOG2)];
+    const int size_p = tb_size[(py >> MIN_TU_LOG2) * fc->ps.pps->min_tu_width + (px >> MIN_TU_LOG2)];
+    const int size_q = tb_size[(qy >> MIN_TU_LOG2) * fc->ps.pps->min_tu_width + (qx >> MIN_TU_LOG2)];
     if (size_p >= 8 && size_q >= 8) {
         *max_len_p = *max_len_q = 3;
         if (horizontal_ctu_edge)

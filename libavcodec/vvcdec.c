@@ -427,7 +427,7 @@ static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
     const int ctu_size              = 1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y;
     const int pic_size_in_min_cb    = pps->min_cb_width * pps->min_cb_height;
     const int pic_size_in_min_pu    = pps->min_pu_width * pps->min_pu_height;
-    const int pic_size_in_min_tu    = pps->min_tb_width * pps->min_tb_height;
+    const int pic_size_in_min_tu    = pps->min_tu_width * pps->min_tu_height;
     const int w32                   = AV_CEIL_RSHIFT(pps->width,  5);
     const int h32                   = AV_CEIL_RSHIFT(pps->height,  5);
     const int w64                   = AV_CEIL_RSHIFT(pps->width,  6);
