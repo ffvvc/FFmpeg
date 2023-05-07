@@ -25,8 +25,12 @@
 
 #include "vvc_ctu.h"
 
+
 int ff_vvc_inter_data(VVCLocalContext *lc);
+
 int ff_vvc_predict_inter(VVCLocalContext *lc, int rs);
 void ff_vvc_predict_ciip(VVCLocalContext *lc);
+
+void ff_vvc_apply_dmvr_info_ctb(VVCFrameContext *fc, int x0, const int y0);
 
 #endif // AVCODEC_VVC_INTER_H

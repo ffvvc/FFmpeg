@@ -23,7 +23,6 @@
 #include "vvc_thread.h"
 #include "vvc_ctu.h"
 #include "vvc_inter.h"
-#include "vvc_mvs.h"
 
 typedef struct VVCRowThread {
     VVCTask reconstruct_task;
