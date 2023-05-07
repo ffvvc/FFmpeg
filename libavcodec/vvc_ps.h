@@ -548,8 +548,8 @@ typedef struct VVCPPS {
 
     uint16_t min_pu_width;
     uint16_t min_pu_height;
-    uint16_t min_tb_width;
-    uint16_t min_tb_height;
+    uint16_t min_tu_width;
+    uint16_t min_tu_height;
 
     uint16_t num_tile_columns;              ///< NumTileColumns
     uint16_t num_tile_rows;                 ///< NumTileRows

@@ -1918,8 +1918,8 @@ int ff_vvc_decode_pps(VVCParamSets *ps, GetBitContext *gb, void *log_ctx)
     pps->min_cb_height = pps->height / sps->min_cb_size_y;
     pps->min_pu_width  = pps->width  >> MIN_PU_LOG2;
     pps->min_pu_height = pps->height >> MIN_PU_LOG2;
-    pps->min_tb_width  = pps->width  >> MIN_TB_LOG2;
-    pps->min_tb_height = pps->height >> MIN_TB_LOG2;
+    pps->min_tu_width  = pps->width  >> MIN_TU_LOG2;
+    pps->min_tu_height = pps->height >> MIN_TU_LOG2;
     pps->width32       = AV_CEIL_RSHIFT(pps->width,  5);
     pps->height32      = AV_CEIL_RSHIFT(pps->height, 5);
     pps->width64       = AV_CEIL_RSHIFT(pps->width,  6);

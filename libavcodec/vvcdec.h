@@ -58,8 +58,8 @@
 #define MIN_CU_LOG2         2
 #define MIN_PU_SIZE         4
 #define MIN_PU_LOG2         2
-#define MIN_TB_LOG2         2                       ///< MinTbLog2SizeY
-#define MIN_TB_SIZE         (1 << MIN_TB_LOG2)
+#define MIN_TU_LOG2         2                       ///< MinTbLog2SizeY
+#define MIN_TU_SIZE         (1 << MIN_TU_LOG2)
 #define MAX_CU_DEPTH        7
 #define MAX_PARTS_IN_CTU ((MAX_CTU_SIZE >> MIN_CU_LOG2) * (MAX_CTU_SIZE >> MIN_CU_LOG2))
 

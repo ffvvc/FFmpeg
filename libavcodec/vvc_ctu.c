@@ -40,16 +40,16 @@ typedef enum VVCModeType {
 
 static void set_tb_pos(const VVCFrameContext *fc, const TransformBlock *tb)
 {
-    const int x_tb      = tb->x0 >> MIN_TB_LOG2;
-    const int y_tb      = tb->y0 >> MIN_TB_LOG2;
+    const int x_tb      = tb->x0 >> MIN_TU_LOG2;
+    const int y_tb      = tb->y0 >> MIN_TU_LOG2;
     const int hs        = fc->ps.sps->hshift[tb->c_idx];
     const int vs        = fc->ps.sps->vshift[tb->c_idx];
     const int is_chroma = tb->c_idx != 0;
-    const int width     = FFMAX(1, tb->tb_width >> (MIN_TB_LOG2 - hs));
-    const int end       = y_tb + FFMAX(1, tb->tb_height >> (MIN_TB_LOG2 - vs));
+    const int width     = FFMAX(1, tb->tb_width >> (MIN_TU_LOG2 - hs));
+    const int end       = y_tb + FFMAX(1, tb->tb_height >> (MIN_TU_LOG2 - vs));
 
     for (int y = y_tb; y < end; y++) {
-        const int off = y * fc->ps.pps->min_tb_width + x_tb;
+        const int off = y * fc->ps.pps->min_tu_width + x_tb;
         for (int i = 0; i < width; i++) {
             fc->tab.tb_pos_x0[is_chroma][off + i] = tb->x0;
             fc->tab.tb_pos_y0[is_chroma][off + i] = tb->y0;
@@ -66,10 +66,10 @@ static void set_tb_tab(uint8_t *tab, uint8_t v, const VVCFrameContext *fc,
     const int width  = tb->tb_width  << fc->ps.sps->hshift[tb->c_idx];
     const int height = tb->tb_height << fc->ps.sps->vshift[tb->c_idx];
 
-    for (int h = 0; h < height; h += MIN_TB_SIZE) {
-        const int y = (tb->y0 + h) >> MIN_TB_LOG2;
-        const int off = y * fc->ps.pps->min_tb_width + (tb->x0 >> MIN_TB_LOG2);
-        const int w = FFMAX(1, width >> MIN_TB_LOG2);
+    for (int h = 0; h < height; h += MIN_TU_SIZE) {
+        const int y = (tb->y0 + h) >> MIN_TU_LOG2;
+        const int off = y * fc->ps.pps->min_tu_width + (tb->x0 >> MIN_TU_LOG2);
+        const int w = FFMAX(1, width >> MIN_TU_LOG2);
         memset(tab + off, v, w);
     }
 }
@@ -1471,13 +1471,12 @@ static void intra_luma_pred_modes(VVCLocalContext *lc)
             }
             cu->intra_pred_mode_y = intra_mip_mode;
         } else {
-            const int min_tb_size_y = 1 << 2;
             int intra_subpartitions_mode_flag = 0;
             if (sps->mrl_enabled_flag && ((y0 % sps->ctb_size_y) > 0))
                 cu->intra_luma_ref_idx = ff_vvc_intra_luma_ref_idx(lc);
             if (sps->isp_enabled_flag && !cu->intra_luma_ref_idx &&
                 (cb_width <= sps->max_tb_size_y && cb_height <= sps->max_tb_size_y) &&
-                (cb_width * cb_height > min_tb_size_y * min_tb_size_y) &&
+                (cb_width * cb_height > MIN_TU_SIZE * MIN_TU_SIZE) &&
                 !cu->act_enabled_flag)
                 intra_subpartitions_mode_flag = ff_vvc_intra_subpartitions_mode_flag(lc);
             if (!(x0 & 63) && !(y0 & 63))
