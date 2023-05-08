@@ -503,7 +503,7 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             ff_vvc_alf_filter(lc, x0, y0);
         }
     }
-    ff_vvc_apply_dmvr_info_ctb(fc, x0, y0);
+    ff_vvc_ctu_apply_dmvr_info(fc, x0, y0);
     set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_ALF);
     report_frame_progress(fc, t);
 

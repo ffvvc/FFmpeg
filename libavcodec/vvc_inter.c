@@ -1044,7 +1044,7 @@ static void derive_dmvr_bdof_flag(VVCLocalContext *lc, int *dmvr_flag, int *bdof
     }
 }
 
-void ff_vvc_apply_dmvr_info_ctb(VVCFrameContext *fc, const int x0, const int y0)
+void ff_vvc_ctu_apply_dmvr_info(VVCFrameContext *fc, const int x0, const int y0)
 {
     const VVCPPS *pps = fc->ps.pps;
     const int ctb_size = fc->ps.sps->ctb_size_y;
