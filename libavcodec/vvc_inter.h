@@ -25,12 +25,33 @@
 
 #include "vvc_ctu.h"
 
-
+/**
+ * parse inter data for a coding unit
+ * @param lc local context for CTU
+ * @return AVERROR
+ */
 int ff_vvc_inter_data(VVCLocalContext *lc);
 
+/**
+ * Loop entire CTU to predict all inter coding blocks
+ * @param lc local context for CTU
+ * @param rs raster order for the CTU
+ * @return AVERROR
+ */
 int ff_vvc_predict_inter(VVCLocalContext *lc, int rs);
+
+/**
+ * CIIP(Combined Inter-Intra Prediction) for a coding block
+ * @param lc local context for CTU
+ */
 void ff_vvc_predict_ciip(VVCLocalContext *lc);
 
-void ff_vvc_apply_dmvr_info_ctb(VVCFrameContext *fc, int x0, const int y0);
+/**
+ * apply DMVR(Decoder-Side Motion Vector Refinement) for the ctu
+ * @param lc local context for CTU
+ * @param x0 x position for the CTU
+ * @param y0 y position for the CTU
+ */
+void ff_vvc_ctu_apply_dmvr_info(VVCFrameContext *fc, int x0, const int y0);
 
 #endif // AVCODEC_VVC_INTER_H

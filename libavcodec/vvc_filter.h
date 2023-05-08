@@ -25,11 +25,46 @@
 
 #include "vvcdec.h"
 
+/**
+ * lmcs filter for the CTU
+ * @param lc local context for CTU
+ * @param x0 x position for the CTU
+ * @param y0 y position for the CTU
+ */
 void ff_vvc_lmcs_filter(const VVCLocalContext *lc, const int x0, const int y0);
+
+/**
+ * vertical deblock filter for the CTU
+ * @param lc local context for CTU
+ * @param x0 x position for the CTU
+ * @param y0 y position for the CTU
+ */
 void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0);
+
+/**
+ * horizontal deblock filter for the CTU
+ * @param lc local context for CTU
+ * @param x0 x position for the CTU
+ * @param y0 y position for the CTU
+ */
 void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0);
+
+/**
+ * sao filter for the CTU
+ * @param lc local context for CTU
+ * @param x0 x position for the CTU
+ * @param y0 y position for the CTU
+ */
 void ff_vvc_sao_filter(VVCLocalContext *lc, const int x0, const int y0);
+
 void ff_vvc_alf_copy_ctu_to_hv(VVCLocalContext* lc, int x0, int y0);
+
+/**
+ * alf filter for the CTU
+ * @param lc local context for CTU
+ * @param x0 x position for the CTU
+ * @param y0 y position for the CTU
+ */
 void ff_vvc_alf_filter(VVCLocalContext *lc, const int x0, const int y0);
 
 #endif // AVCODEC_VVC_CTU_H

@@ -348,7 +348,25 @@ typedef struct VVCAllowedSplit {
     int tth;
 } VVCAllowedSplit;
 
+/**
+ * parse a CTU (coding tree unit)
+ * @param lc local context for CTU
+ * @param ctb_addr CTB(CTU) address in the current slice
+ * @param rs raster order for the CTU.
+ * @param rx raster order x for the CTU.
+ * @param ry raster order y for the CTU.
+ * @return AVERROR
+ */
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, int ry);
+
+/**
+ * reconstruct a CTU
+ * @param lc local context for CTU
+ * @param rs raster order for the CTU.
+ * @param rx raster order x for the CTU.
+ * @param ry raster order y for the CTU.
+ * @return AVERROR
+ */
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry);
 
 //utils
