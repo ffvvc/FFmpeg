@@ -253,6 +253,11 @@ typedef struct ReconstructedArea {
     int h;
 } ReconstructedArea;
 
+typedef struct VVCCabacState {
+    uint16_t state[2];
+    uint8_t  shift[2];
+} VVCCabacState;
+
 // VVC_CONTEXTS matched with SYNTAX_ELEMENT_LAST, it's checked by cabac_init_state.
 #define VVC_CONTEXTS 378
 typedef struct EntryPoint {
