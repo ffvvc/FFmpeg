@@ -209,33 +209,32 @@ typedef struct CodingUnit {
 
     uint8_t act_enabled_flag;
 
-    uint8_t intra_luma_ref_idx;             ///< IntraLumaRefLineIdx[][]
-    uint8_t intra_mip_flag;                 ///< intra_mip_flag
-    uint8_t skip_flag;                      ///< cu_skip_flag;
-
-    // Inferred parameters
-    enum IspType isp_split_type;            ///< IntraSubPartitionsSplitType
-
-    enum PredMode pred_mode;                ///< PredMode
+    uint8_t intra_luma_ref_idx;                     ///< IntraLumaRefLineIdx[][]
+    uint8_t intra_mip_flag;                         ///< intra_mip_flag
+    uint8_t skip_flag;                              ///< cu_skip_flag;
 
     //inter
     uint8_t ciip_flag;
 
     // Inferred parameters
+    enum IspType isp_split_type;                    ///< IntraSubPartitionsSplitType
+
+    enum PredMode pred_mode;                        ///< PredMode
+
     int num_intra_subpartitions;
 
-    IntraPredMode intra_pred_mode_y;        ///< IntraPredModeY
-    IntraPredMode intra_pred_mode_c;        ///< IntraPredModeC
-    int mip_chroma_direct_flag;             ///< MipChromaDirectFlag
+    IntraPredMode intra_pred_mode_y;                ///< IntraPredModeY
+    IntraPredMode intra_pred_mode_c;                ///< IntraPredModeC
+    int mip_chroma_direct_flag;                     ///< MipChromaDirectFlag
 
-    int bdpcm_flag[VVC_MAX_SAMPLE_ARRAYS];  ///< BdpcmFlag
+    int bdpcm_flag[VVC_MAX_SAMPLE_ARRAYS];          ///< BdpcmFlag
 
     int apply_lfnst_flag[VVC_MAX_SAMPLE_ARRAYS];    ///< ApplyLfnstFlag[]
 
     TransformUnit tus[MAX_TUS_IN_CU];
     int num_tus;
 
-    int8_t qp[4];                         ///< QpY, Qp′Cb, Qp′Cr, Qp′CbCr
+    int8_t qp[4];                                   ///< QpY, Qp′Cb, Qp′Cr, Qp′CbCr
 
     PredictionUnit pu;
 
@@ -348,7 +347,6 @@ typedef struct VVCAllowedSplit {
     int ttv;
     int tth;
 } VVCAllowedSplit;
-
 
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, int ry);
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry);
