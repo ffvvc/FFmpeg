@@ -196,11 +196,6 @@ typedef struct VVCFrame {
     uint8_t flags;
 } VVCFrame;
 
-typedef struct VVCCabacState{
-    uint16_t state[2];
-    uint8_t  shift[2];
-} VVCCabacState;
-
 struct SliceContext {
     int slice_idx;
 
