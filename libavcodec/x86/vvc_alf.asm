@@ -87,31 +87,11 @@ SECTION .text
     vpermpd                 m%3, m%3, 10000111b         ;11 08 05 02
 %endmacro
 
-%macro LOAD_LUMA_PARAMS_W4 6
-    %ifidn clip, %4
-        movq                xm%1, [%4q + 0 * 8]
-        movq                xm%2, [%4q + 1 * 8]
-        movq                xm%3, [%4q + 2 * 8]
-    %elifidn filter, %4
-        movd                xm%1, [%4q + 0 * 4]
-        movd                xm%2, [%4q + 1 * 4]
-        movd                xm%3, [%4q + 2 * 4]
-        pmovsxbw            xm%1, xm%1
-        pmovsxbw            xm%2, xm%2
-        pmovsxbw            xm%3, xm%3
-    %else
-        %error "need filter or clip for the fourth param"
-    %endif
-    vpbroadcastq            m%1, xm%1
-    vpbroadcastq            m%2, xm%2
-    vpbroadcastq            m%3, xm%3
-%endmacro
-
 ;%1-%3 out
 ;%4 clip or filter
 ;%5, %6 tmp
 %macro LOAD_LUMA_PARAMS 6
-    LOAD_LUMA_PARAMS_W %+ WIDTH %1, %2, %3, %4, %5, %6
+    LOAD_LUMA_PARAMS_W16 %1, %2, %3, %4, %5, %6
 %endmacro
 
 %macro LOAD_CHROMA_PARAMS 4
@@ -183,9 +163,9 @@ SECTION .text
         mov             tmpq, srcq
         lea             offsetq, [%2]
         sub             tmpq, offsetq
-        LOAD_PIXELS     9, tmpq, 11
+        LOAD_PIXELS     m9, [tmpq]
         lea             tmpq, [srcq + offsetq]
-        LOAD_PIXELS     10, tmpq, 12
+        LOAD_PIXELS     m10, [tmpq]
         FILTER  %%i
         %assign %%i %%i+1
         %rotate 1
@@ -207,67 +187,27 @@ SECTION .text
 
 %define SHIFT 7
 
-%macro LOAD_PIXELS_16 3
-    %if WIDTH == 16
-        movu            m%1, [%2]
+;STORE_PIXELS(dest, src)
+%macro STORE_PIXELS 2
+    %if ps == 2
+        %if WIDTH == 16
+            movu         %1, m%2
+        %else
+            movq         %1, xm%2
+        %endif
     %else
-        pinsrq          xm%1, [%2], 0
-        pinsrq          xm%1, [%2 + src_strideq], 1
-        pinsrq          xm%3, [%2 + src_strideq * 2], 0
-        pinsrq          xm%3, [%2 + src_stride3q], 1
-        vinserti128     m%1, m%1, xm%3, 1
+        vpackuswb       m%2, m%2
+        %if WIDTH == 16
+            vpermq      m%2, m%2, 0x8
+            movu         %1, xm%2
+        %else
+            movd         %1, xm%2
+        %endif
     %endif
 %endmacro
 
-%macro LOAD_PIXELS_8 3
-    %if WIDTH == 16
-        vpmovzxbw       m%1,  [%2]
-    %else
-        pinsrd          xm%1, [%2], 0
-        pinsrd          xm%1, [%2 + src_strideq], 1
-        pinsrd          xm%1, [%2 + src_strideq * 2], 2
-        pinsrd          xm%1, [%2 + src_stride3q], 3
-        vpmovzxbw       m%1,  xm%1
-    %endif
-%endmacro
-
-;LOAD_PIXELS(dest, src, tmp)
-%macro LOAD_PIXELS 3
-    LOAD_PIXELS_ %+ BPC %1, %2, %3
-%endmacro
-
-%macro STORE_PIXELS_16 3
-    %if WIDTH == 16
-        movu            [%1], m%2
-    %else
-        pextrq          [%1], xm%2, 0
-        pextrq          [%1 + dst_strideq], xm%2, 1
-        vperm2i128      m%2, m%2, m%2, 1
-        pextrq          [%1 + dst_strideq * 2], xm%2, 0
-        pextrq          [%1 + dst_stride3q], xm%2, 1
-    %endif
-%endmacro
-
-%macro STORE_PIXELS_8 3
-    vperm2i128          m%3, m%2, m%3, 1
-    packuswb            m%2, m%3
-    %if WIDTH == 16
-        movu            [%1], xm%2
-    %else
-        pextrd          [%1], xm%2, 0
-        pextrd          [%1 + dst_strideq], xm%2, 1
-        pextrd          [%1 + dst_strideq * 2], xm%2, 2
-        pextrd          [%1 + dst_stride3q], xm%2, 3
-    %endif
-%endmacro
-
-;STORE_PIXELS(dest, src, tmp)
-%macro STORE_PIXELS 3
-    STORE_PIXELS_ %+ BPC %1, %2, %3
-%endmacro
-
-;CLASSIFY_LOAD_PIXELS(dest, src)
-%macro CLASSIFY_LOAD_PIXELS 2
+;LOAD_PIXELS(dest, src)
+%macro LOAD_PIXELS 2
 %if ps == 2
     movu %1, %2
 %else
@@ -305,14 +245,11 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
 .loop:
     LOAD_PARAMS
 
-;we need loop 4 times for a 16x4 block, 1 time for a 4x4 block
-%define rep_num (WIDTH / 4)
-%define lines  (4 / rep_num)
-%rep rep_num
+%rep 4
     VPBROADCASTD    m0, [dw_64]
     VPBROADCASTD    m1, [dw_64]
 
-    LOAD_PIXELS     2, srcq, 9   ;p0
+    LOAD_PIXELS     m2, [srcq]   ;p0
 
     FILTER
 
@@ -328,10 +265,10 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
     pxor            m1, m1
     CLIPW           m0, m1, m2
 
-    STORE_PIXELS    dstq, 0, 1
+    STORE_PIXELS    [dstq], 0
 
-    lea             srcq, [srcq + lines * src_strideq]
-    lea             dstq, [dstq + lines * dst_strideq]
+    lea             srcq, [srcq + src_strideq]
+    lea             dstq, [dstq + dst_strideq]
 %endrep
 
     lea             filterq, [filterq + strideq]
@@ -392,15 +329,15 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 16, gradient_sum, src, src_stride, w
         cmp     yd, vb_posd
         cmove  s3q, s2q
 
-        CLASSIFY_LOAD_PIXELS m0, [s0q]
-        CLASSIFY_LOAD_PIXELS m1, [s1q]
-        CLASSIFY_LOAD_PIXELS m2, [s2q]
-        CLASSIFY_LOAD_PIXELS m3, [s3q]
+        LOAD_PIXELS m0, [s0q]
+        LOAD_PIXELS m1, [s1q]
+        LOAD_PIXELS m2, [s2q]
+        LOAD_PIXELS m3, [s3q]
 
-        CLASSIFY_LOAD_PIXELS m4, [s0q + 2 * ps]
-        CLASSIFY_LOAD_PIXELS m5, [s1q + 2 * ps]
-        CLASSIFY_LOAD_PIXELS m6, [s2q + 2 * ps]
-        CLASSIFY_LOAD_PIXELS m7, [s3q + 2 * ps]
+        LOAD_PIXELS m4, [s0q + 2 * ps]
+        LOAD_PIXELS m5, [s1q + 2 * ps]
+        LOAD_PIXELS m6, [s2q + 2 * ps]
+        LOAD_PIXELS m7, [s3q + 2 * ps]
 
         vpblendw m8,  m0,  m1, 0xaa             ;nw
         vpblendw m9,  m0,  m5, 0x55             ;n
