@@ -24,7 +24,6 @@
 #include "vvc_inter.h"
 #include "vvc_intra.h"
 #include "vvc_itx_1d.h"
-#include "vvc_mvs.h"
 
 static int is_cclm(enum IntraPredMode mode)
 {

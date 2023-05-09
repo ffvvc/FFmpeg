@@ -29,21 +29,6 @@
 
 #define IS_SAME_MV(a, b) (AV_RN64A(a) == AV_RN64A(b))
 
-void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0,
-                                     int nPbW, int nPbH)
-{
-    const int log2_ctb_size = lc->fc->ps.sps->ctb_log2_size_y;
-    int x0b = av_mod_uintp2(x0, log2_ctb_size);
-    int y0b = av_mod_uintp2(y0, log2_ctb_size);
-
-    lc->na.cand_up       = (lc->ctb_up_flag   || y0b);
-    lc->na.cand_left     = (lc->ctb_left_flag || x0b);
-    lc->na.cand_up_left  = (x0b || y0b) ? lc->na.cand_left && lc->na.cand_up : lc->ctb_up_left_flag;
-    lc->na.cand_up_right_sap =
-            (x0b + nPbW == 1 << log2_ctb_size) ? lc->ctb_up_right_flag && !y0b : lc->na.cand_up;
-    lc->na.cand_up_right = lc->na.cand_up_right_sap && (x0 + nPbW) < lc->end_of_tiles_x;
-}
-
 //check if the two luma locations belong to the same motion estimation region
 static av_always_inline int is_same_mer(const VVCFrameContext *fc, const int xN, const int yN, const int xP, const int yP)
 {

@@ -28,7 +28,6 @@
 void ff_vvc_round_mv(Mv *mv, int lshift, int rshift);
 void ff_vvc_clip_mv(Mv *mv);
 void ff_vvc_mv_scale(Mv *dst, const Mv *src, int td, int tb);
-void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0,            int nPbW, int nPbH);
 void ff_vvc_luma_mv_merge_mode(VVCLocalContext *lc, int merge_idx, int ciip_flag, MvField *mv);
 void ff_vvc_luma_mv_merge_gpm(VVCLocalContext *lc, const int merge_gpm_idx[2], MvField *mv);
 void ff_vvc_mvp(VVCLocalContext *lc, const int *mvp_lx_flag, const int amvr_shift,  MotionInfo *mi);
