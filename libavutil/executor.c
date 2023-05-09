@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "libavutil/avutil.h"
-#include "libavutil/thread.h"
 #include "libavutil/executor.h"
+#include "libavutil/thread.h"
 
 typedef struct ThreadInfo {
     int idx;

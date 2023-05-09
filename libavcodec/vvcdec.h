@@ -27,6 +27,7 @@
 #include <stdatomic.h>
 
 #include "libavutil/buffer.h"
+#include "libavutil/executor.h"
 #include "libavutil/md5.h"
 #include "libavutil/mem_internal.h"
 #include "libavutil/thread.h"
@@ -39,7 +40,6 @@
 #include "vvcpred.h"
 #include "h2645_parse.h"
 #include "vvc.h"
-#include "libavutil/executor.h"
 #include "vvc_ps.h"
 #include "vvcdsp.h"
 #include "internal.h"
