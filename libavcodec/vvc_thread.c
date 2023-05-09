@@ -24,6 +24,7 @@
 #include "vvc_ctu.h"
 #include "vvc_filter.h"
 #include "vvc_inter.h"
+#include "vvc_intra.h"
 
 typedef struct VVCRowThread {
     VVCTask reconstruct_task;

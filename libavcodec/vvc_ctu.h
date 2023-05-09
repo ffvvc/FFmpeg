@@ -359,16 +359,6 @@ typedef struct VVCAllowedSplit {
  */
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, int ry);
 
-/**
- * reconstruct a CTU
- * @param lc local context for CTU
- * @param rs raster order for the CTU.
- * @param rx raster order x for the CTU.
- * @param ry raster order y for the CTU.
- * @return AVERROR
- */
-int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry);
-
 //utils
 void ff_vvc_decode_neighbour(VVCLocalContext *lc, int x_ctb, int y_ctb, int rx, int ry, int rs);
 int ff_vvc_get_top_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
