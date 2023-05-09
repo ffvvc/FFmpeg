@@ -737,3 +737,27 @@ int ff_vvc_intra_inv_angle_derive(const int intra_pred_angle)
     inv_angle = 32 * 512.0 / intra_pred_angle;
     return ROUND(inv_angle);
 }
+
+//8.4.5.2.7 Wide angle intra prediction mode mapping proces
+int ff_vvc_wide_angle_mode_mapping(const CodingUnit *cu,
+    const int tb_width, const int tb_height, const int c_idx, int pred_mode_intra)
+{
+    int nw, nh, wh_ratio, min, max;
+
+    if (cu->isp_split_type == ISP_NO_SPLIT || c_idx) {
+        nw = tb_width;
+        nh = tb_height;
+    } else {
+        nw = cu->cb_width;
+        nh = cu->cb_height;
+    }
+    wh_ratio    = FFABS(ff_log2(nw) - ff_log2(nh));
+    max         = (wh_ratio > 1) ? (8  + 2 * wh_ratio) : 8;
+    min         = (wh_ratio > 1) ? (60 - 2 * wh_ratio) : 60;
+
+    if (nw > nh && pred_mode_intra >=2 && pred_mode_intra < max)
+        pred_mode_intra += 65;
+    else if (nh > nw && pred_mode_intra <= 66 && pred_mode_intra > min)
+        pred_mode_intra -= 67;
+    return pred_mode_intra;
+}

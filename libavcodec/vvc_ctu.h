@@ -362,12 +362,8 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, i
 //utils
 void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0, int w, int h);
 void ff_vvc_decode_neighbour(VVCLocalContext *lc, int x_ctb, int y_ctb, int rx, int ry, int rs);
-int ff_vvc_get_top_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
-int ff_vvc_get_left_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
 int ff_vvc_get_qPy(const VVCFrameContext *fc, int xc, int yc);
 void ff_vvc_set_cb_tab(const VVCLocalContext *lc, uint8_t *tab, uint8_t v);
-int ff_vvc_wide_angle_mode_mapping(const CodingUnit *cu,
-    int tb_width, int tb_height, int c_idx, int pred_mode_intra);
 void ff_vvc_ctu_free_cus(CTU *ctu);
 
 #endif // AVCODEC_VVC_CTU_H
