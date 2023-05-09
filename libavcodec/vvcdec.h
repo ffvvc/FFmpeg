@@ -37,7 +37,6 @@
 #include "cabac.h"
 #include "cbs_h266.h"
 #include "get_bits.h"
-#include "vvcpred.h"
 #include "h2645_parse.h"
 #include "vvc.h"
 #include "vvc_ps.h"

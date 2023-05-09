@@ -34,4 +34,12 @@
  */
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry);
 
+//utils for vvc_intra_template
+int ff_vvc_get_mip_size_id(int w, int h);
+int ff_vvc_need_pdpc(int w, int h, uint8_t bdpcm_flag, int mode, int ref_idx);
+int ff_vvc_nscale_derive(int w, int h, int mode);
+int ff_vvc_ref_filter_flag_derive(int mode);
+int ff_vvc_intra_pred_angle_derive(int pred_mode);
+int ff_vvc_intra_inv_angle_derive(int pred_mode);
+
 #endif // AVCODEC_VVC_INTRA_H
