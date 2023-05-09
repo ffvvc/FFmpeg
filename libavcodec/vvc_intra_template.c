@@ -23,8 +23,8 @@
 #include "libavutil/pixdesc.h"
 
 #include "bit_depth_template.c"
-#include "vvcpred.h"
 #include "vvc_data.h"
+#include "vvc_intra.h"
 
 #define POS(x, y) src[(x) + stride * (y)]
 
