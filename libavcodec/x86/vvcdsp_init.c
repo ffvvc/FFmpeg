@@ -196,6 +196,10 @@ SAO_EDGE_FILTER_FUNCS(12, avx2)
     c->sao.edge_filter[8]       = ff_vvc_sao_edge_filter_128_##bitd##_##opt;    \
 } while (0)
 
+void ff_vvc_put_vvc_luma_h_16_avx512icl(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+    const int height, const intptr_t mx, const intptr_t my, const int width,
+    const int hf_idx, const int vf_idx);
+
 void ff_vvc_put_vvc_luma_hv_16_avx512icl(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
     const int hf_idx, const int vf_idx);
@@ -242,6 +246,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
     if (EXTERNAL_AVX512ICL(cpu_flags)) {
         switch (bit_depth) {
             case 10:
+                c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_16_avx512icl;
                 c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_16_avx512icl;
             default:
             break;

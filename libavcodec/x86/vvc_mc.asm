@@ -72,6 +72,73 @@ p%1_vvc_luma_filters:
 
 VVC_LUMA_FILTERS w
 
+pw_vvc_iter_shuffle_index dw  0,  1,
+                          dw  1,  2,
+                          dw  2,  3,
+                          dw  3,  4,
+                          dw  4,  5,
+                          dw  5,  6,
+                          dw  6,  7,
+                          dw  7,  8,
+                          dw  8,  9,
+                          dw  9, 10,
+                          dw 10, 11,
+                          dw 11, 12,
+                          dw 12, 13,
+                          dw 13, 14,
+                          dw 14, 15,
+                          dw 15, 16
+
+                          dw  2,  3,
+                          dw  3,  4,
+                          dw  4,  5,
+                          dw  5,  6,
+                          dw  6,  7,
+                          dw  7,  8,
+                          dw  8,  9,
+                          dw  9, 10,
+                          dw 10, 11,
+                          dw 11, 12,
+                          dw 12, 13,
+                          dw 13, 14,
+                          dw 14, 15,
+                          dw 15, 16,
+                          dw 16, 17,
+                          dw 17, 18
+
+                          dw  4,  5,
+                          dw  5,  6,
+                          dw  6,  7,
+                          dw  7,  8,
+                          dw  8,  9,
+                          dw  9, 10,
+                          dw 10, 11,
+                          dw 11, 12,
+                          dw 12, 13,
+                          dw 13, 14,
+                          dw 14, 15,
+                          dw 15, 16,
+                          dw 16, 17,
+                          dw 17, 18,
+                          dw 18, 19,
+                          dw 19, 20
+
+                          dw  6,  7,
+                          dw  7,  8,
+                          dw  8,  9,
+                          dw  9, 10,
+                          dw 10, 11,
+                          dw 11, 12,
+                          dw 12, 13,
+                          dw 13, 14,
+                          dw 14, 15,
+                          dw 15, 16,
+                          dw 16, 17,
+                          dw 17, 18,
+                          dw 18, 19,
+                          dw 19, 20,
+                          dw 20, 21,
+                          dw 21, 22
 
 pw_vvc_iter_shuffle_index_half dw  0,  1,
                                dw  1,  2,
@@ -466,11 +533,181 @@ cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, 
     RET
 %endmacro
 
+%macro H_COMPUTE_H8_16_LOOP 2
+%assign %%i %1
+%rep %2
+    H_COMPUTE_H8_16 %%i
+    %assign %%i %%i+1
+%endrep
+%endmacro
+
+%macro STORE16_LOOP 3
+%assign %%i 0
+%rep %2
+    %assign %%j 0
+    %rep %3
+        %assign %%k (%1 + %%i * %3 + %%j)
+        vpmovdw [dstq + %%i * MAX_PB_SIZE + %%j * 32], m %+ %%k
+    %assign %%j %%j+1
+    %endrep
+    %assign %%i %%i+1
+%endrep
+%endmacro
+
+%macro H_16_LOOP_END 2
+    lea             srcq, [srcq +  srcstrideq * %2]
+    lea             dstq, [dstq + MAX_PB_SIZE * %2]
+    sub          heightq, %2
+    jnz .h%1_loop
+%endmacro
+
+%macro VVC_PUT_VVC_LUMA_H_AVX512ICL 1
+cglobal vvc_put_vvc_luma_h_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
+    MOVSXDIFNIDN
+    LOAD_FILTER_16 hf_idx, mx, 4, 5, 6, 7
+
+    lea           r3srcq, [srcstrideq * 3]
+    sub             srcq, 6
+
+    cmp           widthq, 4
+    jne              .h8
+
+.h4:
+    LOAD_SHUFFLE_16 pw_vvc_iter_shuffle_index_quarter, 0, 1, 2, 3
+
+.h4_loop:
+    movu             ym8, [srcq                 ]
+    movu             ym9, [srcq + srcstrideq * 1]
+    vinserti64x4      m8, [srcq + srcstrideq * 2], 1
+    vinserti64x4      m9, [srcq + r3srcq        ], 1
+
+    H_COMPUTE_H4_16    8, 9
+    vpmovdw          ym8, m8
+    vextracti64x2    xm9, ym8, 1
+
+    movq     [dstq + MAX_PB_SIZE * 0], xm8
+    movq     [dstq + MAX_PB_SIZE * 1], xm9
+    psrldq           xm8, xm8, 8
+    psrldq           xm9, xm9, 8
+    movq     [dstq + MAX_PB_SIZE * 2], xm8
+    movq     [dstq + MAX_PB_SIZE * 3], xm9
+
+    H_16_LOOP_END 4, 4
+
+    RET
+
+.h8:
+    cmp           widthq, 8
+    jne              .h16
+    LOAD_SHUFFLE_16 pw_vvc_iter_shuffle_index_half, 0, 1, 2, 3
+
+.h8_loop:
+    movu             ym8, [srcq                 ]
+    movu             ym9, [srcq + srcstrideq * 1]
+    movu            ym10, [srcq + srcstrideq * 2]
+    movu            ym11, [srcq + r3srcq        ]
+    vinserti64x4      m8, ym10, 1
+    vinserti64x4      m9, ym11, 1
+
+    H_COMPUTE_H8_16_LOOP 8, 2
+
+    vpmovdw          ym8, m8
+    vpmovdw          ym9, m9
+
+    movu          [dstq + MAX_PB_SIZE * 0], xm8
+    movu          [dstq + MAX_PB_SIZE * 1], xm9
+    vextracti64x2 [dstq + MAX_PB_SIZE * 2], ym8, 1
+    vextracti64x2 [dstq + MAX_PB_SIZE * 3], ym9, 1
+
+    H_16_LOOP_END 8, 4
+
+    RET
+
+.h16:
+    LOAD_SHUFFLE_16 pw_vvc_iter_shuffle_index, 0, 1, 2, 3
+
+    cmp           widthq, 32
+    je            .h32_loop
+
+    cmp           widthq, 64
+    je            .h64_loop
+
+    cmp           widthq, 128
+    je            .h128_loop
+
+.h16_loop:
+    movu              m8, [srcq                 ]
+    movu              m9, [srcq + srcstrideq * 1]
+    movu             m10, [srcq + srcstrideq * 2]
+    movu             m11, [srcq + r3srcq        ]
+
+    H_COMPUTE_H8_16_LOOP 8, 4
+    STORE16_LOOP 8, 4, 1
+    H_16_LOOP_END 16, 4
+
+    RET
+
+.h32_loop:
+    movu              m8, [srcq                      ]
+    movu              m9, [srcq + 32                 ]
+    movu             m10, [srcq + srcstrideq * 1     ]
+    movu             m11, [srcq + srcstrideq * 1 + 32]
+
+    movu             m12, [srcq + srcstrideq * 2     ]
+    movu             m13, [srcq + srcstrideq * 2 + 32]
+    movu             m14, [srcq + r3srcq             ]
+    movu             m15, [srcq + r3srcq         + 32]
+
+    H_COMPUTE_H8_16_LOOP 8, 8
+    STORE16_LOOP 8, 4, 2
+
+    H_16_LOOP_END 32, 4
+
+    RET
+
+.h64_loop:
+    movu              m8, [srcq                       ]
+    movu              m9, [srcq + 32                  ]
+    movu             m10, [srcq + 64                  ]
+    movu             m11, [srcq + 96                  ]
+    movu             m12, [srcq + srcstrideq * 1      ]
+    movu             m13, [srcq + srcstrideq * 1 + 32 ]
+    movu             m14, [srcq + srcstrideq * 1 + 64 ]
+    movu             m15, [srcq + srcstrideq * 1 + 96 ]
+
+    H_COMPUTE_H8_16_LOOP 8, 8
+    STORE16_LOOP         8, 2, 4
+
+    H_16_LOOP_END 64, 2
+
+    RET
+
+.h128_loop:
+    movu              m8, [srcq      ]
+    movu              m9, [srcq +  32]
+    movu             m10, [srcq +  64]
+    movu             m11, [srcq +  96]
+    movu             m12, [srcq + 128]
+    movu             m13, [srcq + 160]
+    movu             m14, [srcq + 192]
+    movu             m15, [srcq + 224]
+
+    H_COMPUTE_H8_16_LOOP 8, 8
+    STORE16_LOOP 8, 1, 8
+
+    H_16_LOOP_END 128, 1
+
+    RET
+
+%endmacro
+
 %if ARCH_X86_64
 %if HAVE_AVX512ICL_EXTERNAL
 
 INIT_ZMM avx512icl
 VVC_PUT_VVC_LUMA_HV_AVX512ICL 16
+
+VVC_PUT_VVC_LUMA_H_AVX512ICL 16
 
 %endif
 %endif
