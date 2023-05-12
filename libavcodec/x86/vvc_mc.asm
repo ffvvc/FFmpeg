@@ -701,6 +701,198 @@ cglobal vvc_put_vvc_luma_h_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, w
 
 %endmacro
 
+%macro VVC_PUT_VVC_LUMA_V_AVX512ICL 1
+cglobal vvc_put_vvc_luma_v_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
+    MOVSXDIFNIDN
+    LOAD_FILTER_16 vf_idx, my, 4, 5, 6, 7
+
+    mov _srcq, srcq
+
+    cmp          heightq, 4
+    je              .hv4
+    cmp           widthq, 4
+    je              .hv4
+
+.hv8:
+    mova             m23, [pq_vvc_iter_shuffle_index]
+    LOAD_SHUFFLE_16 pw_vvc_iter_shuffle_index_half, 0, 1, 2, 3
+
+.loop_h8:
+    mov               xq, widthq
+.loop_v8:
+    mov             srcq, _srcq
+    lea           r3srcq, [srcstrideq * 3]
+    sub             srcq, r3srcq
+    movu             xm8, [srcq                 ]
+    movu             xm9, [srcq + srcstrideq * 1]
+    movu            xm10, [srcq + srcstrideq * 2]
+    movu            xm11, [srcq + r3srcq        ]
+
+    movu            xm12, [srcq + srcstrideq * 4]
+
+    lea             srcq, [srcq + r3srcq        ]
+    movu            xm13, [srcq + srcstrideq * 2]
+
+    lea             srcq, [srcq + r3srcq        ]
+    movu            xm14, [srcq                 ]
+    movu            xm15, [srcq + srcstrideq * 1]
+
+    vpxor            m22, m22, m22
+    movu            xm16, [srcq + srcstrideq * 2]
+    movu            xm17, [srcq + r3srcq        ]
+    movu            xm18, [srcq + srcstrideq * 4]
+    lea             srcq, [srcq + r3srcq        ]
+    movu            xm19, [srcq + srcstrideq * 2]
+    lea             srcq, [srcq + r3srcq        ]
+    movu            xm20, [srcq                 ]
+    movu            xm21, [srcq + srcstrideq * 1]
+    movu            xm22, [srcq + srcstrideq * 2]
+
+    vinserti64x2     ym8,  ym8, xm16, 1
+    vinserti64x2     ym9,  ym9, xm17, 1
+    vinserti64x2    ym10, ym10, xm18, 1
+    vinserti64x2    ym11, ym11, xm19, 1
+    vinserti64x2    ym12, ym12, xm20, 1
+    vinserti64x2    ym13, ym13, xm21, 1
+    vinserti64x2    ym14, ym14, xm22, 1
+
+    vpunpcklwd      ym16,  ym8,  ym9
+    vpunpckhwd      ym17,  ym8,  ym9
+    vpunpcklwd      ym18, ym10, ym11
+    vpunpckhwd      ym19, ym10, ym11
+    vpunpcklwd       ym8, ym12, ym13
+    vpunpckhwd       ym9, ym12, ym13
+    vpunpcklwd      ym10, ym14, ym15
+    vpunpckhwd      ym11, ym14, ym15
+
+    vpunpckldq      ym12, ym16, ym18
+    vpunpckhdq      ym13, ym16, ym18
+    vpunpckldq      ym14, ym17, ym19
+    vpunpckhdq      ym15, ym17, ym19
+    vpunpckldq      ym16,  ym8, ym10
+    vpunpckhdq      ym17,  ym8, ym10
+    vpunpckldq      ym18,  ym9, ym11
+    vpunpckhdq      ym19,  ym9, ym11
+
+    vpunpcklqdq      ym8, ym12, ym16
+    vpunpckhqdq      ym9, ym12, ym16
+    vpunpcklqdq     ym10, ym13, ym17
+    vpunpckhqdq     ym11, ym13, ym17
+    vpunpcklqdq     ym12, ym14, ym18
+    vpunpckhqdq     ym13, ym14, ym18
+    vpunpcklqdq     ym14, ym15, ym19
+    vpunpckhqdq     ym15, ym15, ym19
+
+    vinserti64x4      m8,  m8, ym12, 1
+    vinserti64x4      m9,  m9, ym13, 1
+    vinserti64x4     m10, m10, ym14, 1
+    vinserti64x4     m11, m11, ym15, 1
+
+%assign %%i 8
+%rep 4
+    H_COMPUTE_H8_16 %%i
+%assign %%i %%i+1
+%endrep
+
+    vpackssdw        m8, m8, m10
+    vpackssdw        m9, m9, m11
+
+    vpunpcklwd      m10,  m8, m9
+    vpunpckhwd      m11,  m8, m9
+    vpunpckldq       m8, m10, m11
+    vpunpckhdq       m9, m10, m11
+
+    vextracti64x4  ym10, m8, 1
+    vextracti64x4  ym11, m9, 1
+
+    vpunpcklqdq    ym12, ym8, ym10
+    vpunpckhqdq    ym13, ym8, ym10
+    vpunpcklqdq    ym14, ym9, ym11
+    vpunpckhqdq    ym15, ym9, ym11
+
+    movu          [dstq + MAX_PB_SIZE * 0], xm12
+    movu          [dstq + MAX_PB_SIZE * 1], xm13
+    movu          [dstq + MAX_PB_SIZE * 2], xm14
+    movu          [dstq + MAX_PB_SIZE * 3], xm15
+    vextracti32x4 [dstq + MAX_PB_SIZE * 4], ym12, 1
+    vextracti32x4 [dstq + MAX_PB_SIZE * 5], ym13, 1
+    vextracti32x4 [dstq + MAX_PB_SIZE * 6], ym14, 1
+    vextracti32x4 [dstq + MAX_PB_SIZE * 7], ym15, 1
+
+    LOOP_END 8
+
+    RET
+
+.hv4:
+    LOAD_SHUFFLE_16 pw_vvc_iter_shuffle_index_quarter, 0, 1, 2, 3
+
+.loop_h4:
+    mov               xq, widthq
+.loop_v4:
+    mov             srcq, _srcq
+    lea           r3srcq, [srcstrideq * 3]
+    sub             srcq, r3srcq
+    vpxor           ym11, ym11, ym11
+    movu             xm8, [srcq                 ]
+    movu             xm9, [srcq + srcstrideq * 1]
+    movu            xm10, [srcq + srcstrideq * 2]
+    movu            xm11, [srcq + r3srcq        ]
+
+    movu            xm12, [srcq + srcstrideq * 4]
+
+    lea             srcq, [srcq + r3srcq        ]
+    movu            xm13, [srcq + srcstrideq * 2]
+
+    lea             srcq, [srcq + r3srcq        ]
+    movu            xm14, [srcq                 ]
+    movu            xm15, [srcq + srcstrideq * 1]
+
+    movu            xm16, [srcq + srcstrideq * 2]
+    movu            xm17, [srcq + r3srcq        ]
+    movu            xm18, [srcq + srcstrideq * 4]
+    vinserti64x2     ym8,  ym8, xm16, 1
+    vinserti64x2     ym9,  ym9, xm17, 1
+    vinserti64x2    ym10, ym10, xm18, 1
+
+    vpunpcklwd       ym8,  ym8,  ym9
+    vpunpcklwd      ym10, ym10, ym11
+    vpunpcklwd      ym12, ym12, ym13
+    vpunpcklwd      ym14, ym14, ym15
+
+    vpunpckldq       ym9,  ym8, ym10
+    vpunpckhdq      ym11,  ym8, ym10
+    vpunpckldq      ym10, ym12, ym14
+    vpunpckhdq      ym12, ym12, ym14
+
+    vpunpcklqdq      ym8,  ym9, ym10
+    vpunpckhqdq      ym9,  ym9, ym10
+    vpunpcklqdq     ym10, ym11, ym12
+    vpunpckhqdq     ym11, ym11, ym12
+
+    vinserti64x4      m8, m8, ym10, 1
+    vinserti64x4      m9, m9, ym11, 1
+
+    H_COMPUTE_H4_16    8, 9
+    vpmovdw          ym8,   m8
+    vextracti64x2    xm9,  ym8, 1
+    vpunpcklwd      xm10,  xm8, xm9
+    vpunpckhwd      xm11,  xm8, xm9
+    vpunpckldq       xm8, xm10, xm11
+    vpunpckhdq       xm9, xm10, xm11
+
+    psrldq          xm10, xm8, 8
+    psrldq          xm11, xm9, 8
+
+    movq [dstq + MAX_PB_SIZE * 0], xm8
+    movq [dstq + MAX_PB_SIZE * 1], xm10
+    movq [dstq + MAX_PB_SIZE * 2], xm9
+    movq [dstq + MAX_PB_SIZE * 3], xm11
+
+    LOOP_END 4
+
+    RET
+%endmacro
+
 %if ARCH_X86_64
 %if HAVE_AVX512ICL_EXTERNAL
 
@@ -708,6 +900,8 @@ INIT_ZMM avx512icl
 VVC_PUT_VVC_LUMA_HV_AVX512ICL 16
 
 VVC_PUT_VVC_LUMA_H_AVX512ICL 16
+
+VVC_PUT_VVC_LUMA_V_AVX512ICL 16
 
 %endif
 %endif
