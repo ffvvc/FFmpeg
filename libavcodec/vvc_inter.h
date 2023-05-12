@@ -26,13 +26,6 @@
 #include "vvc_ctu.h"
 
 /**
- * parse inter data for a coding unit
- * @param lc local context for CTU
- * @return AVERROR
- */
-int ff_vvc_inter_data(VVCLocalContext *lc);
-
-/**
  * Loop entire CTU to predict all inter coding blocks
  * @param lc local context for CTU
  * @param rs raster order for the CTU
