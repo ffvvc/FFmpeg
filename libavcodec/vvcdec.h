@@ -304,16 +304,16 @@ struct VVCFrameContext {
 } ;
 
 typedef struct VVCContext {
-    const AVClass *c;  // needed by private avoptions
+    const AVClass *c;       // needed by private avoptions
     AVCodecContext *avctx;
 
     VVCParamSets ps;
 
-    int temporal_id;  ///< temporal_id_plus1 - 1
+    int temporal_id;        ///< temporal_id_plus1 - 1
     int pocTid0;
 
-    int eos;       ///< current packet contains an EOS/EOB NAL
-    int last_eos;  ///< last packet contains an EOS/EOB NAL
+    int eos;                ///< current packet contains an EOS/EOB NAL
+    int last_eos;           ///< last packet contains an EOS/EOB NAL
 
 
     enum VVCNALUnitType vcl_unit_type;
@@ -338,10 +338,8 @@ typedef struct VVCContext {
     VVCFrameContext *fcs;
     int nb_fcs;
 
-    // processed frames
-    uint64_t nb_frames;
-    // delayed frames
-    int nb_delayed;
+    uint64_t nb_frames;     ///< processed frames
+    int nb_delayed;         ///< delayed frames
 }  VVCContext ;
 
 #endif /* AVCODEC_VVCDEC_H */
