@@ -1,7 +1,7 @@
 /*
- * VVC video decoder
+ * VVC reference management
  *
- * Copyright (C) 2021 Nuo Mi
+ * Copyright (C) 2023 Nuo Mi
  *
  * This file is part of FFmpeg.
  *

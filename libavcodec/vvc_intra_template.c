@@ -1,7 +1,7 @@
 /*
- * VVC video decoder
+ * VVC intra DSP
  *
- * Copyright (C) 2021-2022 Nuomi
+ * Copyright (C) 2021-2023 Nuomi
  *
  * This file is part of FFmpeg.
  *

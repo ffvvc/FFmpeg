@@ -1,5 +1,5 @@
 /*
- * VVC filter dsp
+ * VVC filter DSP
  *
  * Copyright (C) 2022 Nuo Mi
  *

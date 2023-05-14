@@ -1,5 +1,5 @@
 /*
- * VVC CTU decoder
+ * VVC CTU(Coding Tree Unit) parser
  *
  * Copyright (C) 2022 Nuo Mi
  *
