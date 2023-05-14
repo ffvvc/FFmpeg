@@ -27,7 +27,6 @@
 #include "vvc_cabac.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
-#include "vvc_itx_1d.h"
 
 #define CABAC_MAX_BIN 31
 
