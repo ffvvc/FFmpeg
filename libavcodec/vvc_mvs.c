@@ -1,7 +1,7 @@
 /*
- * VVC video decoder
+ * VVC motion vector decoder
  *
- * Copyright (C) 2021 Nuo Mi
+ * Copyright (C) 2023 Nuo Mi
  * Copyright (C) 2022 Xu Mu
  * This file is part of FFmpeg.
  *

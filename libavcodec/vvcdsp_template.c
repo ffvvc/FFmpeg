@@ -1,5 +1,5 @@
 /*
- * VVC video decoder
+ * VVC transform and residual DSP
  *
  * Copyright (C) 2021 Nuo Mi
  *

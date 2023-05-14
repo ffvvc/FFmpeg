@@ -1,5 +1,5 @@
 /*
- * VVC intra decoder
+ * VVC intra predict
  *
  * Copyright (C) 2021 Nuo Mi
  *

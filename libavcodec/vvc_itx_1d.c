@@ -1,5 +1,7 @@
 /*
- * VVC shared tables
+ * VVC 1D transform
+ *
+ * Copyright (C) 2023 Nuo Mi
  *
  * This file is part of FFmpeg.
  *

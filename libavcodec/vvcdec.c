@@ -1,5 +1,5 @@
 /*
- * VVC video Decoder
+ * VVC video decoder
  *
  * Copyright (C) 2021 Nuo Mi
  * Copyright (C) 2022 Xu Mu

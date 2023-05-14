@@ -1,5 +1,5 @@
 /*
- * VVC CTU parser
+ * VVC CTU(Coding Tree Unit) parser
  *
  * Copyright (C) 2022 Nuo Mi
  *
@@ -371,7 +371,7 @@ struct ALFParams {
 };
 
 /**
- * parse a CTU (coding tree unit)
+ * parse a CTU
  * @param lc local context for CTU
  * @param ctb_addr CTB(CTU) address in the current slice
  * @param rs raster order for the CTU.

@@ -1,5 +1,5 @@
 /*
- * VVC shared data tables
+ * VVC shared tables
  *
  * This file is part of FFmpeg.
  *

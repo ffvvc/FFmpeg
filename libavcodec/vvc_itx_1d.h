@@ -1,6 +1,8 @@
 /*
  * VVC 1D transform
  *
+ * Copyright (C) 2023 Nuo Mi
+ *
  * This file is part of FFmpeg.
  *
  * FFmpeg is free software; you can redistribute it and/or

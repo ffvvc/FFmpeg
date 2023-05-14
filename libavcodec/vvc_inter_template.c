@@ -1,5 +1,5 @@
 /*
- * VVC inter dsp
+ * VVC inter DSP
  *
  * Copyright (C) 2022 Nuo Mi
  *
