@@ -28,8 +28,6 @@
 
 #include "get_bits.h"
 
-#define MAX_PB_SIZE 128
-
 enum TxType {
     DCT2,
     DST7,
@@ -46,28 +44,6 @@ enum TxSize {
     TX_SIZE_64,
     N_TX_SIZE,
 };
-
-typedef struct SAOParams {
-    int offset_abs[3][4];   ///< sao_offset_abs
-    int offset_sign[3][4];  ///< sao_offset_sign
-
-    uint8_t band_position[3];   ///< sao_band_position
-
-    int eo_class[3];        ///< sao_eo_class
-
-    int16_t offset_val[3][5];   ///<SaoOffsetVal
-
-    uint8_t type_idx[3];    ///< sao_type_idx
-} SAOParams;
-
-typedef struct ALFParams {
-    uint8_t ctb_flag[3];                //< alf_ctb_flag[]
-    uint8_t ctb_filt_set_idx_y;         //< AlfCtbFiltSetIdxY
-    uint8_t alf_ctb_filter_alt_idx[2];  //< alf_ctb_filter_alt_idx[]
-    uint8_t ctb_cc_idc[2];              //< alf_ctb_cc_cb_idc, alf_ctb_cc_cr_idc
-
-    uint8_t applied[3];
-} ALFParams;
 
 typedef struct VVCInterDSPContext {
     void (*put[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(

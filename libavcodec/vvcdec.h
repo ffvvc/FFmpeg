@@ -105,6 +105,7 @@
 #define ALF_GRADIENT_SIZE       ((MAX_CU_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP)
 #define ALF_NUM_DIR             4
 
+#define MAX_PB_SIZE             128
 #define EDGE_EMU_BUFFER_STRIDE  (MAX_PB_SIZE + 32)
 
 #define AFFINE_MIN_BLOCK_SIZE   4
@@ -133,6 +134,8 @@ typedef struct Mv Mv;
 typedef struct MvField MvField;
 typedef struct DMVRInfo DMVRInfo;
 typedef struct CTU CTU;
+typedef struct SAOParams SAOParams;
+typedef struct ALFParams ALFParams;
 
 enum SAOType {
     SAO_NOT_APPLIED = 0,
