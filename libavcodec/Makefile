@@ -426,7 +426,7 @@ OBJS-$(CONFIG_HEVC_DECODER)            += hevcdec.o hevc_mvs.o \
                                           hevc_cabac.o hevc_refs.o hevcpred.o    \
                                           hevcdsp.o hevc_filter.o hevc_data.o \
                                           h274.o
-OBJS-$(CONFIG_VVC_DECODER)             += vvcdec.o vvc_ps.o vvc_thread.o vvc_cabac.o \
+OBJS-$(CONFIG_VVC_DECODER)             += vvcdec.o vvc_executor.o vvc_thread.o vvc_cabac.o \
                                           vvc_ctu.o vvcdsp.o vvc_itx_1d.o vvc_intra.o \
                                           vvc_inter.o vvc_mvs.o vvc_refs.o vvc_filter.o\
                                           vvc_data.o

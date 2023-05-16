@@ -174,7 +174,7 @@ static int is_alf_ready(const VVCFrameContext *fc, const VVCTask *t)
 
 typedef int (*is_ready_func)(const VVCFrameContext *fc, const VVCTask *t);
 
-int ff_vvc_task_ready(const AVTask *_t, void *user_data)
+int ff_vvc_task_ready(const VVCTasklet *_t, void *user_data)
 {
     const VVCTask *t            = (const VVCTask*)_t;
     const VVCFrameThread *ft    = t->fc->frame_thread;
@@ -197,7 +197,7 @@ int ff_vvc_task_ready(const AVTask *_t, void *user_data)
     return ready;
 }
 
-int ff_vvc_task_priority_higher(const AVTask *_a, const AVTask *_b)
+int ff_vvc_task_priority_higher(const VVCTasklet *_a, const VVCTasklet *_b)
 {
     const VVCTask *a = (const VVCTask*)_a;
     const VVCTask *b = (const VVCTask*)_b;
@@ -544,7 +544,7 @@ const static char* task_name[] = {
 
 typedef int (*run_func)(VVCContext *s, VVCLocalContext *lc, VVCTask *t);
 
-int ff_vvc_task_run(AVTask *_t, void *local_context, void *user_data)
+int ff_vvc_task_run(VVCTasklet *_t, void *local_context, void *user_data)
 {
     VVCTask *t              = (VVCTask*)_t;
     VVCContext *s           = (VVCContext *)user_data;
@@ -719,7 +719,7 @@ void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t)
 
     pthread_mutex_unlock(&ft->lock);
 
-    avpriv_executor_execute(s->executor, &t->task);
+    vvc_executor_execute(s->executor, &t->task);
 }
 
 int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
@@ -737,7 +737,7 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
                 if (!(atomic_load(ft->avails + rs) & mask)) {
                     atomic_store(&ft->ret, AVERROR_INVALIDDATA);
                     // maybe all thread are waiting, let us wake up them
-                    avpriv_executor_wakeup(s->executor);
+                    vvc_executor_wakeup(s->executor);
                     break;
                 }
             }

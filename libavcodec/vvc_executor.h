@@ -21,11 +21,11 @@
 #ifndef AVUTIL_EXECUTOR_H
 #define AVUTIL_EXECUTOR_H
 
-typedef struct AVExecutor AVExecutor;
-typedef struct AVTask AVTask;
+typedef struct VVCExecutor VVCExecutor;
+typedef struct VVCTasklet VVCTasklet;
 
-struct AVTask {
-    AVTask *next;
+struct VVCTasklet {
+    VVCTasklet *next;
 };
 
 typedef struct AVTaskCallbacks {
@@ -34,13 +34,13 @@ typedef struct AVTaskCallbacks {
     int local_context_size;
 
     // return 1 if a's priority > b's priority
-    int (*priority_higher)(const AVTask *a, const AVTask *b);
+    int (*priority_higher)(const VVCTasklet *a, const VVCTasklet *b);
 
     // task is ready for run
-    int (*ready)(const AVTask *t, void *user_data);
+    int (*ready)(const VVCTasklet *t, void *user_data);
 
     // run the task
-    int (*run)(AVTask *t, void *local_context, void *user_data);
+    int (*run)(VVCTasklet *t, void *local_context, void *user_data);
 } AVTaskCallbacks;
 
 /**
@@ -49,25 +49,25 @@ typedef struct AVTaskCallbacks {
  * @param thread_count worker thread number
  * @return return the executor
  */
-AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
+VVCExecutor* vvc_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
 
 /**
  * Free executor
  * @param e  pointer to executor
  */
-void avpriv_executor_free(AVExecutor **e);
+void vvc_executor_free(VVCExecutor **e);
 
 /**
  * Add task to executor
  * @param e pointer to executor
  * @param t pointer to task
  */
-void avpriv_executor_execute(AVExecutor *e, AVTask *t);
+void vvc_executor_execute(VVCExecutor *e, VVCTasklet *t);
 
 /**
  * Wakeup all threads
  * @param e pointer to executor
  */
-void avpriv_executor_wakeup(AVExecutor *e);
+void vvc_executor_wakeup(VVCExecutor *e);
 
 #endif
