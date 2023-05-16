@@ -24,9 +24,9 @@
 #ifndef AVCODEC_VVCDSP_H
 #define AVCODEC_VVCDSP_H
 
-#include "libavutil/mem_internal.h"
+#include "libavcodec/get_bits.h"
 
-#include "get_bits.h"
+#include "libavutil/mem_internal.h"
 
 enum TxType {
     DCT2,

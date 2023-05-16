@@ -26,24 +26,25 @@
 
 #include <stdatomic.h>
 
+#include "libavcodec/avcodec.h"
+#include "libavcodec/bswapdsp.h"
+#include "libavcodec/cabac.h"
+#include "libavcodec/cbs_h266.h"
+#include "libavcodec/get_bits.h"
+#include "libavcodec/h2645_parse.h"
+#include "libavcodec/internal.h"
+#include "libavcodec/threadframe.h"
+#include "libavcodec/videodsp.h"
+#include "libavcodec/vvc.h"
+
 #include "libavutil/buffer.h"
 #include "libavutil/md5.h"
 #include "libavutil/mem_internal.h"
 #include "libavutil/thread.h"
 
-#include "avcodec.h"
-#include "bswapdsp.h"
-#include "cabac.h"
-#include "cbs_h266.h"
-#include "get_bits.h"
-#include "h2645_parse.h"
-#include "vvc.h"
 #include "vvc_executor.h"
 #include "vvc_ps.h"
 #include "vvcdsp.h"
-#include "internal.h"
-#include "threadframe.h"
-#include "videodsp.h"
 
 #define LUMA                    0
 #define CHROMA                  1

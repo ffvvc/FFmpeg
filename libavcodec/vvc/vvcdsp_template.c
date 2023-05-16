@@ -20,10 +20,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "get_bits.h"
+#include "libavcodec/get_bits.h"
+#include "libavcodec/bit_depth_template.c"
+
 #include "vvcdec.h"
 
-#include "bit_depth_template.c"
 #include "vvcdsp.h"
 #include "vvc_inter_template.c"
 #include "vvc_intra_template.c"

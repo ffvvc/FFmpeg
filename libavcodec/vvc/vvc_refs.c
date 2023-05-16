@@ -20,14 +20,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavcodec/internal.h"
+#include "libavcodec/thread.h"
+#include "libavcodec/vvc.h"
+
 #include "libavutil/avassert.h"
 #include "libavutil/pixdesc.h"
 
-#include "internal.h"
-#include "thread.h"
 #include "vvc_thread.h"
 #include "vvc_refs.h"
-#include "vvc.h"
 #include "vvcdec.h"
 
 #define VVC_FRAME_FLAG_OUTPUT    (1 << 0)

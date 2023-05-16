@@ -25,13 +25,13 @@
 
 #include <stdint.h>
 
+#include "libavcodec/avcodec.h"
+#include "libavcodec/get_bits.h"
+#include "libavcodec/vvc.h"
+
 #include "libavutil/buffer.h"
 #include "libavutil/pixfmt.h"
 #include "libavutil/rational.h"
-
-#include "avcodec.h"
-#include "get_bits.h"
-#include "vvc.h"
 
 #define IS_VCL(t) ((t) <= VVC_RSV_IRAP_11 && (t) >= VVC_TRAIL_NUT)
 
