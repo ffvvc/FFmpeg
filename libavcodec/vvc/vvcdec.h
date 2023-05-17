@@ -30,6 +30,8 @@
 #include "libavcodec/vvc.h"
 #include "libavutil/executor.h"
 
+#include "vvc_ps.h"
+
 #define LUMA                    0
 #define CHROMA                  1
 #define CB                      1
@@ -268,6 +270,8 @@ struct VVCFrameContext {
 typedef struct VVCContext {
     const AVClass *c;       // needed by private avoptions
     AVCodecContext *avctx;
+
+    VVCParamSets ps;
 
     int temporal_id;        ///< temporal_id_plus1 - 1
     int pocTid0;
