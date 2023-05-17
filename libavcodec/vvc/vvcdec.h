@@ -181,6 +181,7 @@ typedef struct VVCFrame {
 
 struct SliceContext {
     int slice_idx;
+    VVCSH sh;
     EntryPoint *eps;
     int nb_eps;
 };
@@ -193,6 +194,7 @@ struct VVCFrameContext {
 
     AVFrame *frame;
     AVFrame *output_frame;
+    VVCFrameParamSets ps;
 
     SliceContext  **slices;
     int nb_slices;
@@ -217,6 +219,9 @@ struct VVCFrameContext {
     struct {
         int16_t *slice_idx;
 
+        DBParams  *deblock;
+        SAOParams *sao;
+        ALFParams *alf;
         DMVRInfo  *dmvr;
 
         int     *cb_pos_x[2];                           ///< CbPosX[][][]
