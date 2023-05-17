@@ -119,7 +119,6 @@ typedef struct EntryPoint EntryPoint;
 typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
-typedef struct DMVRInfo DMVRInfo;
 typedef struct CTU CTU;
 typedef struct SAOParams SAOParams;
 typedef struct ALFParams ALFParams;
@@ -166,6 +165,7 @@ typedef struct VVCFrame {
 
 struct SliceContext {
     int slice_idx;
+    VVCSH sh;
     EntryPoint *eps;
     int nb_eps;
     RefPicList *rpl;
@@ -179,6 +179,7 @@ struct VVCFrameContext {
 
     AVFrame *frame;
     AVFrame *output_frame;
+    VVCFrameParamSets ps;
 
     SliceContext  **slices;
     int nb_slices;
@@ -204,7 +205,9 @@ struct VVCFrameContext {
     struct {
         int16_t *slice_idx;
 
-        DMVRInfo  *dmvr;
+        DBParams  *deblock;
+        SAOParams *sao;
+        ALFParams *alf;
 
         int     *cb_pos_x[2];                           ///< CbPosX[][][]
         int     *cb_pos_y[2];                           ///< CbPosY[][][]
