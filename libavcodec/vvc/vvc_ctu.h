@@ -23,6 +23,8 @@
 #ifndef AVCODEC_VVC_CTU_H
 #define AVCODEC_VVC_CTU_H
 
+#include "libavcodec/cabac.h"
+
 #include "vvcdec.h"
 
 typedef struct NeighbourAvailable {
@@ -370,4 +372,6 @@ struct ALFParams {
     uint8_t applied[3];
 };
 
+//utils
+void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0, int w, int h);
 #endif // AVCODEC_VVC_CTU_H
