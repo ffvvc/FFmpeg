@@ -374,4 +374,6 @@ struct ALFParams {
 
 //utils
 void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0, int w, int h);
+void ff_vvc_decode_neighbour(VVCLocalContext *lc, int x_ctb, int y_ctb, int rx, int ry, int rs);
+void ff_vvc_ctu_free_cus(CTU *ctu);
 #endif // AVCODEC_VVC_CTU_H
