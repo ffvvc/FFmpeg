@@ -12,4 +12,5 @@ OBJS-$(CONFIG_VVC_DECODER)          +=  vvc/vvcdec.o            \
                                         vvc/vvc_inter.o         \
                                         vvc/vvc_itx_1d.o        \
                                         vvc/vvc_intra.o         \
-                                        vvc/vvc_filter.o
+                                        vvc/vvc_filter.o        \
+                                        vvc/vvcdsp.o
