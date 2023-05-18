@@ -31,6 +31,7 @@
 
 #include "vvc_executor.h"
 #include "vvc_ps.h"
+#include "vvcdsp.h"
 
 #define LUMA                    0
 #define CHROMA                  1
@@ -202,6 +203,7 @@ struct VVCFrameContext {
 
     VVCFrame *ref;
 
+    VVCDSPContext vvcdsp;
     VideoDSPContext vdsp;
 
     VVCFrameThread *frame_thread;
