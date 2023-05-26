@@ -20,7 +20,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "vvc.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
 #include "vvc_refs.h"
