@@ -20,9 +20,12 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#include "libavcodec/avcodec.h"
+#include "libavcodec/golomb.h"
+
 #include "libavutil/imgutils.h"
-#include "libavutil/internal.h"
-#include "golomb.h"
+
 #include "vvc_data.h"
 #include "vvc_ps.h"
 #include "vvcdec.h"

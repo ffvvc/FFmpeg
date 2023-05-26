@@ -26,8 +26,6 @@
 
 #include "libavutil/mem_internal.h"
 
-#include "get_bits.h"
-
 enum TxType {
     DCT2,
     DST7,
@@ -142,6 +140,7 @@ typedef struct VVCLFDSPContext {
         uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
 } VVCLFDSPContext;
 
+struct SAOParams;
 typedef struct VVCSAODSPContext {
     void (*band_filter[9])(uint8_t *_dst, uint8_t *_src, ptrdiff_t _dst_stride, ptrdiff_t _src_stride,
         int16_t *sao_offset_val, int sao_left_class, int width, int height);

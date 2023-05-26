@@ -20,6 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdatomic.h>
+
+#include "libavutil/thread.h"
+
 #include "vvc_thread.h"
 #include "vvc_ctu.h"
 #include "vvc_filter.h"

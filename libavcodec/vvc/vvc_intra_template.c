@@ -20,9 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/pixdesc.h"
+#include "libavcodec/bit_depth_template.c"
 
-#include "bit_depth_template.c"
 #include "vvc_data.h"
 #include "vvc_intra.h"
 

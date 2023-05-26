@@ -25,8 +25,8 @@
 
 #include "libavcodec/avcodec.h"
 
-#include "libavcodec/vvcdsp.h"
-#include "libavcodec/vvcdec.h"
+#include "libavcodec/vvc/vvcdsp.h"
+#include "libavcodec/vvc/vvcdec.h"
 
 #include "checkasm.h"
 

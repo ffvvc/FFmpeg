@@ -24,10 +24,10 @@
 #include "config.h"
 
 #include "libavutil/cpu.h"
+#include "libavcodec/vvc/vvcdec.h"
+#include "libavcodec/vvc/vvcdsp.h"
 #include "libavutil/x86/asm.h"
 #include "libavutil/x86/cpu.h"
-#include "libavcodec/vvcdec.h"
-#include "libavcodec/vvcdsp.h"
 #include "libavcodec/x86/vvcdsp.h"
 
 #define PIXEL_MAX_8  ((1 << 8)  - 1)

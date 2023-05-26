@@ -20,10 +20,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/common.h"
-#include "libavutil/internal.h"
-
-#include "cabac_functions.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
 #include "vvc_filter.h"

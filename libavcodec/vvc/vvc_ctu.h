@@ -23,6 +23,8 @@
 #ifndef AVCODEC_VVC_CTU_H
 #define AVCODEC_VVC_CTU_H
 
+#include "libavcodec/cabac.h"
+
 #include "vvcdec.h"
 
 typedef struct NeighbourAvailable {

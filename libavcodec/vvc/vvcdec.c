@@ -22,32 +22,19 @@
  */
 #include "config_components.h"
 
-#include "libavutil/attributes.h"
-#include "libavutil/common.h"
-#include "libavutil/cpu.h"
-#include "libavutil/display.h"
-#include "libavutil/internal.h"
-#include "libavutil/mastering_display_metadata.h"
-#include "libavutil/md5.h"
-#include "libavutil/opt.h"
-#include "libavutil/pixdesc.h"
-#include "libavutil/stereo3d.h"
-#include "libavutil/timecode.h"
+#include "libavcodec/codec_internal.h"
+#include "libavcodec/decode.h"
+#include "libavcodec/profiles.h"
+#include "libavcodec/vvc.h"
 
-#include "bswapdsp.h"
-#include "bytestream.h"
-#include "codec_internal.h"
-#include "decode.h"
-#include "golomb.h"
-#include "vvc.h"
+#include "libavutil/cpu.h"
+#include "libavutil/thread.h"
+
 #include "vvcdec.h"
 #include "vvc_ctu.h"
 #include "vvc_data.h"
 #include "vvc_refs.h"
 #include "vvc_thread.h"
-#include "profiles.h"
-#include "thread.h"
-#include "threadframe.h"
 
 static int vvc_frame_start(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 {

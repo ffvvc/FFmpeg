@@ -62,6 +62,7 @@ OBJS = ac3_parser.o                                                     \
        xiph.o                                                           \
 
 # subsystems
+include $(SRC_PATH)/libavcodec/vvc/Makefile
 OBJS-$(CONFIG_AANDCTTABLES)            += aandcttab.o
 OBJS-$(CONFIG_AC3DSP)                  += ac3dsp.o ac3.o ac3tab.o
 OBJS-$(CONFIG_ADTS_HEADER)             += adts_header.o mpeg4audio_sample_rates.o
@@ -169,7 +170,6 @@ OBJS-$(CONFIG_VIDEODSP)                += videodsp.o
 OBJS-$(CONFIG_VP3DSP)                  += vp3dsp.o
 OBJS-$(CONFIG_VP56DSP)                 += vp56dsp.o
 OBJS-$(CONFIG_VP8DSP)                  += vp8dsp.o
-OBJS-$(CONFIG_VVCPARSE)                += vvc_ps.o vvc_data.o h2645data.o h2645_parse.o h2645_vui.o
 OBJS-$(CONFIG_V4L2_M2M)                += v4l2_m2m.o v4l2_context.o v4l2_buffers.o v4l2_fmt.o
 OBJS-$(CONFIG_WMA_FREQS)               += wma_freqs.o
 OBJS-$(CONFIG_WMV2DSP)                 += wmv2dsp.o
@@ -426,10 +426,6 @@ OBJS-$(CONFIG_HEVC_DECODER)            += hevcdec.o hevc_mvs.o \
                                           hevc_cabac.o hevc_refs.o hevcpred.o    \
                                           hevcdsp.o hevc_filter.o hevc_data.o \
                                           h274.o
-OBJS-$(CONFIG_VVC_DECODER)             += vvcdec.o vvc_ps.o vvc_thread.o vvc_cabac.o \
-                                          vvc_ctu.o vvcdsp.o vvc_itx_1d.o vvc_intra.o \
-                                          vvc_inter.o vvc_mvs.o vvc_refs.o vvc_filter.o\
-                                          vvc_data.o
 OBJS-$(CONFIG_HEVC_AMF_ENCODER)        += amfenc_hevc.o
 OBJS-$(CONFIG_HEVC_CUVID_DECODER)      += cuviddec.o
 OBJS-$(CONFIG_HEVC_MEDIACODEC_DECODER) += mediacodecdec.o
