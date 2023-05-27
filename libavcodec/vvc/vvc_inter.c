@@ -1,5 +1,5 @@
 /*
- * VVC inter predict
+ * VVC inter prediction
  *
  * Copyright (C) 2022 Nuo Mi
  *
@@ -20,7 +20,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "vvc_cabac.h"
 #include "vvc_data.h"
 #include "vvc_inter.h"
 #include "vvc_mvs.h"

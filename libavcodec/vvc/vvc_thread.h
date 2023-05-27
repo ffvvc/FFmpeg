@@ -67,9 +67,7 @@ int ff_vvc_task_run(Tasklet *t, void *local_context, void *user_data);
 
 int ff_vvc_frame_thread_init(VVCFrameContext *fc);
 void ff_vvc_frame_thread_free(VVCFrameContext *fc);
-
-int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
-
 void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t);
+int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
 
 #endif // AVCODEC_VVC_THREAD_H

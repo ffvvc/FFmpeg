@@ -1,5 +1,5 @@
 /*
- * VVC inter DSP
+ * VVC inter prediction DSP
  *
  * Copyright (C) 2022 Nuo Mi
  *

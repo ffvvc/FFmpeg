@@ -23,7 +23,6 @@
 #include "vvc_ctu.h"
 #include "vvc_data.h"
 #include "vvc_refs.h"
-#include "vvc_thread.h"
 #include "vvc_mvs.h"
 
 #define IS_SAME_MV(a, b) (AV_RN64A(a) == AV_RN64A(b))
@@ -1806,4 +1805,3 @@ MvField* ff_vvc_get_mvf(const VVCFrameContext *fc, const int x0, const int y0)
 
     return &TAB_MVF(x0, y0);
 }
-
