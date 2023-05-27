@@ -2182,3 +2182,23 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, const int ctb_addr, const int r
     }
     return 0;
 }
+
+void ff_vvc_ctu_free_cus(CTU *ctu)
+{
+    while (ctu->cus) {
+        CodingUnit *cu      = ctu->cus;
+        AVBufferRef *buf    = cu->buf;
+
+        ctu->cus = ctu->cus->next;
+        av_buffer_unref(&buf);
+    }
+}
+
+int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)
+{
+    const int min_cb_log2_size_y = fc->ps.sps->min_cb_log2_size_y;
+    const int x                  = xc >> min_cb_log2_size_y;
+    const int y                  = yc >> min_cb_log2_size_y;
+    return fc->tab.qp[LUMA][x + y * fc->ps.pps->min_cb_width];
+}
+

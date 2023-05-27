@@ -400,7 +400,7 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, i
 //utils
 void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0, int w, int h);
 void ff_vvc_decode_neighbour(VVCLocalContext *lc, int x_ctb, int y_ctb, int rx, int ry, int rs);
-int ff_vvc_get_qPy(const VVCFrameContext *fc, int xc, int yc);
 void ff_vvc_ctu_free_cus(CTU *ctu);
+int ff_vvc_get_qPy(const VVCFrameContext *fc, int xc, int yc);
 
 #endif // AVCODEC_VVC_CTU_H
