@@ -1,5 +1,5 @@
 /*
- * VVC inter decoder
+ * VVC inter prediction
  *
  * Copyright (C) 2023 Nuo Mi
  *

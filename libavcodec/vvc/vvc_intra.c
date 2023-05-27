@@ -1,5 +1,5 @@
 /*
- * VVC intra predict
+ * VVC intra prediction
  *
  * Copyright (C) 2021 Nuo Mi
  *

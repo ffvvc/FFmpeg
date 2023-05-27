@@ -1,5 +1,5 @@
 /*
- * VVC intra DSP
+ * VVC intra prediction DSP
  *
  * Copyright (C) 2021-2023 Nuomi
  *

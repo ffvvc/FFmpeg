@@ -1,5 +1,5 @@
 /*
- * VVC intra predict
+ * VVC intra prediction
  *
  * Copyright (C) 2021 Nuo Mi
  *
@@ -45,6 +45,5 @@ int ff_vvc_intra_pred_angle_derive(int pred_mode);
 int ff_vvc_intra_inv_angle_derive(int pred_mode);
 int ff_vvc_wide_angle_mode_mapping(const CodingUnit *cu,
     int tb_width, int tb_height, int c_idx, int pred_mode_intra);
-
 
 #endif // AVCODEC_VVC_INTRA_H
