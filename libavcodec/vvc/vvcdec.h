@@ -125,20 +125,6 @@ typedef struct CTU CTU;
 typedef struct SAOParams SAOParams;
 typedef struct ALFParams ALFParams;
 
-enum SAOType {
-    SAO_NOT_APPLIED = 0,
-    SAO_BAND,
-    SAO_EDGE,
-    SAO_APPLIED
-};
-
-enum SAOEOClass {
-    SAO_EO_HORIZ = 0,
-    SAO_EO_VERT,
-    SAO_EO_135D,
-    SAO_EO_45D,
-};
-
 typedef struct RefPicList {
     struct VVCFrame *ref[VVC_MAX_REF_ENTRIES];
     int list[VVC_MAX_REF_ENTRIES];
