@@ -168,9 +168,7 @@ typedef struct VVCFrame {
 
 struct SliceContext {
     int slice_idx;
-
     VVCSH sh;
-
     EntryPoint *eps;
     int nb_eps;
 };
