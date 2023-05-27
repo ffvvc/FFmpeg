@@ -24,7 +24,7 @@
 #include "vvc_data.h"
 #include "vvc_inter.h"
 #include "vvc_mvs.h"
-#include "vvc_thread.h"
+#include "vvc_refs.h"
 
 static const int bcw_w_lut[] = {4, 5, 3, 10, -2};
 

@@ -72,7 +72,4 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
 
 void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t);
 
-void ff_vvc_report_progress(VVCFrame *frame, int n);
-void ff_vvc_await_progress(VVCFrame *frame, int n);
-
 #endif // AVCODEC_VVC_THREAD_H

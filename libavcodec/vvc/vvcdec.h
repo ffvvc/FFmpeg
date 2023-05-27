@@ -24,7 +24,6 @@
 #ifndef AVCODEC_VVCDEC_H
 #define AVCODEC_VVCDEC_H
 
-#include <stdatomic.h>
 #include "libavcodec/executor.h"
 #include "libavcodec/h2645_parse.h"
 #include "libavcodec/threadframe.h"
@@ -150,12 +149,6 @@ typedef struct RefPicList {
 typedef struct RefPicListTab {
     RefPicList refPicList[2];
 } RefPicListTab;
-
-typedef struct FrameProgress {
-    atomic_int progress;
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
-} FrameProgress;
 
 typedef struct VVCFrame {
     AVFrame *frame;
