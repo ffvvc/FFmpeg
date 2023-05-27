@@ -208,13 +208,12 @@ typedef struct VVCVPS {
     uint8_t  num_ptls_minus1;
     uint8_t  pt_present_flag[VVC_MAX_PTLS];
     uint8_t  ptl_max_tid[VVC_MAX_PTLS];
-    //H266RawProfileTierLevel profile_tier_level[VVC_MAX_PTLS];
+
     uint8_t  ols_ptl_idx[VVC_MAX_TOTAL_NUM_OLSS];
 
     uint16_t num_dpb_params_minus1;
     uint8_t  sublayer_dpb_params_present_flag;
     uint8_t  dpb_max_tid[VVC_MAX_TOTAL_NUM_OLSS];
-    //H266DpbParameters dpb_params[VVC_MAX_TOTAL_NUM_OLSS];
     uint16_t ols_dpb_pic_width[VVC_MAX_TOTAL_NUM_OLSS];
     uint16_t ols_dpb_pic_height[VVC_MAX_TOTAL_NUM_OLSS];
     uint8_t  ols_dpb_chroma_format[VVC_MAX_TOTAL_NUM_OLSS];
@@ -222,11 +221,9 @@ typedef struct VVCVPS {
     uint16_t ols_dpb_params_idx[VVC_MAX_TOTAL_NUM_OLSS];
 
     uint8_t  timing_hrd_params_present_flag;
-    //H266RawGeneralTimingHrdParameters general_timing_hrd_parameters;
     uint8_t  sublayer_cpb_params_present_flag;
     uint16_t num_ols_timing_hrd_params_minus1;
     uint8_t  hrd_max_tid[VVC_MAX_TOTAL_NUM_OLSS];
-    //H266RawOlsTimingHrdParameters ols_timing_hrd_parameters;
     uint8_t  ols_timing_hrd_idx[VVC_MAX_TOTAL_NUM_OLSS];
 
     uint8_t data[4096];
@@ -304,8 +301,6 @@ typedef struct VirtualBoundaries {
 
 typedef struct VVCSPS {
     unsigned video_parameter_set_id;
-
-    //uint8_t separate_colour_plane_flag;
 
     VVCWindow output_window;
 
@@ -445,8 +440,8 @@ typedef struct VVCSPS {
 
     PTL ptl;
 
-    int hshift[3];
-    int vshift[3];
+    int hshift[VVC_MAX_SAMPLE_ARRAYS];
+    int vshift[VVC_MAX_SAMPLE_ARRAYS];
 
     //derived values
     unsigned int max_pic_order_cnt_lsb;                             ///< MaxPicOrderCntLsb
@@ -475,7 +470,6 @@ typedef struct DBParams {
 } DBParams;
 
 typedef struct VVCPPS {
-
     uint8_t  pic_parameter_set_id;
     uint8_t  seq_parameter_set_id;
     uint8_t  mixed_nalu_types_in_pic_flag;
