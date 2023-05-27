@@ -20,17 +20,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "libavutil/avutil.h"
-#include "libavutil/executor.h"
 #include "libavutil/thread.h"
+
+#include "executor.h"
 
 typedef struct ThreadInfo {
     int idx;
-    AVExecutor *e;
+    Executor *e;
     pthread_t thread;
 } ThreadInfo;
 
-struct AVExecutor {
-    AVTaskCallbacks cb;
+struct Executor {
+    TaskCallbacks cb;
     ThreadInfo *threads;
     uint8_t *local_contexts;
     int thread_count;
@@ -38,16 +39,16 @@ struct AVExecutor {
     pthread_mutex_t lock;
     pthread_cond_t cond;
     int die;
-    AVTask *tasks;
+    Tasklet *tasks;
 };
 
-static void remove_task(AVTask **prev, AVTask *t)
+static void remove_task(Tasklet **prev, Tasklet *t)
 {
     *prev  = t->next;
     t->next = NULL;
 }
 
-static void add_task(AVTask **prev, AVTask *t)
+static void add_task(Tasklet **prev, Tasklet *t)
 {
     t->next = *prev;
     *prev   = t;
@@ -56,14 +57,14 @@ static void add_task(AVTask **prev, AVTask *t)
 static void *executor_worker_task(void *data)
 {
     ThreadInfo *ti = (ThreadInfo*)data;
-    AVExecutor *e = ti->e;
+    Executor *e = ti->e;
     void *lc       = e->local_contexts + ti->idx * e->cb.local_context_size;
-    AVTask **prev;
-    AVTaskCallbacks *cb = &e->cb;
+    Tasklet **prev;
+    TaskCallbacks *cb = &e->cb;
 
     pthread_mutex_lock(&e->lock);
     while (1) {
-        AVTask* t = NULL;
+        Tasklet* t = NULL;
         if (e->die) break;
 
         for (prev = &e->tasks; *prev; prev = &(*prev)->next) {
@@ -87,9 +88,9 @@ static void *executor_worker_task(void *data)
     return NULL;
 }
 
-AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
+Executor* ff_executor_alloc(const TaskCallbacks *cb, int thread_count)
 {
-    AVExecutor *e;
+    Executor *e;
     int i, j, ret;
     if (!cb || !cb->user_data || !cb->ready || !cb->run || !cb->priority_higher)
         return NULL;
@@ -147,9 +148,9 @@ free_executor:
     return NULL;
 }
 
-void avpriv_executor_free(AVExecutor **executor)
+void ff_executor_free(Executor **executor)
 {
-    AVExecutor *e;
+    Executor *e;
     if (!executor || !*executor)
         return;
     e = *executor;
@@ -171,10 +172,10 @@ void avpriv_executor_free(AVExecutor **executor)
     av_freep(executor);
 }
 
-void avpriv_executor_execute(AVExecutor *e, AVTask *t)
+void ff_executor_execute(Executor *e, Tasklet *t)
 {
-    AVTaskCallbacks *cb = &e->cb;
-    AVTask **prev;
+    TaskCallbacks *cb = &e->cb;
+    Tasklet **prev;
 
     pthread_mutex_lock(&e->lock);
     for (prev = &e->tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
@@ -184,7 +185,7 @@ void avpriv_executor_execute(AVExecutor *e, AVTask *t)
     pthread_mutex_unlock(&e->lock);
 }
 
-void avpriv_executor_wakeup(AVExecutor *e)
+void ff_executor_wakeup(Executor *e)
 {
     pthread_mutex_lock(&e->lock);
     pthread_cond_broadcast(&e->cond);
