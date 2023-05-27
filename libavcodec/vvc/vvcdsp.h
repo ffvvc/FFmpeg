@@ -1,5 +1,5 @@
 /*
- * VVC video decoder
+ * VVC DSP
  *
  * Copyright (C) 2021 Nuo Mi
  *
@@ -24,7 +24,8 @@
 #ifndef AVCODEC_VVCDSP_H
 #define AVCODEC_VVCDSP_H
 
-#include "libavutil/mem_internal.h"
+#include <stdint.h>
+#include <stddef.h>
 
 enum TxType {
     DCT2,
@@ -61,7 +62,7 @@ typedef struct VVCInterDSPContext {
         uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, const int16_t *src2,
         int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
     void (*put_bi_w[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
-        uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t _src_stride, const int16_t *src2,
+        uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, const int16_t *src2,
         int height, int denom, int wx0, int wx1, int ox0, int ox1,
         intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
 
@@ -103,27 +104,23 @@ typedef struct VVCIntraDSPContext {
     void (*intra_cclm_pred)(const struct VVCLocalContext *lc, int x0, int y0, int w, int h);
     void (*lmcs_scale_chroma)(struct VVCLocalContext *lc, int *dst, const int *coeff, int w, int h, int x0_cu, int y0_cu);
     void (*intra_pred)(const struct VVCLocalContext *lc, int x0, int y0, int w, int h, int c_idx);
-
-    void (*pred_planar)(uint8_t *src, const uint8_t *top, const uint8_t *left,
-                        int w, int h, ptrdiff_t stride);
-    void (*pred_mip)(uint8_t *src, const uint8_t *top, const uint8_t *left,
-                        int w, int h, ptrdiff_t stride, int mode_id, int is_transpose);
-    void (*pred_dc)(uint8_t *src, const uint8_t *top, const uint8_t *left,
-                        int w, int h, ptrdiff_t stride);
-    void (*pred_v)(uint8_t *_src, const uint8_t *_top, int w, int h, ptrdiff_t stride);
-    void (*pred_h)(uint8_t *_src, const uint8_t *_left, int w, int h, ptrdiff_t stride);
-    void (*pred_angular_v)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
-                           int w, int h, ptrdiff_t stride, int c_idx, int mode,
-                           int ref_idx, int filter_flag, int need_pdpc);
-    void (*pred_angular_h)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
-                           int w, int h, ptrdiff_t stride, int c_idx, int mode,
-                           int ref_idx, int filter_flag, int need_pdpc);
+    void (*pred_planar)(uint8_t *src, const uint8_t *top, const uint8_t *left, int w, int h, ptrdiff_t stride);
+    void (*pred_mip)(uint8_t *src, const uint8_t *top, const uint8_t *left, int w, int h, ptrdiff_t stride,
+        int mode_id, int is_transpose);
+    void (*pred_dc)(uint8_t *src, const uint8_t *top, const uint8_t *left, int w, int h, ptrdiff_t stride);
+    void (*pred_v)(uint8_t *src, const uint8_t *_top, int w, int h, ptrdiff_t stride);
+    void (*pred_h)(uint8_t *src, const uint8_t *_left, int w, int h, ptrdiff_t stride);
+    void (*pred_angular_v)(uint8_t *src, const uint8_t *_top, const uint8_t *_left,
+        int w, int h, ptrdiff_t stride, int c_idx, int mode, int ref_idx, int filter_flag, int need_pdpc);
+    void (*pred_angular_h)(uint8_t *src, const uint8_t *_top, const uint8_t *_left, int w, int h, ptrdiff_t stride,
+        int c_idx, int mode, int ref_idx, int filter_flag, int need_pdpc);
 } VVCIntraDSPContext;
 
 typedef struct VVCItxDSPContext {
     void (*add_residual)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride);
     void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
     void (*pred_residual_joint)(int *buf, int width, int height, int c_sign, int shift);
+
     void (*itx[N_TX_TYPE][N_TX_SIZE])(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step);
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int depth);
 } VVCItxDSPContext;
@@ -134,6 +131,7 @@ typedef struct VVCLMCSDSPContext {
 
 typedef struct VVCLFDSPContext {
     int (*ladf_level[2 /* h, v */])(const uint8_t *pix, ptrdiff_t stride);
+
     void (*filter_luma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
     void (*filter_chroma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
@@ -142,34 +140,27 @@ typedef struct VVCLFDSPContext {
 
 struct SAOParams;
 typedef struct VVCSAODSPContext {
-    void (*band_filter[9])(uint8_t *_dst, uint8_t *_src, ptrdiff_t _dst_stride, ptrdiff_t _src_stride,
+    void (*band_filter[9])(uint8_t *dst, uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
         int16_t *sao_offset_val, int sao_left_class, int width, int height);
-
     /* implicit src_stride parameter has value of 2 * MAX_PB_SIZE + AV_INPUT_BUFFER_PADDING_SIZE */
-    void (*edge_filter[9])(uint8_t *_dst /* align 16 */, uint8_t *_src /* align 32 */, ptrdiff_t dst_stride,
+    void (*edge_filter[9])(uint8_t *dst /* align 16 */, uint8_t *src /* align 32 */, ptrdiff_t dst_stride,
         int16_t *sao_offset_val, int sao_eo_class, int width, int height);
-
-    void (*edge_restore[2])(uint8_t *_dst, uint8_t *_src, ptrdiff_t _dst_stride, ptrdiff_t _src_stride,
-        struct SAOParams *sao, int *borders, int _width, int _height, int c_idx,
+    void (*edge_restore[2])(uint8_t *dst, uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+        struct SAOParams *sao, int *borders, int width, int height, int c_idx,
         uint8_t *vert_edge, uint8_t *horiz_edge, uint8_t *diag_edge);
 } VVCSAODSPContext;
 
 typedef struct VVCALFDSPContext {
     void (*filter[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
         int width, int height, const int8_t *filter, const int16_t *clip);
-
     void (*filter_vb[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src,  ptrdiff_t src_stride,
         int width, int height, const int8_t *filter, const int16_t *clip, int vb_pos);
-
     void (*filter_cc)(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *luma, ptrdiff_t luma_stride,
         int width, int height, int hs, int vs, const int8_t *filter, int vb_pos);
 
-    void (*classify)(int *class_idx, int *transpose_idx,
-        const uint8_t *src, ptrdiff_t src_stride, int width, int height,
+    void (*classify)(int *class_idx, int *transpose_idx, const uint8_t *src, ptrdiff_t src_stride, int width, int height,
         int vb_pos, int *gradient_tmp);
-
-    void (*recon_coeff_and_clip)(int8_t *coeff, int16_t *clip,
-        const int *class_idx, const int *transpose_idx, int size,
+    void (*recon_coeff_and_clip)(int8_t *coeff, int16_t *clip, const int *class_idx, const int *transpose_idx, int size,
         const int8_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt);
 } VVCALFDSPContext;
 
