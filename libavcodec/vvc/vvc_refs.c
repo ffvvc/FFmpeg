@@ -58,7 +58,6 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
         frame->refPicList = NULL;
 
         frame->collocated_ref = NULL;
-
     }
 }
 
@@ -77,8 +76,7 @@ void ff_vvc_clear_refs(VVCFrameContext *fc)
     int i;
     for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++)
         ff_vvc_unref_frame(fc, &fc->DPB[i],
-                            VVC_FRAME_FLAG_SHORT_REF |
-                            VVC_FRAME_FLAG_LONG_REF);
+            VVC_FRAME_FLAG_SHORT_REF | VVC_FRAME_FLAG_LONG_REF);
 }
 
 static void free_progress(void *opaque, uint8_t *data)

@@ -22,7 +22,6 @@
 
 #include "vvc_cabac.h"
 #include "vvc_ctu.h"
-#include "vvc_data.h"
 #include "vvc_inter.h"
 #include "vvc_mvs.h"
 
@@ -2090,50 +2089,6 @@ static int hls_coding_tree_unit(VVCLocalContext *lc,  int x0, int y0)
     return 0;
 }
 
-void ff_vvc_decode_neighbour(VVCLocalContext *lc, const int x_ctb, const int y_ctb,
-    const int rx, const int ry, const int rs)
-{
-    VVCFrameContext *fc = lc->fc;
-    const int ctb_size         = fc->ps.sps->ctb_size_y;
-
-    lc->end_of_tiles_x = fc->ps.sps->width;
-    lc->end_of_tiles_y = fc->ps.sps->height;
-    if (fc->ps.pps->ctb_to_col_bd[rx] != fc->ps.pps->ctb_to_col_bd[rx + 1])
-        lc->end_of_tiles_x = FFMIN(x_ctb + ctb_size, lc->end_of_tiles_x);
-    if (fc->ps.pps->ctb_to_row_bd[ry] != fc->ps.pps->ctb_to_row_bd[ry + 1])
-        lc->end_of_tiles_y = FFMIN(y_ctb + ctb_size, lc->end_of_tiles_y);
-
-    lc->boundary_flags = 0;
-    if (rx > 0 && fc->ps.pps->ctb_to_col_bd[rx] != fc->ps.pps->ctb_to_col_bd[rx - 1])
-        lc->boundary_flags |= BOUNDARY_LEFT_TILE;
-    if (rx > 0 && fc->tab.slice_idx[rs] != fc->tab.slice_idx[rs - 1])
-        lc->boundary_flags |= BOUNDARY_LEFT_SLICE;
-    if (ry > 0 && fc->ps.pps->ctb_to_row_bd[ry] != fc->ps.pps->ctb_to_row_bd[ry - 1])
-        lc->boundary_flags |= BOUNDARY_UPPER_TILE;
-    if (ry > 0 && fc->tab.slice_idx[rs] != fc->tab.slice_idx[rs - fc->ps.pps->ctb_width])
-        lc->boundary_flags |= BOUNDARY_UPPER_SLICE;
-    lc->ctb_left_flag = rx > 0 && !(lc->boundary_flags & BOUNDARY_LEFT_TILE);
-    lc->ctb_up_flag   = ry > 0 && !(lc->boundary_flags & BOUNDARY_UPPER_TILE) && !(lc->boundary_flags & BOUNDARY_UPPER_SLICE);
-    lc->ctb_up_right_flag = lc->ctb_up_flag && (fc->ps.pps->ctb_to_col_bd[rx] == fc->ps.pps->ctb_to_col_bd[rx + 1]) &&
-        (fc->ps.pps->ctb_to_row_bd[ry] == fc->ps.pps->ctb_to_row_bd[ry - 1]);
-    lc->ctb_up_left_flag = lc->ctb_left_flag && lc->ctb_up_flag;
-}
-
-void ff_vvc_set_neighbour_available(VVCLocalContext *lc,
-    const int x0, const int y0, const int w, const int h)
-{
-    const int log2_ctb_size = lc->fc->ps.sps->ctb_log2_size_y;
-    const int x0b = av_mod_uintp2(x0, log2_ctb_size);
-    const int y0b = av_mod_uintp2(y0, log2_ctb_size);
-
-    lc->na.cand_up       = (lc->ctb_up_flag   || y0b);
-    lc->na.cand_left     = (lc->ctb_left_flag || x0b);
-    lc->na.cand_up_left  = (x0b || y0b) ? lc->na.cand_left && lc->na.cand_up : lc->ctb_up_left_flag;
-    lc->na.cand_up_right_sap =
-            (x0b + w == 1 << log2_ctb_size) ? lc->ctb_up_right_flag && !y0b : lc->na.cand_up;
-    lc->na.cand_up_right = lc->na.cand_up_right_sap && (x0 + w) < lc->end_of_tiles_x;
-}
-
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc, const int ctb_addr, const int rs, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -2181,6 +2136,50 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, const int ctb_addr, const int r
         }
     }
     return 0;
+}
+
+void ff_vvc_decode_neighbour(VVCLocalContext *lc, const int x_ctb, const int y_ctb,
+    const int rx, const int ry, const int rs)
+{
+    VVCFrameContext *fc = lc->fc;
+    const int ctb_size         = fc->ps.sps->ctb_size_y;
+
+    lc->end_of_tiles_x = fc->ps.sps->width;
+    lc->end_of_tiles_y = fc->ps.sps->height;
+    if (fc->ps.pps->ctb_to_col_bd[rx] != fc->ps.pps->ctb_to_col_bd[rx + 1])
+        lc->end_of_tiles_x = FFMIN(x_ctb + ctb_size, lc->end_of_tiles_x);
+    if (fc->ps.pps->ctb_to_row_bd[ry] != fc->ps.pps->ctb_to_row_bd[ry + 1])
+        lc->end_of_tiles_y = FFMIN(y_ctb + ctb_size, lc->end_of_tiles_y);
+
+    lc->boundary_flags = 0;
+    if (rx > 0 && fc->ps.pps->ctb_to_col_bd[rx] != fc->ps.pps->ctb_to_col_bd[rx - 1])
+        lc->boundary_flags |= BOUNDARY_LEFT_TILE;
+    if (rx > 0 && fc->tab.slice_idx[rs] != fc->tab.slice_idx[rs - 1])
+        lc->boundary_flags |= BOUNDARY_LEFT_SLICE;
+    if (ry > 0 && fc->ps.pps->ctb_to_row_bd[ry] != fc->ps.pps->ctb_to_row_bd[ry - 1])
+        lc->boundary_flags |= BOUNDARY_UPPER_TILE;
+    if (ry > 0 && fc->tab.slice_idx[rs] != fc->tab.slice_idx[rs - fc->ps.pps->ctb_width])
+        lc->boundary_flags |= BOUNDARY_UPPER_SLICE;
+    lc->ctb_left_flag = rx > 0 && !(lc->boundary_flags & BOUNDARY_LEFT_TILE);
+    lc->ctb_up_flag   = ry > 0 && !(lc->boundary_flags & BOUNDARY_UPPER_TILE) && !(lc->boundary_flags & BOUNDARY_UPPER_SLICE);
+    lc->ctb_up_right_flag = lc->ctb_up_flag && (fc->ps.pps->ctb_to_col_bd[rx] == fc->ps.pps->ctb_to_col_bd[rx + 1]) &&
+        (fc->ps.pps->ctb_to_row_bd[ry] == fc->ps.pps->ctb_to_row_bd[ry - 1]);
+    lc->ctb_up_left_flag = lc->ctb_left_flag && lc->ctb_up_flag;
+}
+
+void ff_vvc_set_neighbour_available(VVCLocalContext *lc,
+    const int x0, const int y0, const int w, const int h)
+{
+    const int log2_ctb_size = lc->fc->ps.sps->ctb_log2_size_y;
+    const int x0b = av_mod_uintp2(x0, log2_ctb_size);
+    const int y0b = av_mod_uintp2(y0, log2_ctb_size);
+
+    lc->na.cand_up       = (lc->ctb_up_flag   || y0b);
+    lc->na.cand_left     = (lc->ctb_left_flag || x0b);
+    lc->na.cand_up_left  = (x0b || y0b) ? lc->na.cand_left && lc->na.cand_up : lc->ctb_up_left_flag;
+    lc->na.cand_up_right_sap =
+            (x0b + w == 1 << log2_ctb_size) ? lc->ctb_up_right_flag && !y0b : lc->na.cand_up;
+    lc->na.cand_up_right = lc->na.cand_up_right_sap && (x0 + w) < lc->end_of_tiles_x;
 }
 
 void ff_vvc_ctu_free_cus(CTU *ctu)
