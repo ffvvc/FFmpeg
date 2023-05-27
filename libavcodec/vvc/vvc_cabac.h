@@ -1,5 +1,5 @@
 /*
- * VVC cabac decoder
+ * VVC CABAC decoder
  *
  * Copyright (C) 2022 Nuo Mi
  *
