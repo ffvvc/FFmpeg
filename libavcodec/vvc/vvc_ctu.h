@@ -27,6 +27,20 @@
 
 #include "vvcdec.h"
 
+enum SAOType {
+    SAO_NOT_APPLIED = 0,
+    SAO_BAND,
+    SAO_EDGE,
+    SAO_APPLIED
+};
+
+enum SAOEOClass {
+    SAO_EO_HORIZ = 0,
+    SAO_EO_VERT,
+    SAO_EO_135D,
+    SAO_EO_45D,
+};
+
 typedef struct NeighbourAvailable {
     int cand_left;
     int cand_up;
