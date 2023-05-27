@@ -29,6 +29,7 @@
 #include "vvc_filter.h"
 #include "vvc_inter.h"
 #include "vvc_intra.h"
+#include "vvc_refs.h"
 
 typedef struct VVCRowThread {
     VVCTask reconstruct_task;
@@ -757,30 +758,4 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d done\r\n", (int)fc->decode_order);
 #endif
     return ft->ret;
-}
-
-void ff_vvc_report_progress(VVCFrame *frame, int n)
-{
-    FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
-
-    pthread_mutex_lock(&p->lock);
-
-    av_assert0(p->progress < n || p->progress == INT_MAX);
-    p->progress = n;
-
-    pthread_cond_broadcast(&p->cond);
-    pthread_mutex_unlock(&p->lock);
-}
-
-void ff_vvc_await_progress(VVCFrame *frame, int n)
-{
-    FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
-
-    pthread_mutex_lock(&p->lock);
-
-    // +1 for progress default value 0
-    while (p->progress < n + 1)
-        pthread_cond_wait(&p->cond, &p->lock);
-
-    pthread_mutex_unlock(&p->lock);
 }
