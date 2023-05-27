@@ -76,17 +76,6 @@ fail:
     return ret;
 }
 
-void ff_vvc_ctu_free_cus(CTU *ctu)
-{
-    while (ctu->cus) {
-        CodingUnit *cu      = ctu->cus;
-        AVBufferRef *buf    = cu->buf;
-
-        ctu->cus = ctu->cus->next;
-        av_buffer_unref(&buf);
-    }
-}
-
 static void ctb_arrays_free(VVCFrameContext *fc)
 {
     av_freep(&fc->tab.deblock);
