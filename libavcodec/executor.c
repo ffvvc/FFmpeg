@@ -98,7 +98,7 @@ Executor* ff_executor_alloc(const TaskCallbacks *cb, int thread_count)
         return NULL;
     e->cb = *cb;
 
-    e->local_contexts = av_malloc(thread_count * e->cb.local_context_size);
+    e->local_contexts = av_calloc(thread_count, e->cb.local_context_size);
     if (!e->local_contexts)
         goto free_executor;
 
