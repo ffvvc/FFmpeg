@@ -25,7 +25,6 @@
 #include "executor.h"
 
 typedef struct ThreadInfo {
-    int idx;
     Executor *e;
     pthread_t thread;
 } ThreadInfo;
@@ -58,7 +57,7 @@ static void *executor_worker_task(void *data)
 {
     ThreadInfo *ti = (ThreadInfo*)data;
     Executor *e = ti->e;
-    void *lc       = e->local_contexts + ti->idx * e->cb.local_context_size;
+    void *lc       = e->local_contexts + (ti - e->threads) * e->cb.local_context_size;
     Tasklet **prev;
     TaskCallbacks *cb = &e->cb;
 
@@ -106,12 +105,6 @@ Executor* ff_executor_alloc(const TaskCallbacks *cb, int thread_count)
     e->threads = av_calloc(thread_count, sizeof(*e->threads));
     if (!e->threads)
         goto free_contexts;
-    for (i = 0; i < thread_count; i++) {
-        ThreadInfo *ti = e->threads + i;
-        ti->e = e;
-        ti->idx = i;
-    }
-
     ret = pthread_mutex_init(&e->lock, NULL);
     if (ret)
         goto free_threads;
@@ -122,6 +115,7 @@ Executor* ff_executor_alloc(const TaskCallbacks *cb, int thread_count)
 
     for (i = 0; i < thread_count; i++) {
         ThreadInfo *ti = e->threads + i;
+        ti->e = e;
         ret = pthread_create(&ti->thread, NULL, executor_worker_task, ti);
         if (ret)
             goto join_threads;
