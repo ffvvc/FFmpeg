@@ -259,9 +259,15 @@ static int map_pixel_format(VVCSPS *sps, void *log_ctx)
         if (sps->chroma_format_idc == 2) sps->pix_fmt = AV_PIX_FMT_YUV422P10;
         if (sps->chroma_format_idc == 3) sps->pix_fmt = AV_PIX_FMT_YUV444P10;
         break;
+    case 12:
+        if (sps->chroma_format_idc == 0) sps->pix_fmt = AV_PIX_FMT_GRAY12;
+        if (sps->chroma_format_idc == 1) sps->pix_fmt = AV_PIX_FMT_YUV420P12;
+        if (sps->chroma_format_idc == 2) sps->pix_fmt = AV_PIX_FMT_YUV422P12;
+        if (sps->chroma_format_idc == 3) sps->pix_fmt = AV_PIX_FMT_YUV444P12;
+        break;
     default:
         av_log(log_ctx, AV_LOG_ERROR,
-               "The following bit-depths are currently specified: 8, 10 bits, "
+               "The following bit-depths are currently specified: 8, 10, 12 bits, "
                "chroma_format_idc is %d, depth is %d\n",
                sps->chroma_format_idc, sps->bit_depth);
         return AVERROR_INVALIDDATA;
@@ -471,7 +477,7 @@ static int sps_parse_subpic(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
 static int sps_parse_bit_depth(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
 {
     sps->bit_depth = get_ue_golomb_long(gb) + 8;
-    if (sps->bit_depth > 10) {
+    if (sps->bit_depth > 12) {
         avpriv_report_missing_feature(log_ctx, "%d bits", sps->bit_depth);
         return AVERROR_PATCHWELCOME;
     }
