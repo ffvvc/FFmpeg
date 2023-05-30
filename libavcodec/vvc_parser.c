@@ -77,6 +77,11 @@ static const enum AVPixelFormat pix_fmts_10bit[] = {
     AV_PIX_FMT_YUV422P10, AV_PIX_FMT_YUV444P10
 };
 
+static const enum AVPixelFormat pix_fmts_12bit[] = {
+    AV_PIX_FMT_GRAY12, AV_PIX_FMT_YUV420P12,
+    AV_PIX_FMT_YUV422P12, AV_PIX_FMT_YUV444P12
+};
+
 static int get_format(const H266RawSPS *sps)
 {
     switch (sps->sps_bitdepth_minus8) {
@@ -84,6 +89,8 @@ static int get_format(const H266RawSPS *sps)
             return pix_fmts_8bit[sps->sps_chroma_format_idc];
         case 2:
             return pix_fmts_10bit[sps->sps_chroma_format_idc];
+        case 4:
+            return pix_fmts_12bit[sps->sps_chroma_format_idc];
     }
     return AV_PIX_FMT_NONE;
 }
