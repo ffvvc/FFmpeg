@@ -880,7 +880,7 @@ static int FUNC(vps)(CodedBitstreamContext *ctx, RWContext *rw,
             ues(vps_ols_dpb_pic_width[i], 0, UINT16_MAX, 1, i);
             ues(vps_ols_dpb_pic_height[i], 0, UINT16_MAX, 1, i);
             ubs(2, vps_ols_dpb_chroma_format[i], 1, i);
-            ues(vps_ols_dpb_bitdepth_minus8[i], 0, 2, 1, i);
+            ues(vps_ols_dpb_bitdepth_minus8[i], 0, 8, 1, i);
             if (vps_num_dpb_params > 1 && vps_num_dpb_params != num_multi_layer_olss)
                 ues(vps_ols_dpb_params_idx[i], 0, vps_num_dpb_params - 1, 1, i);
             else if (vps_num_dpb_params == 1)
@@ -1125,7 +1125,7 @@ static int FUNC(sps)(CodedBitstreamContext *ctx, RWContext *rw,
     }
 
 
-    ue(sps_bitdepth_minus8,   0, 2);
+    ue(sps_bitdepth_minus8, 0, 8);
     qp_bd_offset = 6 * current->sps_bitdepth_minus8;
 
     flag(sps_entropy_coding_sync_enabled_flag);
