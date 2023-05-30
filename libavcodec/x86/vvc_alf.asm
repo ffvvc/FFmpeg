@@ -132,7 +132,7 @@ SECTION .text
     %define filters m %+ j
     %define clips m %+ k
 
-    pshufb          m14, clips, [param_shuffe_ %+ i]          ;clip
+    pshufb          m14, clips, [param_shuffe_ %+ i]        ;clip
     pxor            m13, m13
     psubw           m13, m14                                ;-clip
 
@@ -175,13 +175,13 @@ SECTION .text
 ;filter pixels for luma and chroma
 %macro FILTER 0
     %if LUMA
-        FILTER          0, src_stride3q ,           src_strideq  * 2 + ps,  src_strideq  * 2
-        FILTER          3, src_strideq  * 2 - ps,   src_strideq  + 2 * ps,  src_strideq  + ps
-        FILTER          6, src_strideq,             src_strideq  - ps,      src_strideq  + -2 * ps
-        FILTER          9, src_stride0q + 3 * ps,   src_stride0q + 2 * ps,  src_stride0q + ps
+        FILTER          0, src_strideq  * 2 + src_strideq,  src_strideq  * 2 + ps,  src_strideq  * 2
+        FILTER          3, src_strideq  * 2 - ps,           src_strideq  + 2 * ps,  src_strideq  + ps
+        FILTER          6, src_strideq,                     src_strideq  - ps,      src_strideq  - 2 * ps
+        FILTER          9, src_stride0q + 3 * ps,           src_stride0q + 2 * ps,  src_stride0q + ps
     %else
-        FILTER          0, src_strideq * 2,         src_strideq  + ps,      src_strideq
-        FILTER          3, src_strideq - ps,        src_stride0q + 2 * ps,  src_stride0q + ps
+        FILTER          0, src_strideq * 2,                 src_strideq  + ps,      src_strideq
+        FILTER          3, src_strideq - ps,                src_stride0q + 2 * ps,  src_stride0q + ps
     %endif
 %endmacro
 
@@ -231,11 +231,9 @@ SECTION .text
 ; see c code for p0 to p6
 
 cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
-    tmp, offset, src_stride3, src_stride0, dst_stride3
+    tmp, offset, src_stride0
 ;pixel size
 %define ps (%1 / 8)
-    lea             src_stride3q, [src_strideq * 2 + src_strideq]
-    lea             dst_stride3q, [dst_strideq * 2 + dst_strideq]
 
     ;avoid "warning : absolute address can not be RIP-relative""
     mov             src_stride0q, 0
