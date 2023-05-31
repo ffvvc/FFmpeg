@@ -160,12 +160,11 @@ SECTION .text
 %macro FILTER 4
     %assign %%i (%1)
     %rep 3
-        mov             tmpq, srcq
         lea             offsetq, [%2]
-        sub             tmpq, offsetq
-        LOAD_PIXELS     m9, [tmpq]
-        lea             tmpq, [srcq + offsetq]
-        LOAD_PIXELS     m10, [tmpq]
+        LOAD_PIXELS     m10, [srcq + offsetq]
+        neg             offsetq
+        LOAD_PIXELS     m9, [srcq + offsetq]
+
         FILTER  %%i
         %assign %%i %%i+1
         %rotate 1
@@ -231,7 +230,7 @@ SECTION .text
 ; see c code for p0 to p6
 
 cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
-    tmp, offset, src_stride0
+    offset, src_stride0
 ;pixel size
 %define ps (%1 / 8)
 
