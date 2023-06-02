@@ -61,7 +61,7 @@ static int FUNC(general_constraints_info)(CodedBitstreamContext *ctx,
                                           RWContext *rw,
                                           H266GeneralConstraintsInfo *current)
 {
-    int err, i;
+    int err, i, num_additional_bits_used;
 
     flag(gci_present_flag);
     if (current->gci_present_flag) {
@@ -149,7 +149,19 @@ static int FUNC(general_constraints_info)(CodedBitstreamContext *ctx,
         flag(gci_no_ladf_constraint_flag);
         flag(gci_no_virtual_boundaries_constraint_flag);
         ub(8, gci_num_reserved_bits);
-        for (i = 0; i < current->gci_num_reserved_bits; i++) {
+        if (current->gci_num_reserved_bits > 5) {
+            flag(gci_all_rap_pictures_constraint_flag);
+            flag(gci_no_extended_precision_processing_constraint_flag);
+            flag(gci_no_ts_residual_coding_rice_constraint_flag);
+            flag(gci_no_rrc_rice_extension_constraint_flag);
+            flag(gci_no_persistent_rice_adaptation_constraint_flag);
+            flag(gci_no_reverse_last_sig_coeff_constraint_flag);
+            num_additional_bits_used = 6;
+        } else {
+            num_additional_bits_used = 0;
+        }
+
+        for (i = 0; i < current->gci_num_reserved_bits - num_additional_bits_used; i++) {
             flags(gci_reserved_zero_bit[i], 1, i);
         }
     }
@@ -935,6 +947,23 @@ static int FUNC(vps)(CodedBitstreamContext *ctx, RWContext *rw,
     return 0;
 }
 
+static int FUNC(sps_range_extension)(CodedBitstreamContext *ctx, RWContext *rw,
+                                     H266RawSPS *current)
+{
+    int err;
+
+    flag(sps_extended_precision_flag);
+    if (current->sps_transform_skip_enabled_flag) {
+        flag(sps_ts_residual_coding_rice_present_in_sh_flag);
+    } else {
+        infer(sps_ts_residual_coding_rice_present_in_sh_flag, 0);
+    }
+    flag(sps_rrc_rice_extension_flag);
+    flag(sps_persistent_rice_adaptation_enabled_flag);
+    flag(sps_reverse_last_sig_coeff_enabled_flag);
+
+    return 0;
+}
 
 static int FUNC(sps)(CodedBitstreamContext *ctx, RWContext *rw,
                      H266RawSPS *current)
@@ -1485,8 +1514,32 @@ static int FUNC(sps)(CodedBitstreamContext *ctx, RWContext *rw,
     } else {
         CHECK(FUNC(vui_parameters_default)(ctx, rw, &current->vui));
     }
+
     flag(sps_extension_flag);
-    if (current->sps_extension_flag)
+    if (current->sps_extension_flag) {
+        flag(sps_range_extension_flag);
+        u(7, sps_extension_7bits, 0, 127);
+
+        if (current->sps_range_extension_flag) {
+            CHECK(FUNC(sps_range_extension)(ctx, rw, current));
+        } else {
+            infer(sps_extended_precision_flag, 0);
+            infer(sps_ts_residual_coding_rice_present_in_sh_flag, 0);
+            infer(sps_rrc_rice_extension_flag, 0);
+            infer(sps_persistent_rice_adaptation_enabled_flag, 0);
+            infer(sps_reverse_last_sig_coeff_enabled_flag, 0);
+        }
+    } else {
+        infer(sps_range_extension_flag, 0);
+        infer(sps_extension_7bits, 0);
+        infer(sps_extended_precision_flag, 0);
+        infer(sps_ts_residual_coding_rice_present_in_sh_flag, 0);
+        infer(sps_rrc_rice_extension_flag, 0);
+        infer(sps_persistent_rice_adaptation_enabled_flag, 0);
+        infer(sps_reverse_last_sig_coeff_enabled_flag, 0);
+    }
+
+    if (current->sps_extension_7bits)
         CHECK(FUNC(extension_data)(ctx, rw, &current->extension_data));
 
     CHECK(FUNC(rbsp_trailing_bits)(ctx, rw));
@@ -2921,6 +2974,18 @@ static int FUNC(slice_header)(CodedBitstreamContext *ctx, RWContext *rw,
         flag(sh_ts_residual_coding_disabled_flag);
     else
         infer(sh_ts_residual_coding_disabled_flag, 0);
+
+    if (!current->sh_ts_residual_coding_disabled_flag
+      && sps->sps_ts_residual_coding_rice_present_in_sh_flag)
+        u(3, sh_ts_residual_coding_rice_idx_minus1, 0, 7);
+    else
+        infer(sh_ts_residual_coding_rice_idx_minus1, 0);
+
+    if (sps->sps_reverse_last_sig_coeff_enabled_flag)
+        flag(sh_reverse_last_sig_coeff_flag);
+    else
+        infer(sh_reverse_last_sig_coeff_flag, 0);
+
     if (pps->pps_slice_header_extension_present_flag) {
         ue(sh_slice_header_extension_length, 0, 256);
         for (i = 0; i < current->sh_slice_header_extension_length; i++)
