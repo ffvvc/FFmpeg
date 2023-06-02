@@ -168,6 +168,13 @@ typedef struct GeneralConstraintsInfo {
     uint8_t no_lmcs_constraint_flag;
     uint8_t no_ladf_constraint_flag;
     uint8_t no_virtual_boundaries_constraint_flag;
+
+    uint8_t all_rap_pictures_constraint_flag;
+    uint8_t no_extended_precision_processing_constraint_flag;
+    uint8_t no_ts_residual_coding_rice_constraint_flag;
+    uint8_t no_rrc_rice_extension_constraint_flag;
+    uint8_t no_persistent_rice_adaptation_constraint_flag;
+    uint8_t no_reverse_last_sig_coeff_constraint_flag;
 } GeneralConstraintsInfo;
 
 typedef struct PTL {
@@ -442,6 +449,12 @@ typedef struct VVCSPS {
 
     int hshift[VVC_MAX_SAMPLE_ARRAYS];
     int vshift[VVC_MAX_SAMPLE_ARRAYS];
+
+    uint8_t extended_precision_flag;
+    uint8_t ts_residual_coding_rice_present_in_sh_flag;
+    uint8_t rrc_rice_extension_flag;
+    uint8_t persistent_rice_adaptation_enabled_flag;
+    uint8_t reverse_last_sig_coeff_enabled_flag;
 
     //derived values
     unsigned int max_pic_order_cnt_lsb;                             ///< MaxPicOrderCntLsb
@@ -777,6 +790,9 @@ typedef struct VVCSH {
 
     uint8_t  sign_data_hiding_used_flag;
     uint8_t  ts_residual_coding_disabled_flag;
+
+    uint8_t  ts_residual_coding_rice_idx_minus1;
+    uint8_t  reverse_last_sig_coeff_flag;
 
     //calculated value;
     uint8_t  collocated_list;                               ///< !sh_collocated_from_l0_flag
