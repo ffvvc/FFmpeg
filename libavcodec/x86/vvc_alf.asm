@@ -124,7 +124,7 @@ SECTION .text
 ;FILTER(param_idx)
 ;input: m2, m9, m10
 ;output: m0, m1
-;m13 ~ m15: tmp
+;m11 ~ m13: tmp
 %macro FILTER 1
     %assign i (%1 % 4)
     %assign j (%1 / 4 + 3)
@@ -132,28 +132,28 @@ SECTION .text
     %define filters m %+ j
     %define clips m %+ k
 
-    pshufb          m14, clips, [param_shuffe_ %+ i]        ;clip
-    pxor            m13, m13
-    psubw           m13, m14                                ;-clip
+    pshufb          m12, clips, [param_shuffe_ %+ i]        ;clip
+    pxor            m11, m11
+    psubw           m11, m12                                ;-clip
 
     vpsubw          m9, m2
-    CLIPW           m9, m13, m14
+    CLIPW           m9, m11, m12
 
     vpsubw          m10, m2
-    CLIPW           m10, m13, m14
+    CLIPW           m10, m11, m12
 
-    vpunpckhwd      m15, m9, m10
+    vpunpckhwd      m13, m9, m10
     vpunpcklwd      m9, m9, m10
 
-    pshufb          m14, filters, [param_shuffe_ %+ i]       ;filter
-    vpunpcklwd      m10, m14, m14
-    vpunpckhwd      m14, m14, m14
+    pshufb          m12, filters, [param_shuffe_ %+ i]       ;filter
+    vpunpcklwd      m10, m12, m12
+    vpunpckhwd      m12, m12, m12
 
     vpmaddwd        m9, m10
-    vpmaddwd        m14, m15
+    vpmaddwd        m12, m13
 
     paddd           m0, m9
-    paddd           m1, m14
+    paddd           m1, m12
 %endmacro
 
 ;FILTER(param_start, off0~off2)
