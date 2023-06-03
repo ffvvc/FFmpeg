@@ -2584,7 +2584,7 @@ int ff_vvc_decode_ph(VVCParamSets *ps, const int poc_tid0, const int is_clvss, G
 static int aps_alf_parse_luma(VVCALF *alf, GetBitContext *gb, void *log_ctx)
 {
     int     alf_luma_coeff_delta_idx[ALF_NUM_FILTERS_LUMA] = { 0 };
-    int8_t  luma_coeff   [ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA];
+    int16_t luma_coeff   [ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA];
     uint8_t luma_clip_idx[ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA];
 
     const int alf_luma_clip_flag = get_bits1(gb);

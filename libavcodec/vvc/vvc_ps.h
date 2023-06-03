@@ -690,15 +690,15 @@ typedef struct VVCPH {
 } VVCPH;
 
 typedef struct VVCALF {
-    int8_t  luma_coeff     [ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA];
+    int16_t luma_coeff     [ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA];
     uint8_t luma_clip_idx  [ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA];
 
     uint8_t num_chroma_filters;
-    int8_t  chroma_coeff   [ALF_NUM_FILTERS_CHROMA * ALF_NUM_COEFF_CHROMA];
+    int16_t chroma_coeff   [ALF_NUM_FILTERS_CHROMA * ALF_NUM_COEFF_CHROMA];
     uint8_t chroma_clip_idx[ALF_NUM_FILTERS_CHROMA * ALF_NUM_COEFF_CHROMA];
 
     uint8_t cc_filters_signalled[2];        //< alf_cc_cb_filters_signalled + 1, alf_cc_cr_filters_signalled + 1
-    int8_t  cc_coeff[2][ALF_NUM_FILTERS_CC * ALF_NUM_COEFF_CC];
+    int16_t cc_coeff[2][ALF_NUM_FILTERS_CC * ALF_NUM_COEFF_CC];
 } VVCALF;
 
 #define SL_MAX_ID          28
