@@ -33,11 +33,11 @@
 static const uint32_t pixel_mask[3] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff };
 
 #define SIZEOF_PIXEL ((bit_depth + 7) / 8)
-#define SRC_PIXEL_STRIDE (MAX_CU_SIZE + 2 * ALF_PADDING_SIZE)
+#define SRC_PIXEL_STRIDE (MAX_CTU_SIZE + 2 * ALF_PADDING_SIZE)
 #define DST_PIXEL_STRIDE (SRC_PIXEL_STRIDE + 4)
 #define SRC_BUF_SIZE (SRC_PIXEL_STRIDE * (MAX_CTU_SIZE + 3 * 2) * 2) //+3 * 2 for top and bottom row, *2 for high bit depth
 #define DST_BUF_SIZE (DST_PIXEL_STRIDE * (MAX_CTU_SIZE + 3 * 2) * 2)
-#define LUMA_PARAMS_SIZE (MAX_CU_SIZE * MAX_CU_SIZE / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE * ALF_NUM_COEFF_LUMA)
+#define LUMA_PARAMS_SIZE (MAX_CTU_SIZE * MAX_CTU_SIZE / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE * ALF_NUM_COEFF_LUMA)
 
 #define randomize_buffers(buf0, buf1, size)                 \
     do {                                                    \
@@ -90,8 +90,8 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
     randomize_buffers2(filter, LUMA_PARAMS_SIZE, 1);
     randomize_buffers2(clip, LUMA_PARAMS_SIZE, 0);
 
-    for (int h = 4; h <= MAX_CU_SIZE; h += 4) {
-        for (int w = 4; w <= MAX_CU_SIZE; w += 4) {
+    for (int h = 4; h <= MAX_CTU_SIZE; h += 4) {
+        for (int w = 4; w <= MAX_CTU_SIZE; w += 4) {
             if (check_func(c->alf.filter[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
                 memset(dst0, 0, DST_BUF_SIZE);
                 memset(dst1, 0, DST_BUF_SIZE);
@@ -136,8 +136,8 @@ static void check_alf_classify(VVCDSPContext *c, const int bit_depth)
 
     randomize_buffers(src0, src1, SRC_BUF_SIZE);
 
-    for (int h = 4; h <= MAX_CU_SIZE; h += 4) {
-        for (int w = 4; w <= MAX_CU_SIZE; w += 4) {
+    for (int h = 4; h <= MAX_CTU_SIZE; h += 4) {
+        for (int w = 4; w <= MAX_CTU_SIZE; w += 4) {
             const int id_size = w * h / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE * sizeof(int);
             const int vb_pos  = MAX_CTU_SIZE - ALF_BLOCK_SIZE;
             if (check_func(c->alf.classify, "vvc_alf_classify_%dx%d_%d", w, h, bit_depth)) {
