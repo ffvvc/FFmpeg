@@ -1641,7 +1641,7 @@ const uint8_t ff_vvc_lfnst_tr_set_index[95] =
 uint8_t ff_vvc_default_scale_m[64 * 64];
 
 //< AlfFixFiltCoeff
-const int8_t ff_vvc_alf_fix_filt_coeff[64][12] = {
+const int16_t ff_vvc_alf_fix_filt_coeff[64][12] = {
     {   0,   0,   2,  -3,   1,  -4,   1,   7,  -1,   1,  -1,   5 },
     {   0,   0,   0,   0,   0,  -1,   0,   1,   0,   0,  -1,   2 },
     {   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0 },

@@ -26,35 +26,35 @@
 
 void ff_vvc_alf_filter_luma_w16_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_luma_w4_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_chroma_w16_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_chroma_w4_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_luma_w16_8bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_luma_w4_8bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_chroma_w16_8bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 void ff_vvc_alf_filter_chroma_w4_8bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
     const uint8_t *src, ptrdiff_t src_stride, ptrdiff_t height,
-    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
+    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, ptrdiff_t pixel_max);
 
 /* each word in gradient_sum is sum gradient of 8x2 pixels, adjacent word share 4x2 pixels  */
 /* gradient_sum's stride aligned to 16 words                                                */

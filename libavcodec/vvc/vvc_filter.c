@@ -1146,13 +1146,13 @@ static void alf_prepare_buffer(VVCFrameContext *fc, uint8_t *_dst, const uint8_t
 #define ALF_MAX_BLOCKS_IN_CTU   (MAX_CTU_SIZE * MAX_CTU_SIZE / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE)
 #define ALF_MAX_FILTER_SIZE     (ALF_MAX_BLOCKS_IN_CTU * ALF_NUM_COEFF_LUMA)
 
-static void alf_get_coeff_and_clip(VVCLocalContext *lc, int8_t *coeff, int16_t *clip,
+static void alf_get_coeff_and_clip(VVCLocalContext *lc, int16_t *coeff, int16_t *clip,
     const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos, ALFParams *alf)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCSH *sh             = &lc->sc->sh;
     uint8_t fixed_clip_set[ALF_NUM_FILTERS_LUMA * ALF_NUM_COEFF_LUMA] = { 0 };
-    const int8_t  *coeff_set;
+    const int16_t *coeff_set;
     const uint8_t *clip_idx_set;
     const uint8_t *class_to_filt;
     const int size = width * height / ALF_BLOCK_SIZE / ALF_BLOCK_SIZE;
@@ -1184,7 +1184,7 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *sr
     int vb_pos                  = _vb_pos - y0;
     const int no_vb_height      = height > vb_pos ? vb_pos - ALF_VB_POS_ABOVE_LUMA : height;
     const int h                 = height - no_vb_height;
-    int8_t *coeff               = (int8_t*)lc->tmp;
+    int16_t *coeff               = (int16_t*)lc->tmp;
     int16_t *clip               = (int16_t *)lc->tmp1;
 
     av_assert0(ALF_MAX_FILTER_SIZE <= sizeof(lc->tmp));
@@ -1218,7 +1218,7 @@ static void alf_filter_chroma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *
     const VVCSH *sh         = &lc->sc->sh;
     const VVCALF *aps       = (VVCALF *)fc->ps.alf_list[sh->alf.aps_id_chroma]->data;
     const int off           = alf->alf_ctb_filter_alt_idx[c_idx - 1] * ALF_NUM_COEFF_CHROMA;
-    const int8_t *coeff     = aps->chroma_coeff + off;
+    const int16_t *coeff     = aps->chroma_coeff + off;
     const int no_vb_height  = height > vb_pos ? vb_pos - ALF_VB_POS_ABOVE_CHROMA : height;
     int16_t clip[ALF_NUM_COEFF_CHROMA];
 
@@ -1245,7 +1245,7 @@ static void alf_filter_cc(VVCLocalContext *lc, uint8_t *dst, const uint8_t *luma
     if (aps_buf) {
         const VVCALF *aps   = (VVCALF *)aps_buf->data;
         const int off       = (alf->ctb_cc_idc[idx] - 1)* ALF_NUM_COEFF_CC;
-        const int8_t *coeff = aps->cc_coeff[idx] + off;
+        const int16_t *coeff = aps->cc_coeff[idx] + off;
 
         fc->vvcdsp.alf.filter_cc(dst, dst_stride, luma, luma_stride, width, height, hs, vs, coeff, vb_pos);
     }

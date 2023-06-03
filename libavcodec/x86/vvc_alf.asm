@@ -56,17 +56,9 @@ SECTION .text
 ;%1-%3 out
 ;%4 clip or filter
 %macro LOAD_LUMA_PARAMS_W16 4
-    %ifidn clip, %4
-        movu            m%1, [%4q + 0 * 32]
-        movu            m%2, [%4q + 1 * 32]
-        movu            m%3, [%4q + 2 * 32]
-    %elifidn filter, %4
-        pmovsxbw        m%1, [%4q + 0 * 16]
-        pmovsxbw        m%2, [%4q + 1 * 16]
-        pmovsxbw        m%3, [%4q + 2 * 16]
-    %else
-        %error "need filter or clip for the fourth param"
-    %endif
+    movu            m%1, [%4q + 0 * 32]
+    movu            m%2, [%4q + 1 * 32]
+    movu            m%3, [%4q + 2 * 32]
 %endmacro
 
 %macro LOAD_LUMA_PARAMS_W16 6
@@ -96,17 +88,8 @@ SECTION .text
 
 %macro LOAD_CHROMA_PARAMS 4
     ;LOAD_CHROMA_PARAMS_W %+ WIDTH %1, %2, %3, %4
-    %ifidn clip, %3
-        movq            xm%1, [%3q]
-        movd            xm%2, [%3q + 8]
-    %elifidn filter, %3
-        movd            xm%1, [%3q + 0]
-        pinsrw          xm%2, [%3q + 4], 0
-        vpmovsxbw       m%1, xm%1
-        vpmovsxbw       m%2, xm%2
-    %else
-        %error "need filter or clip for the third param"
-    %endif
+    movq            xm%1, [%3q]
+    movd            xm%2, [%3q + 8]
     vpbroadcastq    m%1, xm%1
     vpbroadcastq    m%2, xm%2
 %endmacro
@@ -225,7 +208,7 @@ SECTION .text
 %xdefine WIDTH %3
 ; void vvc_alf_filter_%2_w%3_%1bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
 ;    const uint8_t *src, ptrdiff_t src_stride, int height,
-;    const int8_t *filter, const int16_t *clip, ptrdiff_t stride, uint16_t pixel_max);
+;    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, uint16_t pixel_max);
 
 ; see c code for p0 to p6
 
@@ -260,7 +243,6 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
     paddw           m0, m2
 
     ;clip to pixel
-
     pxor            m1, m1
     CLIPW           m0, m1, m15
 
@@ -270,7 +252,7 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
     lea             dstq, [dstq + dst_strideq]
 %endrep
 
-    lea             filterq, [filterq + strideq]
+    lea             filterq, [filterq + 2 * strideq]
     lea             clipq, [clipq + 2 * strideq]
 
     dec             heightq

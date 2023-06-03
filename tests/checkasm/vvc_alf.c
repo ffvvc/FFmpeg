@@ -72,7 +72,7 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
     LOCAL_ALIGNED_32(uint8_t, dst1, [DST_BUF_SIZE]);
     LOCAL_ALIGNED_32(uint8_t, src0, [SRC_BUF_SIZE]);
     LOCAL_ALIGNED_32(uint8_t, src1, [SRC_BUF_SIZE]);
-    int8_t filter[LUMA_PARAMS_SIZE];
+    int16_t filter[LUMA_PARAMS_SIZE];
     int16_t clip[LUMA_PARAMS_SIZE];
 
     const int16_t clip_set[] = {
@@ -84,7 +84,7 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
     int offset = (3 * SRC_PIXEL_STRIDE + 3) * SIZEOF_PIXEL;
 
     declare_func_emms(AV_CPU_FLAG_AVX2, void, uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
-        int width, int height, const int8_t *filter, const int16_t *clip);
+        int width, int height, const int16_t *filter, const int16_t *clip);
 
     randomize_buffers(src0, src1, SRC_BUF_SIZE);
     randomize_buffers2(filter, LUMA_PARAMS_SIZE, 1);

@@ -60,7 +60,7 @@ extern const uint8_t ff_vvc_gpm_weights_offset_x[VVC_GPM_NUM_PARTITION][4][4];
 extern const uint8_t ff_vvc_gpm_weights_offset_y[VVC_GPM_NUM_PARTITION][4][4];
 extern const uint8_t ff_vvc_gpm_weights[6][VVC_GPM_WEIGHT_SIZE * VVC_GPM_WEIGHT_SIZE];
 
-extern const int8_t  ff_vvc_alf_fix_filt_coeff[64][12];
+extern const int16_t  ff_vvc_alf_fix_filt_coeff[64][12];
 extern const uint8_t ff_vvc_alf_class_to_filt_map[16][25];
 extern const uint8_t ff_vvc_alf_aps_class_to_filt_map[25];
 
