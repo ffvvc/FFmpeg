@@ -51,14 +51,20 @@ dw_15: times 8              dd 15
 
 SECTION .text
 
+
+%define ALF_NUM_COEFF_LUMA      12
+%define ALF_NUM_COEFF_CHROMA     6
+%define ALF_NUM_COEFF_CC         7
+
 %if HAVE_AVX2_EXTERNAL
 
 ;%1-%3 out
 ;%4 clip or filter
 %macro LOAD_LUMA_PARAMS_W16 4
-    movu            m%1, [%4q + 0 * 32]
-    movu            m%2, [%4q + 1 * 32]
-    movu            m%3, [%4q + 2 * 32]
+    lea             offsetq, [3 * xq]                   ;xq * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE
+    movu            m%1, [%4q + 2 * offsetq + 0 * 32]   ; 2 * for sizeof(int16_t)
+    movu            m%2, [%4q + 2 * offsetq + 1 * 32]
+    movu            m%3, [%4q + 2 * offsetq + 2 * 32]
 %endmacro
 
 %macro LOAD_LUMA_PARAMS_W16 6
@@ -172,19 +178,11 @@ SECTION .text
 ;STORE_PIXELS(dest, src)
 %macro STORE_PIXELS 2
     %if ps == 2
-        %if WIDTH == 16
-            movu         %1, m%2
-        %else
-            movq         %1, xm%2
-        %endif
+        movu         %1, m%2
     %else
-        vpackuswb       m%2, m%2
-        %if WIDTH == 16
-            vpermq      m%2, m%2, 0x8
-            movu         %1, xm%2
-        %else
-            movd         %1, xm%2
-        %endif
+        vpackuswb   m%2, m%2
+        vpermq      m%2, m%2, 0x8
+        movu        %1, xm%2
     %endif
 %endmacro
 
@@ -197,23 +195,22 @@ SECTION .text
 %endif
 %endmacro
 
-;FILTER(bpc, luma/chroma, width)
-%macro ALF_FILTER 3
+;FILTER(bpc, luma/chroma)
+%macro ALF_FILTER 2
 %xdefine BPC   %1
 %ifidn %2, luma
     %xdefine LUMA 1
 %else
     %xdefine LUMA 0
 %endif
-%xdefine WIDTH %3
 ; void vvc_alf_filter_%2_w%3_%1bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
 ;    const uint8_t *src, ptrdiff_t src_stride, int height,
 ;    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, uint16_t pixel_max);
 
 ; see c code for p0 to p6
 
-cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride, height, filter, clip, stride, pixel_max, \
-    offset, src_stride0
+cglobal vvc_alf_filter_%2_%1bpc, 10, 14, 16, 0x80, dst, dst_stride, src, src_stride, width, height, filter, clip, stride, pixel_max, \
+    offset, src_stride0, x, y
 ;pixel size
 %define ps (%1 / 8)
 
@@ -226,44 +223,58 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
     vpbroadcastw    m15, xm15
 
 .loop:
-    LOAD_PARAMS
+    push srcq
+    push dstq
 
-%rep 4
-    VPBROADCASTD    m0, [dw_64]
-    VPBROADCASTD    m1, [dw_64]
+    xor  xd, xd
 
-    LOAD_PIXELS     m2, [srcq]   ;p0
+    .loop_w:
+        LOAD_PARAMS
+        %rep 4
+            VPBROADCASTD    m0, [dw_64]
+            VPBROADCASTD    m1, [dw_64]
 
-    FILTER
+            LOAD_PIXELS     m2, [srcq]   ;p0
 
-    vpsrad          m0, SHIFT
-    vpsrad          m1, SHIFT
+            FILTER
 
-    vpackssdw       m0, m0, m1
-    paddw           m0, m2
+            vpsrad          m0, SHIFT
+            vpsrad          m1, SHIFT
 
-    ;clip to pixel
-    pxor            m1, m1
-    CLIPW           m0, m1, m15
+            vpackssdw       m0, m0, m1
+            paddw           m0, m2
 
-    STORE_PIXELS    [dstq], 0
+            ;clip to pixel
+            pxor            m1, m1
+            CLIPW           m0, m1, m15
 
-    lea             srcq, [srcq + src_strideq]
-    lea             dstq, [dstq + dst_strideq]
-%endrep
+            STORE_PIXELS    [dstq] , 0
 
+            lea             srcq, [srcq + src_strideq]
+            lea             dstq, [dstq + dst_strideq]
+        %endrep
+
+        %rep 4
+            sub             srcq, src_strideq
+            sub             dstq, dst_strideq
+        %endrep
+
+        add srcq, 16 * ps
+        add dstq, 16 * ps
+        add xd, 16
+        cmp xd, widthd
+        jl .loop_w
+
+    pop             dstq
+    pop             srcq
+    lea             srcq, [srcq + 4 * src_strideq]
+    lea             dstq, [dstq + 4 * dst_strideq]
     lea             filterq, [filterq + 2 * strideq]
     lea             clipq, [clipq + 2 * strideq]
 
     dec             heightq
     jg              .loop
     RET
-%endmacro
-
-;FILTER(bpc, luma/chroma)
-%macro ALF_FILTER 2
-    ALF_FILTER  %1, %2, 16
-    ALF_FILTER  %1, %2, 4
 %endmacro
 
 ;FILTER(bpc)

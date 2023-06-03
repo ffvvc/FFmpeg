@@ -38,20 +38,8 @@ static void alf_filter_luma_16bpc_avx2(uint8_t *dst, const ptrdiff_t dst_stride,
     const uint8_t *src, const ptrdiff_t src_stride, const int width, const int height,
     const int16_t *filter, const int16_t *clip, const int pixel_max)
 {
-    const int ps            = 1;                                    //pixel shift
     const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
-    int w;
-
-    for (w = 0; w + 16 <= width; w += 16) {
-        const int param_offset = w * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE;
-        ff_vvc_alf_filter_luma_w16_16bpc_avx2(dst + (w << ps), dst_stride, src + (w << ps), src_stride,
-            height, filter + param_offset, clip + param_offset, param_stride, pixel_max);
-    }
-    for ( /* nothing */; w < width; w += 4) {
-        const int param_offset = w * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE;
-        ff_vvc_alf_filter_luma_w4_16bpc_avx2(dst + (w << ps), dst_stride, src + (w << ps), src_stride,
-            height, filter + param_offset, clip + param_offset, param_stride, pixel_max);
-    }
+    ff_vvc_alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, param_stride, pixel_max);
 }
 
 static void alf_filter_luma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
@@ -64,34 +52,13 @@ static void alf_filter_luma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uin
     int width, int height, const int16_t *filter, const int16_t *clip)
 {
     const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
-    int w;
-
-    for (w = 0; w + 16 <= width; w += 16) {
-        const int param_offset = w * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE;
-        ff_vvc_alf_filter_luma_w16_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
-            height, filter + param_offset, clip + param_offset, param_stride, PIXEL_MAX_8);
-    }
-    for ( /* nothing */; w < width; w += 4) {
-        const int param_offset = w * ALF_NUM_COEFF_LUMA / ALF_BLOCK_SIZE;
-        ff_vvc_alf_filter_luma_w4_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
-            height, filter + param_offset, clip + param_offset, param_stride, PIXEL_MAX_8);
-    }
+    ff_vvc_alf_filter_luma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, param_stride, PIXEL_MAX_8);
 }
 
 static void alf_filter_chroma_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip, const int pixel_max)
 {
-    const int ps = 1;                                    //pixel shift
-    int w;
-
-    for (w = 0; w + 16 <= width; w += 16) {
-        ff_vvc_alf_filter_chroma_w16_16bpc_avx2(dst + (w << ps), dst_stride, src + (w << ps), src_stride,
-            height, filter, clip, 0, pixel_max);
-    }
-    for ( /* nothing */ ; w < width; w += 4) {
-        ff_vvc_alf_filter_chroma_w4_16bpc_avx2(dst + (w << ps), dst_stride, src + (w << ps), src_stride,
-            height, filter, clip, 0, pixel_max);
-    }
+    ff_vvc_alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, 0, pixel_max);
 }
 
 static void alf_filter_chroma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
@@ -103,16 +70,7 @@ static void alf_filter_chroma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const 
 static void alf_filter_chroma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip)
 {
-    int w;
-
-    for (w = 0; w + 16 <= width; w += 16) {
-        ff_vvc_alf_filter_chroma_w16_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
-            height, filter, clip, 0, PIXEL_MAX_8);
-    }
-    for ( /* nothing */ ; w < width; w += 4) {
-        ff_vvc_alf_filter_chroma_w4_8bpc_avx2(dst + w, dst_stride, src + w, src_stride,
-            height, filter, clip, 0, PIXEL_MAX_8);
-    }
+    ff_vvc_alf_filter_chroma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, 0, PIXEL_MAX_8);
 }
 
 static void alf_classify_8_avx2(int *class_idx, int *transpose_idx,
