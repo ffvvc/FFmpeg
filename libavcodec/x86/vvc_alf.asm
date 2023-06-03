@@ -239,6 +239,9 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
 
     shr             heightq, 2
 
+    movd          xm15, pixel_maxd
+    vpbroadcastw    m15, xm15
+
 .loop:
     LOAD_PARAMS
 
@@ -257,10 +260,9 @@ cglobal vvc_alf_filter_%2_w%3_%1bpc, 9, 14, 16, dst, dst_stride, src, src_stride
     paddw           m0, m2
 
     ;clip to pixel
-    movd          xm2, pixel_maxd
-    vpbroadcastw    m2, xm2
+
     pxor            m1, m1
-    CLIPW           m0, m1, m2
+    CLIPW           m0, m1, m15
 
     STORE_PIXELS    [dstq], 0
 
