@@ -43,11 +43,12 @@ CLASSIFY_SHUFFE: times 2    db 2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12,
 TRANSPOSE_PERMUTE:          dd 0, 1, 4, 5, 2, 3, 6, 7
 ARG_VAR_SHUFFE: times 2     db 0, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4
 
-dw_64: times 8              dd 64
-dw_2:  times 8              dd 2
-dw_3:  times 8              dd 3
-dw_5:  times 8              dd 5
-dw_15: times 8              dd 15
+dd448: times 8             dd 512 - 64
+dw64: times 8              dd 64
+dd2:  times 8              dd 2
+dw3:  times 8              dd 3
+dw5:  times 8              dd 5
+dd15: times 8              dd 15
 
 SECTION .text
 
@@ -145,35 +146,213 @@ SECTION .text
     paddd           m1, m12
 %endmacro
 
-;FILTER(param_start, off0~off2)
+;FILTER(param_idx, bottom, top, byte_offset)
+;input:  param_idx, bottom, top, byte_offset
+;output: m0, m1
+;temp:   m9, m10, offsetq
 %macro FILTER 4
-    %assign %%i (%1)
-    %rep 3
-        lea             offsetq, [%2]
-        LOAD_PIXELS     m10, [srcq + offsetq]
-        neg             offsetq
-        LOAD_PIXELS     m9, [srcq + offsetq]
+    mov             offsetq, %4
+    LOAD_PIXELS     m10, [%2 + offsetq]
+    neg             offsetq
+    LOAD_PIXELS     m9,  [%3 + offsetq]
 
-        FILTER  %%i
-        %assign %%i %%i+1
-        %rotate 1
-    %endrep
+    FILTER  %1
+%endmacro
+
+;get source lines
+;GET_SRCS(line)
+;input:  src, src_stride, vb_pos
+;output: s1...s6
+%macro GET_SRCS 1
+    lea s1q, [srcq + src_strideq]
+    lea s3q, [s1q  + src_strideq]
+%if LUMA
+    lea s5q, [s3q  + src_strideq]
+%endif
+    neg src_strideq
+    lea s2q, [srcq + src_strideq]
+    lea s4q, [s2q  + src_strideq]
+%if LUMA
+    lea s6q, [s4q  + src_strideq]
+%endif
+    neg src_strideq
+
+%if LUMA
+    cmp vb_posq, 0
+    je %%vb_bottom
+    cmp vb_posq, 4
+    jne %%vb_end
+%else
+    cmp vb_posq, 2
+    jne %%vb_end
+    %if %1 >= 2
+        jmp %%vb_bottom
+    %endif
+%endif
+
+%%vb_above:
+    ;above
+    ;p1 = (y + i == vb_pos - 1) ? p0 : p1;
+    ;p2 = (y + i == vb_pos - 1) ? p0 : p2;
+    ;p3 = (y + i >= vb_pos - 2) ? p1 : p3;
+    ;p4 = (y + i >= vb_pos - 2) ? p2 : p4;
+    ;p5 = (y + i >= vb_pos - 3) ? p3 : p5;
+    ;p6 = (y + i >= vb_pos - 3) ? p4 : p6;
+    dec vb_posq
+    cmp vb_posq, %1
+    cmove s1q, srcq
+    cmove s2q, srcq
+
+    dec vb_posq
+    cmp vb_posq, %1
+    cmovbe s3q, s1q
+    cmovbe s4q, s2q
+
+    dec vb_posq
+%if LUMA
+    cmp vb_posq, %1
+    cmovbe s5q, s3q
+    cmovbe s6q, s4q
+%endif
+    add vb_posq, 3
+    jmp %%vb_end
+
+%%vb_bottom:
+    ;bottom
+    ;p1 = (y + i == vb_pos    ) ? p0 : p1;
+    ;p2 = (y + i == vb_pos    ) ? p0 : p2;
+    ;p3 = (y + i <= vb_pos + 1) ? p1 : p3;
+    ;p4 = (y + i <= vb_pos + 1) ? p2 : p4;
+    ;p5 = (y + i <= vb_pos + 2) ? p3 : p5;
+    ;p6 = (y + i <= vb_pos + 2) ? p4 : p6;
+    cmp vb_posq, %1
+    cmove s1q, srcq
+    cmove s2q, srcq
+
+    inc vb_posq
+    cmp vb_posq, %1
+    cmovae s3q, s1q
+    cmovae s4q, s2q
+
+    inc vb_posq
+%if LUMA
+    cmp vb_posq, %1
+    cmovae s5q, s3q
+    cmovae s6q, s4q
+%endif
+    sub vb_posq, 2
+%%vb_end:
+%endmacro
+
+;shift filter result
+;SHIFT_VB(line)
+;input:  m0, m1, vb_pos
+;output: m0
+;temp:   m9
+%macro SHIFT_VB 1
+%define SHIFT 7
+    %if LUMA
+        %if %1 == 3
+            cmp     vb_posq, 4
+            je      %%near_vb
+        %elif %1 == 0
+            cmp     vb_posq, 0
+            je      %%near_vb
+        %endif
+    %else
+        %if %1 == 1 || %1 == 2
+            cmp     vb_posq, 2
+            je      %%near_vb
+        %endif
+    %endif
+    ;no vb
+    vpsrad          m0, SHIFT
+    vpsrad          m1, SHIFT
+    jmp             %%shift_end
+%%near_vb:
+    ;vb
+    vpbroadcastd    m9, [dd448]
+    paddd           m0, m9
+    paddd           m1, m9
+    vpsrad          m0, SHIFT + 3
+    vpsrad          m1, SHIFT + 3
+%%shift_end:
+    vpackssdw       m0, m0, m1
 %endmacro
 
 ;filter pixels for luma and chroma
-%macro FILTER 0
+;FILTER_VB(line)
+;input:  line
+;output: m0, m1
+;temp:   s0q...s1q
+%macro FILTER_VB 1
+    vpbroadcastd    m0, [dw64]
+    vpbroadcastd    m1, [dw64]
+
+    GET_SRCS %1
     %if LUMA
-        FILTER          0, src_strideq  * 2 + src_strideq,  src_strideq  * 2 + ps,  src_strideq  * 2
-        FILTER          3, src_strideq  * 2 - ps,           src_strideq  + 2 * ps,  src_strideq  + ps
-        FILTER          6, src_strideq,                     src_strideq  - ps,      src_strideq  - 2 * ps
-        FILTER          9, src_stride0q + 3 * ps,           src_stride0q + 2 * ps,  src_stride0q + ps
+        FILTER           0,  s5q,  s6q,  0 * ps
+        FILTER           1,  s3q,  s4q,  1 * ps
+        FILTER           2,  s3q,  s4q,  0 * ps
+        FILTER           3,  s3q,  s4q, -1 * ps
+        FILTER           4,  s1q,  s2q,  2 * ps
+        FILTER           5,  s1q,  s2q,  1 * ps
+        FILTER           6,  s1q,  s2q,  0 * ps
+        FILTER           7,  s1q,  s2q, -1 * ps
+        FILTER           8,  s1q,  s2q, -2 * ps
+        FILTER           9, srcq, srcq,  3 * ps
+        FILTER          10, srcq, srcq,  2 * ps
+        FILTER          11, srcq, srcq,  1 * ps
     %else
-        FILTER          0, src_strideq * 2,                 src_strideq  + ps,      src_strideq
-        FILTER          3, src_strideq - ps,                src_stride0q + 2 * ps,  src_stride0q + ps
+        FILTER           0,  s3q,  s4q,  0 * ps
+        FILTER           1,  s1q,  s2q,  1 * ps
+        FILTER           2,  s1q,  s2q,  0 * ps
+        FILTER           3,  s1q,  s2q, -1 * ps
+        FILTER           4, srcq, srcq,  2 * ps
+        FILTER           5, srcq, srcq,  1 * ps
     %endif
+    SHIFT_VB %1
 %endmacro
 
-%define SHIFT 7
+%macro FILTER_16x4 0
+    push filterq
+    push clipq
+    push strideq
+    push xq
+    %define s1q filterq
+    %define s2q clipq
+    %define s3q strideq
+    %define s4q pixel_maxq
+    %define s5q xq
+
+    %define %%i 0
+    %rep 4
+        LOAD_PIXELS     m2, [srcq]   ;p0
+
+        FILTER_VB       %%i
+
+        paddw           m0, m2
+
+        ;clip to pixel
+        CLIPW           m0, m14, m15
+
+        STORE_PIXELS    [dstq] , 0
+
+        lea             srcq, [srcq + src_strideq]
+        lea             dstq, [dstq + dst_strideq]
+        %assign         %%i %%i + 1
+    %endrep
+
+    %rep 4
+        sub             srcq, src_strideq
+        sub             dstq, dst_strideq
+    %endrep
+
+    pop xq
+    pop strideq
+    pop clipq
+    pop filterq
+%endmacro
 
 ;STORE_PIXELS(dest, src)
 %macro STORE_PIXELS 2
@@ -203,61 +382,28 @@ SECTION .text
 %else
     %xdefine LUMA 0
 %endif
-; void vvc_alf_filter_%2_w%3_%1bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
-;    const uint8_t *src, ptrdiff_t src_stride, int height,
-;    const int16_t *filter, const int16_t *clip, ptrdiff_t stride, uint16_t pixel_max);
+; void vvc_alf_filter_%2_%1bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+;   const ptrdiff_t width, cosnt ptr_diff_t height, const int16_t *filter, const int16_t *clip, ptrdiff_t stride,
+;   ptrdiff_t vb_pos, ptrdiff_t pixel_max);
 
-; see c code for p0 to p6
+; see c code for s1 to s6
 
-cglobal vvc_alf_filter_%2_%1bpc, 10, 14, 16, 0x80, dst, dst_stride, src, src_stride, width, height, filter, clip, stride, pixel_max, \
-    offset, src_stride0, x, y
+cglobal vvc_alf_filter_%2_%1bpc, 11, 14, 16, 6*8, dst, dst_stride, src, src_stride, width, height, filter, clip, stride, vb_pos, pixel_max, \
+    offset, x, s6
 ;pixel size
 %define ps (%1 / 8)
-
-    ;avoid "warning : absolute address can not be RIP-relative""
-    mov             src_stride0q, 0
-
-    shr             heightq, 2
-
     movd          xm15, pixel_maxd
-    vpbroadcastw    m15, xm15
+    vpbroadcastw  m15, xm15
+    pxor           m14, m14
 
 .loop:
-    push srcq
-    push dstq
-
-    xor  xd, xd
+    push            srcq
+    push            dstq
+    xor             xd, xd
 
     .loop_w:
         LOAD_PARAMS
-        %rep 4
-            VPBROADCASTD    m0, [dw_64]
-            VPBROADCASTD    m1, [dw_64]
-
-            LOAD_PIXELS     m2, [srcq]   ;p0
-
-            FILTER
-
-            vpsrad          m0, SHIFT
-            vpsrad          m1, SHIFT
-
-            vpackssdw       m0, m0, m1
-            paddw           m0, m2
-
-            ;clip to pixel
-            pxor            m1, m1
-            CLIPW           m0, m1, m15
-
-            STORE_PIXELS    [dstq] , 0
-
-            lea             srcq, [srcq + src_strideq]
-            lea             dstq, [dstq + dst_strideq]
-        %endrep
-
-        %rep 4
-            sub             srcq, src_strideq
-            sub             dstq, dst_strideq
-        %endrep
+        FILTER_16x4
 
         add srcq, 16 * ps
         add dstq, 16 * ps
@@ -269,10 +415,12 @@ cglobal vvc_alf_filter_%2_%1bpc, 10, 14, 16, 0x80, dst, dst_stride, src, src_str
     pop             srcq
     lea             srcq, [srcq + 4 * src_strideq]
     lea             dstq, [dstq + 4 * dst_strideq]
+
     lea             filterq, [filterq + 2 * strideq]
     lea             clipq, [clipq + 2 * strideq]
 
-    dec             heightq
+    sub             vb_posq, 4
+    sub             heightq, 4
     jg              .loop
     RET
 %endmacro
@@ -441,8 +589,8 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 16, gradient_sum, src, src_stride, w
     vpcmpeqd     m13, m12       ; y == vb_pos
     pandn        m13, m11       ; y != vb_pos
 
-    vpbroadcastd m14, [dw_3]
-    pblendvb m14, m14, [dw_2], m13    ;ac
+    vpbroadcastd m14, [dw3]
+    pblendvb m14, m14, [dd2], m13    ;ac
 
     pblendvb m3, m15, [gradq + sum_stride3q], m13
 
@@ -514,7 +662,7 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 16, gradient_sum, src, src_stride, w
     vpminsd    m9, m2, m3           ;d0
 
     ;*transpose_idx = dir_d * 2 + dir_hv;
-    vpbroadcastd m10, [dw_3]
+    vpbroadcastd m10, [dw3]
     vpaddd m11, m7, m7
     vpaddd m11, m4
     vpaddd m10, m11
@@ -544,11 +692,11 @@ cglobal vvc_alf_classify_grad_%1bpc, 6, 14, 16, gradient_sum, src, src_stride, w
     ;*class_idx = arg_var[av_clip_uintp2(sum_hv * ac >> (BIT_DEPTH - 1), 4)];
     vpmulld   m0, m14               ;sum_hv * ac
     vpsrlvd   m0, m0, m5
-    vpminsd   m0, [dw_15]
+    vpminsd   m0, [dd15]
     movu      m6, [ARG_VAR_SHUFFE]
     pshufb    m6, m0                ;class_idx
 
-    vpbroadcastd m10, [dw_5]
+    vpbroadcastd m10, [dw5]
 
     ;if (hvd1 * 2 > 9 * hvd0)
     ;   *class_idx += ((dir1 << 1) + 2) * 5;

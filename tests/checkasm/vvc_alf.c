@@ -84,7 +84,7 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
     int offset = (3 * SRC_PIXEL_STRIDE + 3) * SIZEOF_PIXEL;
 
     declare_func_emms(AV_CPU_FLAG_AVX2, void, uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
-        int width, int height, const int16_t *filter, const int16_t *clip);
+        int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos);
 
     randomize_buffers(src0, src1, SRC_BUF_SIZE);
     randomize_buffers2(filter, LUMA_PARAMS_SIZE, 1);
@@ -92,27 +92,30 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
 
     for (int h = 4; h <= MAX_CTU_SIZE; h += 4) {
         for (int w = 4; w <= MAX_CTU_SIZE; w += 4) {
-            if (check_func(c->alf.filter[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
+            const int ctu_size = MAX_CTU_SIZE;
+            if (check_func(c->alf.filter_vb[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
+                const int vb_pos = ctu_size - ALF_VB_POS_ABOVE_LUMA;
                 memset(dst0, 0, DST_BUF_SIZE);
                 memset(dst1, 0, DST_BUF_SIZE);
-                call_ref(dst0, dst_stride, src0 + offset, src_stride, w, h, filter, clip);
-                call_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
+                call_ref(dst0, dst_stride, src0 + offset, src_stride, w, h, filter, clip, vb_pos);
+                call_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip, vb_pos);
                 for (int i = 0; i < h; i++) {
                     if (memcmp(dst0 + i * dst_stride, dst1 + i * dst_stride, w * SIZEOF_PIXEL))
                         fail();
                 }
-                bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
+                bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip, vb_pos);
             }
-            if (check_func(c->alf.filter[CHROMA], "vvc_alf_filter_chroma_%dx%d_%d", w, h, bit_depth)) {
+            if (check_func(c->alf.filter_vb[CHROMA], "vvc_alf_filter_chroma_%dx%d_%d", w, h, bit_depth)) {
+                const int vb_pos = ctu_size - ALF_VB_POS_ABOVE_CHROMA;
                 memset(dst0, 0, DST_BUF_SIZE);
                 memset(dst1, 0, DST_BUF_SIZE);
-                call_ref(dst0, dst_stride, src0 + offset, src_stride, w, h, filter, clip);
-                call_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
+                call_ref(dst0, dst_stride, src0 + offset, src_stride, w, h, filter, clip, vb_pos);
+                call_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip, vb_pos);
                 for (int i = 0; i < h; i++) {
                     if (memcmp(dst0 + i * dst_stride, dst1 + i * dst_stride, w * SIZEOF_PIXEL))
                         fail();
                 }
-                bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip);
+                bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip, vb_pos);
             }
         }
     }
