@@ -36,41 +36,76 @@
 
 static void alf_filter_luma_16bpc_avx2(uint8_t *dst, const ptrdiff_t dst_stride,
     const uint8_t *src, const ptrdiff_t src_stride, const int width, const int height,
-    const int16_t *filter, const int16_t *clip, const int pixel_max)
+    const int16_t *filter, const int16_t *clip, const int vb_pos, const int pixel_max)
 {
     const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
-    ff_vvc_alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, param_stride, pixel_max);
+    ff_vvc_alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, param_stride, vb_pos, pixel_max);
 }
 
 static void alf_filter_luma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip)
 {
-    alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, PIXEL_MAX_10);
+    alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, MAX_CTU_SIZE, PIXEL_MAX_10);
 }
 
 static void alf_filter_luma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip)
 {
     const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
-    ff_vvc_alf_filter_luma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, param_stride, PIXEL_MAX_8);
+    ff_vvc_alf_filter_luma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, param_stride, MAX_CTU_SIZE, PIXEL_MAX_8);
+}
+
+static void alf_filter_luma_vb_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+{
+    alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, vb_pos, PIXEL_MAX_10);
+}
+
+static void alf_filter_luma_vb_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+{
+    const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
+    ff_vvc_alf_filter_luma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, param_stride, vb_pos, PIXEL_MAX_8);
 }
 
 static void alf_filter_chroma_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
-    int width, int height, const int16_t *filter, const int16_t *clip, const int pixel_max)
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos, const int pixel_max)
 {
-    ff_vvc_alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, 0, pixel_max);
+    ff_vvc_alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, 0, vb_pos, pixel_max);
 }
 
 static void alf_filter_chroma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip)
 {
-    alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, PIXEL_MAX_10);
+    alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, MAX_CTU_SIZE, PIXEL_MAX_10);
 }
 
 static void alf_filter_chroma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip)
 {
-    ff_vvc_alf_filter_chroma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height, filter, clip, 0, PIXEL_MAX_8);
+    ff_vvc_alf_filter_chroma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, 0, MAX_CTU_SIZE, PIXEL_MAX_8);
+}
+
+static void alf_filter_chroma_vb_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+{
+    alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, vb_pos, PIXEL_MAX_10);
+}
+
+static void alf_filter_chroma_vb_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+{
+    ff_vvc_alf_filter_chroma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, 0, vb_pos, PIXEL_MAX_8);
 }
 
 static void alf_classify_8_avx2(int *class_idx, int *transpose_idx,
@@ -90,8 +125,8 @@ static void alf_classify_10_avx2(int *class_idx, int *transpose_idx,
 }
 
 #define ALF_DSP(depth) do {                                                     \
-        c->alf.filter[LUMA] = alf_filter_luma_##depth##_avx2;                   \
-        c->alf.filter[CHROMA] = alf_filter_chroma_##depth##_avx2;               \
+        c->alf.filter_vb[LUMA] = alf_filter_luma_vb_##depth##_avx2;             \
+        c->alf.filter_vb[CHROMA] = alf_filter_chroma_vb_##depth##_avx2;         \
         c->alf.classify = alf_classify_##depth##_avx2;                          \
     } while (0)
 
