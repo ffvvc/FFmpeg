@@ -200,6 +200,10 @@ void ff_vvc_put_vvc_luma_h_8_avx2(int16_t *dst, const uint8_t *_src, const ptrdi
     const int height, const intptr_t mx, const intptr_t my, const int width,
     const int hf_idx, const int vf_idx);
 
+void ff_vvc_put_vvc_luma_v_8_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+    const int height, const intptr_t mx, const intptr_t my, const int width,
+    const int hf_idx, const int vf_idx);
+
 void ff_vvc_put_vvc_luma_hv_8_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
     const int hf_idx, const int vf_idx);
@@ -239,6 +243,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
                 c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_8_avx2;
+                c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_8_avx2;
                 c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_8_avx2;
                 break;
             case 10:
