@@ -93,7 +93,7 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
     for (int h = 4; h <= MAX_CTU_SIZE; h += 4) {
         for (int w = 4; w <= MAX_CTU_SIZE; w += 4) {
             const int ctu_size = MAX_CTU_SIZE;
-            if (check_func(c->alf.filter_vb[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
+            if (check_func(c->alf.filter[LUMA], "vvc_alf_filter_luma_%dx%d_%d", w, h, bit_depth)) {
                 const int vb_pos = ctu_size - ALF_VB_POS_ABOVE_LUMA;
                 memset(dst0, 0, DST_BUF_SIZE);
                 memset(dst1, 0, DST_BUF_SIZE);
@@ -105,7 +105,7 @@ static void check_alf_filter(VVCDSPContext *c, const int bit_depth)
                 }
                 bench_new(dst1, dst_stride, src1 + offset, src_stride, w, h, filter, clip, vb_pos);
             }
-            if (check_func(c->alf.filter_vb[CHROMA], "vvc_alf_filter_chroma_%dx%d_%d", w, h, bit_depth)) {
+            if (check_func(c->alf.filter[CHROMA], "vvc_alf_filter_chroma_%dx%d_%d", w, h, bit_depth)) {
                 const int vb_pos = ctu_size - ALF_VB_POS_ABOVE_CHROMA;
                 memset(dst0, 0, DST_BUF_SIZE);
                 memset(dst1, 0, DST_BUF_SIZE);

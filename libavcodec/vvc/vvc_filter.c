@@ -1182,24 +1182,14 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *sr
 {
     const VVCFrameContext *fc   = lc->fc;
     int vb_pos                  = _vb_pos - y0;
-    const int no_vb_height      = height > vb_pos ? vb_pos - ALF_VB_POS_ABOVE_LUMA : height;
-    const int h                 = height - no_vb_height;
     int16_t *coeff               = (int16_t*)lc->tmp;
     int16_t *clip               = (int16_t *)lc->tmp1;
 
     av_assert0(ALF_MAX_FILTER_SIZE <= sizeof(lc->tmp));
     av_assert0(ALF_MAX_FILTER_SIZE * sizeof(int16_t) <= sizeof(lc->tmp1));
 
-    alf_get_coeff_and_clip(lc, coeff, clip, src, src_stride, width, no_vb_height, vb_pos, alf);
-    fc->vvcdsp.alf.filter[LUMA](dst, dst_stride, src, src_stride, width, no_vb_height, coeff, clip);
-
-    if (h > 0) {
-        vb_pos -= no_vb_height;
-        dst += dst_stride * no_vb_height;
-        src += src_stride * no_vb_height;
-        alf_get_coeff_and_clip(lc, coeff, clip, src, src_stride, width, h, vb_pos, alf);
-        fc->vvcdsp.alf.filter_vb[LUMA](dst, dst_stride, src, src_stride, width, h, coeff, clip, vb_pos);
-    }
+    alf_get_coeff_and_clip(lc, coeff, clip, src, src_stride, width, height, vb_pos, alf);
+    fc->vvcdsp.alf.filter[LUMA](dst, dst_stride, src, src_stride, width, height, coeff, clip, vb_pos);
 }
 
 static int alf_clip_from_idx(const VVCFrameContext *fc, const int idx)
@@ -1219,18 +1209,12 @@ static void alf_filter_chroma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *
     const VVCALF *aps       = (VVCALF *)fc->ps.alf_list[sh->alf.aps_id_chroma]->data;
     const int off           = alf->alf_ctb_filter_alt_idx[c_idx - 1] * ALF_NUM_COEFF_CHROMA;
     const int16_t *coeff     = aps->chroma_coeff + off;
-    const int no_vb_height  = height > vb_pos ? vb_pos - ALF_VB_POS_ABOVE_CHROMA : height;
     int16_t clip[ALF_NUM_COEFF_CHROMA];
 
     for (int i = 0; i < ALF_NUM_COEFF_CHROMA; i++)
         clip[i] = alf_clip_from_idx(fc, aps->chroma_clip_idx[off + i]);
 
-    fc->vvcdsp.alf.filter[CHROMA](dst, dst_stride, src, src_stride, width, no_vb_height, coeff, clip);
-    if (no_vb_height < height) {
-        dst += dst_stride * no_vb_height;
-        src += src_stride * no_vb_height;
-        fc->vvcdsp.alf.filter_vb[CHROMA](dst, dst_stride, src, src_stride, width, height - no_vb_height, coeff, clip, vb_pos - no_vb_height);
-    }
+    fc->vvcdsp.alf.filter[CHROMA](dst, dst_stride, src, src_stride, width, height, coeff, clip, vb_pos);
 }
 
 static void alf_filter_cc(VVCLocalContext *lc, uint8_t *dst, const uint8_t *luma,

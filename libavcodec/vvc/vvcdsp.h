@@ -151,9 +151,7 @@ typedef struct VVCSAODSPContext {
 } VVCSAODSPContext;
 
 typedef struct VVCALFDSPContext {
-    void (*filter[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
-        int width, int height, const int16_t *filter, const int16_t *clip);
-    void (*filter_vb[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src,  ptrdiff_t src_stride,
+    void (*filter[2 /* luma, chroma */])(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src,  ptrdiff_t src_stride,
         int width, int height, const int16_t *filter, const int16_t *clip, int vb_pos);
     void (*filter_cc)(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *luma, ptrdiff_t luma_stride,
         int width, int height, int hs, int vs, const int16_t *filter, int vb_pos);
