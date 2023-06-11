@@ -892,10 +892,15 @@ static void derive_chroma_intra_pred_mode(VVCLocalContext *lc,
         const int modes[4] = {INTRA_PLANAR, INTRA_VERT, INTRA_HORZ, INTRA_DC};
         int idx;
 
-        for (idx = 0; idx < FF_ARRAY_ELEMS(modes); idx++) {
-            if (modes[idx] == luma_intra_pred_mode)
-                break;
+        if (cu->tree_type == SINGLE_TREE && sps->chroma_format_idc == CHROMA_FORMAT_444 && intra_mip_flag) {
+            idx = 4;
+        } else {
+            for (idx = 0; idx < FF_ARRAY_ELEMS(modes); idx++) {
+                if (modes[idx] == luma_intra_pred_mode)
+                    break;
+            }
         }
+
         cu->intra_pred_mode_c = pred_mode_c[intra_chroma_pred_mode][idx];
     }
     if (sps->chroma_format_idc == CHROMA_FORMAT_422 && cu->intra_pred_mode_c <= INTRA_VDIAG) {
