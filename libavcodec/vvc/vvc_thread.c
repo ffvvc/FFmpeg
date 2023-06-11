@@ -518,6 +518,7 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 
 static void finished_one_task(VVCFrameThread *ft, const VVCTaskType type)
 {
+    int parse_done = 0;
     pthread_mutex_lock(&ft->lock);
 
     av_assert0(ft->nb_scheduled_tasks);
@@ -526,8 +527,11 @@ static void finished_one_task(VVCFrameThread *ft, const VVCTaskType type)
     if (type == VVC_TASK_TYPE_PARSE) {
         av_assert0(ft->nb_parse_tasks);
         ft->nb_parse_tasks--;
+        if (!ft->nb_parse_tasks)
+            parse_done = 1;
     }
-    pthread_cond_broadcast(&ft->cond);
+    if (parse_done || !ft->nb_scheduled_tasks)
+        pthread_cond_broadcast(&ft->cond);
 
     pthread_mutex_unlock(&ft->lock);
 }
