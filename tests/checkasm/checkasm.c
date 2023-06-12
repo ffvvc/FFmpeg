@@ -173,6 +173,7 @@ static const struct {
     #endif
     #if CONFIG_VVC_DECODER
         { "vvc_alf", checkasm_check_vvc_alf },
+        { "vvc_sao", checkasm_check_vvc_sao },
     #endif
 #endif
 #if CONFIG_AVFILTER
