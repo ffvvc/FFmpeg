@@ -101,6 +101,80 @@ static void alf_classify_10_avx2(int *class_idx, int *transpose_idx,
         c->alf.classify = alf_classify_##depth##_avx2;                          \
     } while (0)
 
+
+#define SAO_BAND_FILTER_FUNCS(bitd, opt)                                                                                        \
+void ff_vvc_sao_band_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,  \
+                                              const int16_t *sao_offset_val, int sao_left_class, int width, int height);        \
+void ff_vvc_sao_band_filter_16_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
+void ff_vvc_sao_band_filter_32_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
+void ff_vvc_sao_band_filter_48_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
+void ff_vvc_sao_band_filter_64_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
+void ff_vvc_sao_band_filter_80_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
+void ff_vvc_sao_band_filter_96_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
+void ff_vvc_sao_band_filter_112_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,    \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+void ff_vvc_sao_band_filter_128_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,    \
+                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+
+SAO_BAND_FILTER_FUNCS(8,  avx2)
+SAO_BAND_FILTER_FUNCS(10, avx2)
+SAO_BAND_FILTER_FUNCS(12, avx2)
+
+#define SAO_BAND_INIT(bitd, opt) do {                                       \
+    c->sao.band_filter[0]   = ff_vvc_sao_band_filter_8_##bitd##_##opt;      \
+    c->sao.band_filter[1]   = ff_vvc_sao_band_filter_16_##bitd##_##opt;     \
+    c->sao.band_filter[2]   = ff_vvc_sao_band_filter_32_##bitd##_##opt;     \
+    c->sao.band_filter[3]   = ff_vvc_sao_band_filter_48_##bitd##_##opt;     \
+    c->sao.band_filter[4]   = ff_vvc_sao_band_filter_64_##bitd##_##opt;     \
+    c->sao.band_filter[5]   = ff_vvc_sao_band_filter_80_##bitd##_##opt;     \
+    c->sao.band_filter[6]   = ff_vvc_sao_band_filter_96_##bitd##_##opt;     \
+    c->sao.band_filter[7]   = ff_vvc_sao_band_filter_112_##bitd##_##opt;    \
+    c->sao.band_filter[8]   = ff_vvc_sao_band_filter_128_##bitd##_##opt;    \
+} while (0)
+
+#define SAO_EDGE_FILTER_FUNCS(bitd, opt)                                                                      \
+void ff_vvc_sao_edge_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,        \
+                                              const int16_t *sao_offset_val, int eo, int width, int height);  \
+void ff_vvc_sao_edge_filter_16_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_32_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_48_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_64_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_80_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_96_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_112_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+void ff_vvc_sao_edge_filter_128_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
+                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+
+
+SAO_EDGE_FILTER_FUNCS(8, avx2)
+SAO_EDGE_FILTER_FUNCS(10, avx2)
+SAO_EDGE_FILTER_FUNCS(12, avx2)
+
+#define SAO_EDGE_INIT(bitd, opt) do {                                           \
+    c->sao.edge_filter[0]       = ff_vvc_sao_edge_filter_8_##bitd##_##opt;      \
+    c->sao.edge_filter[1]       = ff_vvc_sao_edge_filter_16_##bitd##_##opt;     \
+    c->sao.edge_filter[2]       = ff_vvc_sao_edge_filter_32_##bitd##_##opt;     \
+    c->sao.edge_filter[3]       = ff_vvc_sao_edge_filter_48_##bitd##_##opt;     \
+    c->sao.edge_filter[4]       = ff_vvc_sao_edge_filter_64_##bitd##_##opt;     \
+    c->sao.edge_filter[5]       = ff_vvc_sao_edge_filter_80_##bitd##_##opt;     \
+    c->sao.edge_filter[6]       = ff_vvc_sao_edge_filter_96_##bitd##_##opt;     \
+    c->sao.edge_filter[7]       = ff_vvc_sao_edge_filter_112_##bitd##_##opt;    \
+    c->sao.edge_filter[8]       = ff_vvc_sao_edge_filter_128_##bitd##_##opt;    \
+} while (0)
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
 {
     const int cpu_flags = av_get_cpu_flags();
@@ -109,10 +183,30 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
         switch (bit_depth) {
             case 8:
                 ALF_DSP(8);
+                c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
+                c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
                 break;
             case 10:
                 ALF_DSP(10);
+                c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
                 break;
+            default:
+                break;
+        }
+    }
+    if (EXTERNAL_AVX2_FAST(cpu_flags)) {
+        switch (bit_depth) {
+            case 8:
+                SAO_BAND_INIT(8, avx2);
+                SAO_EDGE_INIT(8, avx2);
+                break;
+            case 10:
+                SAO_BAND_INIT(10, avx2);
+                SAO_EDGE_INIT(10, avx2);
+                break;
+            case 12:
+                SAO_BAND_INIT(12, avx2);
+                SAO_EDGE_INIT(12, avx2);
             default:
                 break;
         }
