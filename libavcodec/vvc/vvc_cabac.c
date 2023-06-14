@@ -2309,6 +2309,7 @@ static void derive_last_scan_pos(ResidualCoding *rc,
 static void last_significant_coeff_x_y_decode(ResidualCoding *rc, VVCLocalContext *lc,
     const int log2_zo_tb_width, const int log2_zo_tb_height)
 {
+    const VVCSH *sh = &lc->sc->sh;
     const TransformBlock *tb = rc->tb;
     int last_significant_coeff_x, last_significant_coeff_y;
 
@@ -2327,6 +2328,10 @@ static void last_significant_coeff_x_y_decode(ResidualCoding *rc, VVCLocalContex
         int suffix = last_sig_coeff_suffix_decode(lc, last_significant_coeff_y);
         last_significant_coeff_y = (1 << ((last_significant_coeff_y >> 1) - 1)) *
             (2 + (last_significant_coeff_y & 1)) + suffix;
+    }
+    if (sh->reverse_last_sig_coeff_flag) {
+        last_significant_coeff_x = (1 << log2_zo_tb_width) - 1 - last_significant_coeff_x;
+        last_significant_coeff_y = (1 << log2_zo_tb_height) - 1 - last_significant_coeff_y;
     }
     rc->last_significant_coeff_x = last_significant_coeff_x;
     rc->last_significant_coeff_y = last_significant_coeff_y;
