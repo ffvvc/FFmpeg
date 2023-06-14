@@ -1837,18 +1837,39 @@ static int sig_coeff_flag_decode(VVCLocalContext *lc, const ResidualCoding* rc, 
     return GET_CABAC(SIG_COEFF_FLAG + inc);
 }
 
-static int abs_get_rice_param(const ResidualCoding* rc, const int xc, const int yc, const int base_level)
+static int abs_get_rice_param(VVCLocalContext *lc, const ResidualCoding* rc,
+                              const int xc, const int yc, const int base_level)
 {
+    const VVCSPS *sps = lc->fc->ps.sps;
     const TransformBlock* tb = rc->tb;
     const int rice_params[] = {
         0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2,
         2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3,
     };
+    const int tx[] = {32, 128, 512, 2048};
+    const int rx[] = {0, 2, 4, 6, 8};
     int loc_sum_abs;
+    int shift_val;
 
     loc_sum_abs = get_local_sum(rc->abs_level, tb->tb_width, tb->tb_height, xc, yc);
-    loc_sum_abs = av_clip_uintp2(loc_sum_abs - base_level * 5, 5);
-    return rice_params[loc_sum_abs];
+
+    if (!sps->rrc_rice_extension_flag) {
+        shift_val = 0;
+    } else {
+        shift_val = (loc_sum_abs < tx[0])
+                         ? rx[0]
+                         : ((loc_sum_abs < tx[1])
+                             ? rx[1]
+                             : ((loc_sum_abs < tx[2])
+                                 ? rx[2]
+                                 : ((loc_sum_abs < tx[3])
+                                     ? rx[3]
+                                     : rx[4])));
+    }
+
+    loc_sum_abs = av_clip_uintp2((loc_sum_abs >> shift_val) - base_level * 5, 5);
+
+    return rice_params[loc_sum_abs] + shift_val;
 }
 
 static int abs_decode(VVCLocalContext *lc, const int c_rice_param)
@@ -1876,7 +1897,12 @@ static int abs_decode(VVCLocalContext *lc, const int c_rice_param)
 
 static int abs_remainder_decode(VVCLocalContext *lc, const ResidualCoding* rc, const int xc, const int yc)
 {
-    const int c_rice_param = abs_get_rice_param(rc, xc, yc, 4);
+    const VVCSPS *sps = lc->fc->ps.sps;
+    const VVCSH *sh = &lc->sc->sh;
+    const int base_level = sps->rrc_rice_extension_flag
+        ? (sps->bit_depth > 12) ? ((sh->slice_type == VVC_SLICE_TYPE_I) ? 1 : 2) : ((sh->slice_type == VVC_SLICE_TYPE_I) ? 2 : 3)
+        : 4;
+    const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc, base_level);
     const int rem = abs_decode(lc, c_rice_param);
     return rem;
 }
@@ -1942,7 +1968,7 @@ static const uint8_t qstate_translate_table[][2] = {
 
 static int abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const int xc, const int yc)
 {
-    const int c_rice_param = abs_get_rice_param(rc, xc, yc, 0);
+    const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc, 0);
     int abs_dec_level =  abs_decode(lc, c_rice_param);
     const int zero_pos = (rc->qstate < 2 ? 1 : 2) << c_rice_param;
     if (abs_dec_level != zero_pos) {
