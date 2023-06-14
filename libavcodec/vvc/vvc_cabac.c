@@ -1883,7 +1883,8 @@ static int abs_remainder_decode(VVCLocalContext *lc, const ResidualCoding* rc, c
 
 static int abs_remainder_ts_decode(VVCLocalContext *lc, const ResidualCoding* rc, const int xc, const int yc)
 {
-    const int c_rice_param = 1;
+    const VVCSH* sh = &lc->sc->sh;
+    const int c_rice_param = sh->ts_residual_coding_rice_idx_minus1 + 1;
     const int rem = abs_decode(lc, c_rice_param);
     return rem;
 }
