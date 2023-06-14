@@ -1853,6 +1853,7 @@ static int abs_get_rice_param(const ResidualCoding* rc, const int xc, const int 
 
 static int abs_decode(VVCLocalContext *lc, const int c_rice_param)
 {
+    const VVCSPS *sps = lc->fc->ps.sps;
     const int MAX_BIN = 6;
     int prefix = 0;
     int suffix = 0;
@@ -1865,7 +1866,10 @@ static int abs_decode(VVCLocalContext *lc, const int c_rice_param)
             suffix = (suffix << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
         }
     } else {
-        suffix = limited_kth_order_egk_decode(&lc->ep->cc, c_rice_param + 1, 11, 15);
+        suffix = limited_kth_order_egk_decode(&lc->ep->cc,
+                                              c_rice_param + 1,
+                                              26 - sps->log2_transform_range,
+                                              sps->log2_transform_range);
     }
     return suffix + (prefix << c_rice_param);
 }

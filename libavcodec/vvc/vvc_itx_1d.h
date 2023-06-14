@@ -46,6 +46,8 @@ vvc_itx_1d_fn(ff_vvc_inv_dct8_16);
 vvc_itx_1d_fn(ff_vvc_inv_dct8_32);
 
 
-void ff_vvc_inv_lfnst_1d(int *v, const int *u, int no_zero_size, int n_tr_s, int pred_mode_intra, int lfnst_idx);
+void ff_vvc_inv_lfnst_1d(int *v, const int *u, int no_zero_size, int n_tr_s,
+                         int pred_mode_intra, int lfnst_idx, int coeff_min,
+                         int coeff_max);
 
 #endif // AVCODEC_VVC_ITX_1D_H

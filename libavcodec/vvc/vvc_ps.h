@@ -470,6 +470,9 @@ typedef struct VVCSPS {
     uint8_t max_num_ibc_merge_cand;                                 ///< MaxNumIbcMergeCand
     uint8_t max_num_gpm_merge_cand;                                 ///< MaxNumGpmMergeCand
     unsigned int ladf_interval_lower_bound[LADF_MAX_INTERVAL];      ///< SpsLadfIntervalLowerBound[]
+    uint8_t log2_transform_range;                                   ///< Log2TransformRange
+    int32_t coeff_min;                                              ///< CoeffMin
+    int32_t coeff_max;                                              ///< CoeffMax
 
     uint8_t data[4096];
     int data_size;

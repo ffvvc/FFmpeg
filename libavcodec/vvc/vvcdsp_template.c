@@ -73,7 +73,7 @@ static void FUNC(pred_residual_joint)(int *buf, const int w, const int h,
 }
 
 static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height,
-    const int vertical, const int depth)
+    const int vertical, const int coeff_min, const int coeff_max)
 {
     int x, y;
 
@@ -81,13 +81,13 @@ static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height
         coeffs += width;
         for (y = 0; y < height - 1; y++) {
             for (x = 0; x < width; x++)
-                coeffs[x] = av_clip_intp2(coeffs[x] + coeffs[x - width], depth);
+                coeffs[x] = av_clip(coeffs[x] + coeffs[x - width], coeff_min, coeff_max);
             coeffs += width;
         }
     } else {
         for (y = 0; y < height; y++) {
             for (x = 1; x < width; x++)
-                coeffs[x] = av_clip_intp2(coeffs[x] + coeffs[x - 1], depth);
+                coeffs[x] = av_clip(coeffs[x] + coeffs[x - 1], coeff_min, coeff_max);
             coeffs += width;
         }
     }
