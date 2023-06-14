@@ -1051,7 +1051,18 @@ static int sps_parse_extension(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
             sps->reverse_last_sig_coeff_enabled_flag = get_bits1(gb);
         }
     }
-    
+
+    // Derived values
+    sps->log2_transform_range = sps->extended_precision_flag
+                              ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
+                              : 15;
+    sps->coeff_min = -(1 << (sps->extended_precision_flag
+                            ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
+                            : 15));
+    sps->coeff_max = (1 << (sps->extended_precision_flag
+                           ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
+                           : 15)) - 1;
+
     return 0;
 }
 
