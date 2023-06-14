@@ -197,6 +197,10 @@ typedef struct PredictionUnit {
 
     MotionInfo mi;
 
+    // for regular prediction only
+    uint8_t dmvr_flag;
+    uint8_t bdof_flag;
+
     int16_t diff_mv_x[2][AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];   ///< diffMvLX
     int16_t diff_mv_y[2][AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];   ///< diffMvLX
     int cb_prof_flag[2];

@@ -264,9 +264,10 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
  static void luma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
     const AVFrame *ref0, const Mv *mv0, const int x_off, const int y_off, const int block_w, const int block_h,
     const AVFrame *ref1, const Mv *mv1, const MvField *mvf, const int hf_idx, const int vf_idx,
-    const MvField *orig_mv, const int dmvr_flag, const int sb_bdof_flag)
+    const MvField *orig_mv, const int sb_bdof_flag)
 {
     const VVCFrameContext *fc   = lc->fc;
+    const PredictionUnit *pu    = &lc->cu->pu;
     ptrdiff_t src0_stride       = ref0->linesize[0];
     ptrdiff_t src1_stride       = ref1->linesize[0];
     const int mx0               = mv0->x & 0xf;
@@ -282,7 +283,7 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
     const uint8_t *src0         = ref0->data[0] + y_off0 * src0_stride + (int)((unsigned)x_off0 << fc->ps.sps->pixel_shift);
     const uint8_t *src1         = ref1->data[0] + y_off1 * src1_stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
 
-    if (dmvr_flag) {
+    if (pu->dmvr_flag) {
         const int x_sb0 = x_off + (orig_mv->mv[L0].x >> 4);
         const int y_sb0 = y_off + (orig_mv->mv[L0].y >> 4);
         const int x_sb1 = x_off + (orig_mv->mv[L1].x >> 4);
@@ -300,7 +301,7 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
         int denom, w0, w1, o0, o1;
         fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](lc->tmp, src0, src0_stride,
             block_h, mx0, my0, block_w, hf_idx, vf_idx);
-        if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, dmvr_flag)) {
+        if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, pu->dmvr_flag)) {
             fc->vvcdsp.inter.put_bi_w[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
                 block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, hf_idx, vf_idx);
         } else {
@@ -600,7 +601,7 @@ static int ciip_derive_intra_weight(const VVCLocalContext *lc, const int x0, con
 }
 
 static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int vf_idx, const MvField *mv,
-    const int x0, const int y0, const int sbw, const int sbh, const MvField *orig_mv, const int dmvr_flag, const int sb_bdof_flag)
+    const int x0, const int y0, const int sbw, const int sbh, const MvField *orig_mv, const int sb_bdof_flag)
 {
     const SliceContext *sc          = lc->sc;
     const VVCFrameContext *fc       = lc->fc;
@@ -621,7 +622,7 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
     } else {
         luma_mc_bi(lc, inter, inter_stride, ref[0]->frame,
             &mv->mv[0], x0, y0, sbw, sbh, ref[1]->frame, &mv->mv[1], mv,
-            hf_idx, vf_idx, orig_mv, dmvr_flag, sb_bdof_flag);
+            hf_idx, vf_idx, orig_mv, sb_bdof_flag);
 
     }
 
@@ -694,7 +695,7 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
 
 // derive bdofFlag from 8.5.6 Decoding process for inter blocks
 // derive dmvr from 8.5.1 General decoding process for coding units coded in inter prediction mode
-static void derive_dmvr_bdof_flag(VVCLocalContext *lc, int *dmvr_flag, int *bdof_flag, const PredictionUnit* pu)
+static void derive_dmvr_bdof_flag(VVCLocalContext *lc, PredictionUnit *pu)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCPPS *pps           = fc->ps.pps;
@@ -708,8 +709,8 @@ static void derive_dmvr_bdof_flag(VVCLocalContext *lc, int *dmvr_flag, int *bdof
     const CodingUnit *cu        = lc->cu;
     const PredWeightTable *w    = pps->wp_info_in_ph_flag ? &fc->ps.ph->pwt : &sh->pwt;
 
-    *dmvr_flag = 0;
-    *bdof_flag = 0;
+    pu->dmvr_flag = 0;
+    pu->bdof_flag = 0;
 
     if (mi->pred_flag == PF_BI &&
         (poc - rpl0->list[ref_idx[L0]] == rpl1->list[ref_idx[L1]] - poc) &&
@@ -725,11 +726,11 @@ static void derive_dmvr_bdof_flag(VVCLocalContext *lc, int *dmvr_flag, int *bdof
             mi->motion_model_idc == MOTION_TRANSLATION &&
             !pu->merge_subblock_flag &&
             !pu->sym_mvd_flag)
-            *bdof_flag = 1;
+            pu->bdof_flag = 1;
         if (!ph->dmvr_disabled_flag &&
             pu->general_merge_flag &&
             !pu->mmvd_merge_flag)
-            *dmvr_flag = 1;
+            pu->dmvr_flag = 1;
 
     }
 }
@@ -889,14 +890,15 @@ static void set_dmvr_info(VVCFrameContext *fc, const int x0, const int y0,
 }
 
 static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int *sb_bdof_flag,
-    const int x0, const int y0, const int sbw, const int sbh, const int dmvr_flag, const int bdof_flag)
+    const int x0, const int y0, const int sbw, const int sbh)
 {
-    VVCFrameContext *fc = lc->fc;
+    VVCFrameContext *fc      = lc->fc;
+    const PredictionUnit *pu = &lc->cu->pu;
 
     *orig_mv = *mv = *ff_vvc_get_mvf(fc, x0, y0);
-    if (bdof_flag)
+    if (pu->bdof_flag)
         *sb_bdof_flag = 1;
-    if (dmvr_flag) {
+    if (pu->dmvr_flag) {
         VVCFrame* ref[2];
         if (pred_await_progress(fc, ref, mv, y0, sbh) < 0)
             return;
@@ -909,19 +911,18 @@ static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
 {
     const VVCFrameContext *fc   = lc->fc;
     const CodingUnit *cu        = lc->cu;
-    const PredictionUnit *pu    = &cu->pu;
+    PredictionUnit *pu          = &lc->cu->pu;
     const MotionInfo *mi        = &pu->mi;
     MvField mv, orig_mv;
     int sbw, sbh, num_sb_x, num_sb_y, sb_bdof_flag = 0;
-    int dmvr_flag, bdof_flag;
 
     if (cu->ciip_flag && skip_ciip)
         return;
 
-    derive_dmvr_bdof_flag(lc, &dmvr_flag, &bdof_flag, pu);
+    derive_dmvr_bdof_flag(lc, pu);
     num_sb_x = mi->num_sb_x;
     num_sb_y = mi->num_sb_y;
-    if (dmvr_flag || bdof_flag) {
+    if (pu->dmvr_flag || pu->bdof_flag) {
         num_sb_x = (cu->cb_width > 16) ? (cu->cb_width >> 4) : 1;
         num_sb_y = (cu->cb_height > 16) ? (cu->cb_height >> 4) : 1;
     }
@@ -936,10 +937,10 @@ static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
             if (cu->ciip_flag)
                 ff_vvc_set_neighbour_available(lc, x0, y0, sbw, sbh);
 
-            derive_sb_mv(lc, &mv, &orig_mv, &sb_bdof_flag, x0, y0, sbw, sbh, dmvr_flag, bdof_flag);
-            pred_regular_luma(lc, mi->hpel_if_idx, mi->hpel_if_idx, &mv, x0, y0, sbw, sbh, &orig_mv, dmvr_flag, sb_bdof_flag);
+            derive_sb_mv(lc, &mv, &orig_mv, &sb_bdof_flag, x0, y0, sbw, sbh);
+            pred_regular_luma(lc, mi->hpel_if_idx, mi->hpel_if_idx, &mv, x0, y0, sbw, sbh, &orig_mv, sb_bdof_flag);
             if (fc->ps.sps->chroma_format_idc)
-                pred_regular_chroma(lc, &mv, x0, y0, sbw, sbh, &orig_mv, dmvr_flag);
+                pred_regular_chroma(lc, &mv, x0, y0, sbw, sbh, &orig_mv, pu->dmvr_flag);
         }
     }
 }
