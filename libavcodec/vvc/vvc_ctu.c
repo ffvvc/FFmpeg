@@ -1263,102 +1263,152 @@ static void mv_merge_refine_pred_flag(MvField *mvf, const int width, const int h
     }
 }
 
+// subblock-based inter prediction data
+static void merge_data_subblock(VVCLocalContext *lc)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCPH  *ph            = fc->ps.ph;
+    CodingUnit* cu              = lc->cu;
+    PredictionUnit *pu          = &cu->pu;
+    int merge_subblock_idx      = 0;
+
+    set_cb_tab(lc, fc->tab.msf, pu->merge_subblock_flag);
+    if (ph->max_num_subblock_merge_cand > 1) {
+        merge_subblock_idx = ff_vvc_merge_subblock_idx(lc, ph->max_num_subblock_merge_cand);
+    }
+    ff_vvc_sb_mv_merge_mode(lc, merge_subblock_idx, pu);
+}
+
+static void merge_data_regular(VVCLocalContext *lc)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSPS *sps           = fc->ps.sps;
+    const VVCPH  *ph            = fc->ps.ph;
+    const CodingUnit* cu        = lc->cu;
+    PredictionUnit *pu          = &lc->cu->pu;
+    int merge_idx               = 0;
+    Mv mmvd_offset;
+    MvField mvf;
+
+    if (sps->mmvd_enabled_flag)
+        pu->mmvd_merge_flag = ff_vvc_mmvd_merge_flag(lc);
+    if (pu->mmvd_merge_flag) {
+        int mmvd_cand_flag = 0;
+        if (sps->max_num_merge_cand > 1)
+            mmvd_cand_flag = ff_vvc_mmvd_cand_flag(lc);
+        ff_vvc_mmvd_offset_coding(lc, &mmvd_offset, ph->mmvd_fullpel_only_flag);
+        merge_idx = mmvd_cand_flag;
+    } else if (sps->max_num_merge_cand > 1) {
+        merge_idx = ff_vvc_merge_idx(lc);
+    }
+    ff_vvc_luma_mv_merge_mode(lc, merge_idx, 0, &mvf);
+    if (pu->mmvd_merge_flag)
+        derive_mmvd(&mvf, fc, &mmvd_offset);
+    mv_merge_refine_pred_flag(&mvf, cu->cb_width, cu->cb_height);
+    ff_vvc_store_mvf(lc, &mvf);
+    mvf_to_mi(&mvf, &pu->mi);
+}
+
+static int ciip_flag_decode(VVCLocalContext *lc, const int ciip_avaiable, const int gpm_avaiable, const int is_128)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSPS *sps           = fc->ps.sps;
+    const CodingUnit *cu        = lc->cu;
+
+    if (ciip_avaiable && gpm_avaiable)
+        return ff_vvc_ciip_flag(lc);
+    return sps->ciip_enabled_flag && !cu->skip_flag &&
+            !is_128 && (cu->cb_width * cu->cb_height >= 64);
+}
+
+static void merge_data_gpm(VVCLocalContext *lc)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSPS *sps           = fc->ps.sps;
+    PredictionUnit *pu          = &lc->cu->pu;
+    int merge_gpm_idx[2];
+
+    pu->merge_gpm_flag = 1;
+    pu->gpm_partition_idx = ff_vvc_merge_gpm_partition_idx(lc);
+    merge_gpm_idx[0] = ff_vvc_merge_gpm_idx(lc, 0);
+    merge_gpm_idx[1] = 0;
+    if (sps->max_num_gpm_merge_cand > 2)
+        merge_gpm_idx[1] = ff_vvc_merge_gpm_idx(lc, 1);
+
+    ff_vvc_luma_mv_merge_gpm(lc, merge_gpm_idx, pu->gpm_mv);
+    ff_vvc_store_gpm_mvf(lc, pu);
+}
+
+static void merge_data_ciip(VVCLocalContext *lc)
+{
+    const VVCFrameContext* fc   = lc->fc;
+    const VVCSPS* sps           = fc->ps.sps;
+    CodingUnit *cu              = lc->cu;
+    MotionInfo *mi              = &cu->pu.mi;
+    int merge_idx               = 0;
+    MvField mvf;
+
+    if (sps->max_num_merge_cand > 1)
+        merge_idx = ff_vvc_merge_idx(lc);
+    ff_vvc_luma_mv_merge_mode(lc, merge_idx, 1, &mvf);
+    mv_merge_refine_pred_flag(&mvf, cu->cb_width, cu->cb_height);
+    ff_vvc_store_mvf(lc, &mvf);
+    mvf_to_mi(&mvf, mi);
+    cu->intra_pred_mode_y   = cu->intra_pred_mode_c = INTRA_PLANAR;
+    cu->intra_luma_ref_idx  = 0;
+    cu->intra_mip_flag      = 0;
+}
+
+// block-based inter prediction data
+static void merge_data_block(VVCLocalContext *lc)
+{
+    const VVCFrameContext* fc   = lc->fc;
+    const VVCSPS* sps           = fc->ps.sps;
+    const VVCSH* sh             = &lc->sc->sh;
+    CodingUnit *cu              = lc->cu;
+    const int cb_width          = cu->cb_width;
+    const int cb_height         = cu->cb_height;
+    const int is_128 = cb_width == 128 || cb_height == 128;
+    const int ciip_avaiable = sps->ciip_enabled_flag &&
+        !cu->skip_flag && (cb_width * cb_height >= 64);
+    const int gpm_avaiable  = sps->gpm_enabled_flag && IS_B(sh) &&
+        (cb_width >= 8) && (cb_height >=8) &&
+        (cb_width < 8 * cb_height) && (cb_height < 8 *cb_width);
+
+    int regular_merge_flag = 1;
+
+    if (!is_128 && (ciip_avaiable || gpm_avaiable))
+        regular_merge_flag = ff_vvc_regular_merge_flag(lc, cu->skip_flag);
+    if (regular_merge_flag) {
+        merge_data_regular(lc);
+    } else {
+        cu->ciip_flag = ciip_flag_decode(lc, ciip_avaiable, gpm_avaiable, is_128);
+        if (cu->ciip_flag)
+            merge_data_ciip(lc);
+        else
+            merge_data_gpm(lc);
+    }
+}
+
 static int hls_merge_data(VVCLocalContext *lc)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCPH  *ph            = fc->ps.ph;
-    const VVCSPS *sps           = fc->ps.sps;
-    const VVCSH *sh             = &lc->sc->sh;
-    CodingUnit *cu              = lc->cu;
-    PredictionUnit *pu          = &cu->pu;
-    MotionInfo *mi              = &pu->mi;
-    const int cb_width          = cu->cb_width;
-    const int cb_height         = cu->cb_height;
-    MvField mvf;
-    int merge_idx = 0;
+    const CodingUnit *cu        = lc->cu;
+    PredictionUnit *pu          = &lc->cu->pu;
 
     pu->merge_gpm_flag = 0;
-    mi->num_sb_x = mi->num_sb_y = 1;
+    pu->mi.num_sb_x = pu->mi.num_sb_y = 1;
     if (cu->pred_mode == MODE_IBC) {
         avpriv_report_missing_feature(lc->fc->avctx, "Intra Block Copy");
         return AVERROR_PATCHWELCOME;
     } else {
-        if (ph->max_num_subblock_merge_cand > 0 && cb_width >= 8 && cb_height >= 8) {
+        if (ph->max_num_subblock_merge_cand > 0 && cu->cb_width >= 8 && cu->cb_height >= 8)
             pu->merge_subblock_flag = ff_vvc_merge_subblock_flag(lc);
-        }
-        if (pu->merge_subblock_flag) {
-            int merge_subblock_idx = 0;
-            set_cb_tab(lc, fc->tab.msf, pu->merge_subblock_flag);
-            if (ph->max_num_subblock_merge_cand > 1) {
-                merge_subblock_idx = ff_vvc_merge_subblock_idx(lc, ph->max_num_subblock_merge_cand);
-            }
-            ff_vvc_sb_mv_merge_mode(lc, merge_subblock_idx, pu);
-        } else {
-            int regular_merge_flag = 1;
-            const int is_128 = cb_width == 128 || cb_height == 128;
-            const int ciip_avaiable = sps->ciip_enabled_flag &&
-                !cu->skip_flag && (cb_width * cb_height >= 64);
-            const int gpm_avaiable  = sps->gpm_enabled_flag && IS_B(sh) &&
-                (cb_width >= 8) && (cb_height >=8) &&
-                (cb_width < 8 * cb_height) && (cb_height < 8 *cb_width);
-            if (!is_128 &&  (ciip_avaiable || gpm_avaiable)) {
-                regular_merge_flag = ff_vvc_regular_merge_flag(lc, cu->skip_flag);
-            }
-            if (regular_merge_flag) {
-                Mv mmvd_offset;
-                if (sps->mmvd_enabled_flag) {
-                    pu->mmvd_merge_flag = ff_vvc_mmvd_merge_flag(lc);
-                }
-                if (pu->mmvd_merge_flag) {
-                    int mmvd_cand_flag = 0;
-                    if (sps->max_num_merge_cand > 1) {
-                        mmvd_cand_flag = ff_vvc_mmvd_cand_flag(lc);
-                    }
-                    ff_vvc_mmvd_offset_coding(lc, &mmvd_offset, ph->mmvd_fullpel_only_flag);
-                    merge_idx = mmvd_cand_flag;
-                } else if (sps->max_num_merge_cand > 1){
-                    merge_idx = ff_vvc_merge_idx(lc);
-                }
-                ff_vvc_luma_mv_merge_mode(lc, merge_idx, 0, &mvf);
-                if (pu->mmvd_merge_flag)
-                    derive_mmvd(&mvf, fc, &mmvd_offset);
-                mv_merge_refine_pred_flag(&mvf, cb_width, cb_height);
-                ff_vvc_store_mvf(lc, &mvf);
-                mvf_to_mi(&mvf, mi);
-            } else {
-
-                if (ciip_avaiable && gpm_avaiable) {
-                    cu->ciip_flag = ff_vvc_ciip_flag(lc);
-                } else {
-                    cu->ciip_flag = sps->ciip_enabled_flag && !cu->skip_flag &&
-                        !is_128 && (cb_width * cb_height >= 64);
-                }
-                if (cu->ciip_flag && sps->max_num_merge_cand > 1) {
-                    merge_idx = ff_vvc_merge_idx(lc);
-                }
-                if (!cu->ciip_flag) {
-                    int merge_gpm_idx[2];
-
-                    pu->merge_gpm_flag = 1;
-                    pu->gpm_partition_idx = ff_vvc_merge_gpm_partition_idx(lc);
-                    merge_gpm_idx[0] = ff_vvc_merge_gpm_idx(lc, 0);
-                    merge_gpm_idx[1] = 0;
-                    if (sps->max_num_gpm_merge_cand > 2)
-                        merge_gpm_idx[1] = ff_vvc_merge_gpm_idx(lc, 1);
-
-                    ff_vvc_luma_mv_merge_gpm(lc, merge_gpm_idx, pu->gpm_mv);
-                    ff_vvc_store_gpm_mvf(lc, pu);
-                } else {
-                    ff_vvc_luma_mv_merge_mode(lc, merge_idx, 1, &mvf);
-                    mv_merge_refine_pred_flag(&mvf, cb_width, cb_height);
-                    ff_vvc_store_mvf(lc, &mvf);
-                    mvf_to_mi(&mvf, mi);
-                    cu->intra_pred_mode_y   = cu->intra_pred_mode_c = INTRA_PLANAR;
-                    cu->intra_luma_ref_idx  = 0;
-                    cu->intra_mip_flag      = 0;
-                }
-            }
-        }
+        if (pu->merge_subblock_flag)
+            merge_data_subblock(lc);
+        else
+            merge_data_block(lc);
     }
     return 0;
 }
