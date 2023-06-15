@@ -623,7 +623,6 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
         luma_mc_bi(lc, inter, inter_stride, ref[0]->frame,
             &mv->mv[0], x0, y0, sbw, sbh, ref[1]->frame, &mv->mv[1], mv,
             hf_idx, vf_idx, orig_mv, sb_bdof_flag);
-
     }
 
     if (ciip_flag) {
@@ -689,48 +688,6 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
         fc->vvcdsp.intra.intra_pred(lc, x0, y0, sbw, sbh, 2);
         fc->vvcdsp.inter.put_ciip(dst1, dst1_stride, w_c, h_c, inter1, inter1_stride, intra_weight);
         fc->vvcdsp.inter.put_ciip(dst2, dst2_stride, w_c, h_c, inter2, inter2_stride, intra_weight);
-
-    }
-}
-
-// derive bdofFlag from 8.5.6 Decoding process for inter blocks
-// derive dmvr from 8.5.1 General decoding process for coding units coded in inter prediction mode
-static void derive_dmvr_bdof_flag(VVCLocalContext *lc, PredictionUnit *pu)
-{
-    const VVCFrameContext *fc   = lc->fc;
-    const VVCPPS *pps           = fc->ps.pps;
-    const VVCPH *ph             = fc->ps.ph;
-    const VVCSH *sh             = &lc->sc->sh;
-    const int poc               = ph->poc;
-    const RefPicList *rpl0      = fc->ref->refPicList + L0;
-    const RefPicList *rpl1      = fc->ref->refPicList + L1;
-    const int8_t *ref_idx       = pu->mi.ref_idx;
-    const MotionInfo *mi        = &pu->mi;
-    const CodingUnit *cu        = lc->cu;
-    const PredWeightTable *w    = pps->wp_info_in_ph_flag ? &fc->ps.ph->pwt : &sh->pwt;
-
-    pu->dmvr_flag = 0;
-    pu->bdof_flag = 0;
-
-    if (mi->pred_flag == PF_BI &&
-        (poc - rpl0->list[ref_idx[L0]] == rpl1->list[ref_idx[L1]] - poc) &&
-        !rpl0->isLongTerm[ref_idx[L0]] && !rpl1->isLongTerm[ref_idx[L1]] &&
-        !cu->ciip_flag &&
-        !mi->bcw_idx &&
-        !w->weight_flag[L0][LUMA][mi->ref_idx[L0]] && !w->weight_flag[L1][LUMA][mi->ref_idx[L1]] &&
-        !w->weight_flag[L0][CHROMA][mi->ref_idx[L0]] && !w->weight_flag[L1][CHROMA][mi->ref_idx[L1]] &&
-        cu->cb_width >= 8 && cu->cb_height >= 8 &&
-        (cu->cb_width * cu->cb_height >= 128)) {
-        // fixme: for RprConstraintsActiveFlag
-        if (!ph->bdof_disabled_flag &&
-            mi->motion_model_idc == MOTION_TRANSLATION &&
-            !pu->merge_subblock_flag &&
-            !pu->sym_mvd_flag)
-            pu->bdof_flag = 1;
-        if (!ph->dmvr_disabled_flag &&
-            pu->general_merge_flag &&
-            !pu->mmvd_merge_flag)
-            pu->dmvr_flag = 1;
 
     }
 }
@@ -914,23 +871,16 @@ static void pred_regular_blk(VVCLocalContext *lc, const int skip_ciip)
     PredictionUnit *pu          = &lc->cu->pu;
     const MotionInfo *mi        = &pu->mi;
     MvField mv, orig_mv;
-    int sbw, sbh, num_sb_x, num_sb_y, sb_bdof_flag = 0;
+    int sbw, sbh, sb_bdof_flag = 0;
 
     if (cu->ciip_flag && skip_ciip)
         return;
 
-    derive_dmvr_bdof_flag(lc, pu);
-    num_sb_x = mi->num_sb_x;
-    num_sb_y = mi->num_sb_y;
-    if (pu->dmvr_flag || pu->bdof_flag) {
-        num_sb_x = (cu->cb_width > 16) ? (cu->cb_width >> 4) : 1;
-        num_sb_y = (cu->cb_height > 16) ? (cu->cb_height >> 4) : 1;
-    }
-    sbw = cu->cb_width / num_sb_x;
-    sbh = cu->cb_height / num_sb_y;
+    sbw = cu->cb_width / mi->num_sb_x;
+    sbh = cu->cb_height / mi->num_sb_y;
 
-    for (int sby = 0; sby < num_sb_y; sby++) {
-        for (int sbx = 0; sbx < num_sb_x; sbx++) {
+    for (int sby = 0; sby < mi->num_sb_y; sby++) {
+        for (int sbx = 0; sbx < mi->num_sb_x; sbx++) {
             const int x0 = cu->x0 + sbx * sbw;
             const int y0 = cu->y0 + sby * sbh;
 

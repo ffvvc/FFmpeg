@@ -1561,6 +1561,60 @@ static int mvp_data(VVCLocalContext *lc)
     return 0;
 }
 
+// derive bdofFlag from 8.5.6 Decoding process for inter blocks
+// derive dmvr from 8.5.1 General decoding process for coding units coded in inter prediction mode
+static void derive_dmvr_bdof_flag(const VVCLocalContext *lc, PredictionUnit *pu)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCPPS *pps           = fc->ps.pps;
+    const VVCPH *ph             = fc->ps.ph;
+    const VVCSH *sh             = &lc->sc->sh;
+    const int poc               = ph->poc;
+    const RefPicList *rpl0      = fc->ref->refPicList + L0;
+    const RefPicList *rpl1      = fc->ref->refPicList + L1;
+    const int8_t *ref_idx       = pu->mi.ref_idx;
+    const MotionInfo *mi        = &pu->mi;
+    const CodingUnit *cu        = lc->cu;
+    const PredWeightTable *w    = pps->wp_info_in_ph_flag ? &fc->ps.ph->pwt : &sh->pwt;
+
+    pu->dmvr_flag = 0;
+    pu->bdof_flag = 0;
+
+    if (mi->pred_flag == PF_BI &&
+        (poc - rpl0->list[ref_idx[L0]] == rpl1->list[ref_idx[L1]] - poc) &&
+        !rpl0->isLongTerm[ref_idx[L0]] && !rpl1->isLongTerm[ref_idx[L1]] &&
+        !cu->ciip_flag &&
+        !mi->bcw_idx &&
+        !w->weight_flag[L0][LUMA][mi->ref_idx[L0]] && !w->weight_flag[L1][LUMA][mi->ref_idx[L1]] &&
+        !w->weight_flag[L0][CHROMA][mi->ref_idx[L0]] && !w->weight_flag[L1][CHROMA][mi->ref_idx[L1]] &&
+        cu->cb_width >= 8 && cu->cb_height >= 8 &&
+        (cu->cb_width * cu->cb_height >= 128)) {
+        // fixme: for RprConstraintsActiveFlag
+        if (!ph->bdof_disabled_flag &&
+            mi->motion_model_idc == MOTION_TRANSLATION &&
+            !pu->merge_subblock_flag &&
+            !pu->sym_mvd_flag)
+            pu->bdof_flag = 1;
+        if (!ph->dmvr_disabled_flag &&
+            pu->general_merge_flag &&
+            !pu->mmvd_merge_flag)
+            pu->dmvr_flag = 1;
+    }
+}
+
+// part of 8.5.1 General decoding process for coding units coded in inter prediction mode
+static void refine_regular_subblock(const VVCLocalContext *lc)
+{
+    const CodingUnit *cu    = lc->cu;
+    PredictionUnit *pu      = &lc->cu->pu;
+
+    derive_dmvr_bdof_flag(lc, pu);
+    if (pu->dmvr_flag || pu->bdof_flag) {
+        pu->mi.num_sb_x = (cu->cb_width > 16) ? (cu->cb_width >> 4) : 1;
+        pu->mi.num_sb_y = (cu->cb_height > 16) ? (cu->cb_height >> 4) : 1;
+    }
+}
+
 static int vvc_inter_data(VVCLocalContext *lc)
 {
     const CodingUnit *cu    = lc->cu;
@@ -1580,8 +1634,10 @@ static int vvc_inter_data(VVCLocalContext *lc)
     } else {
         ret = mvp_data(lc);
     }
-    if (!pu->merge_gpm_flag && !pu->inter_affine_flag && !pu->merge_subblock_flag)
+    if (!pu->merge_gpm_flag && !pu->inter_affine_flag && !pu->merge_subblock_flag) {
+        refine_regular_subblock(lc);
         ff_vvc_update_hmvp(lc, mi);
+    }
     return ret;
 }
 
