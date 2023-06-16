@@ -566,12 +566,10 @@ static void pred_gpm_blk(VVCLocalContext *lc)
             VVCFrame *ref = fc->ref->refPicList[lx].ref[mv->ref_idx[lx]];
             if (!ref)
                 return;
-            if (c_idx) {
+            if (c_idx)
                 chroma_mc(lc, tmp[i], ref->frame, mv->mv + lx, x, y, width, height, c_idx);
-            } else {
-                vvc_await_progress(fc, ref, mv->mv + lx, y, height);
+            else
                 luma_mc(lc, tmp[i], ref->frame, mv->mv + lx, x, y, width, height);
-            }
         }
         fc->vvcdsp.inter.put_gpm(dst, dst_stride, width, height, tmp[0], tmp[1], tmp_stride, weights, step_x, step_y);
     }
@@ -975,15 +973,56 @@ static void predict_inter(VVCLocalContext *lc)
     }
 }
 
+static int has_inter_luma(const CodingUnit *cu)
+{
+    return cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA;
+}
+
+static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    CodingUnit *cu = ctu->cus;
+    int max_y[2][VVC_MAX_REF_ENTRIES];
+
+    memset(max_y, -1, sizeof(max_y));
+    while (cu) {
+        if (has_inter_luma(cu)) {
+            const PredictionUnit *pu    = &cu->pu;
+            if (pu->merge_gpm_flag) {
+                for (int i = 0; i < 2; i++) {
+                    const MvField *mv   = pu->gpm_mv + i;
+                    const int lx        = mv->pred_flag - PF_L0;
+                    const int idx       = mv->ref_idx[lx];
+                    const int y         = cu->y0 + (mv->mv[lx].y >> 4) + cu->cb_height;
+                    max_y[lx][idx]      = FFMAX(max_y[lx][idx], FFMAX(y, 0));
+                }
+            }
+        }
+        cu = cu->next;
+    }
+
+    for (int lx = 0; lx < 2; lx++) {
+        for (int i = 0; i < VVC_MAX_REF_ENTRIES; i++) {
+            const int y = max_y[lx][i];
+            if (y >= 0) {
+                VVCFrame *ref = fc->ref->refPicList[lx].ref[i];
+                if (ref)
+                    ff_vvc_await_progress(ref, y + 9);
+            }
+        }
+    }
+}
+
 int ff_vvc_predict_inter(VVCLocalContext *lc, const int rs)
 {
     const VVCFrameContext *fc   = lc->fc;
     const CTU *ctu              = fc->tab.ctus + rs;
     CodingUnit *cu              = ctu->cus;
 
+    ctu_wait_refs(lc, ctu);
     while (cu) {
         lc->cu = cu;
-        if (cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA)
+        if (has_inter_luma(cu))
             predict_inter(lc);
         cu = cu->next;
     }
