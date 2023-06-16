@@ -490,30 +490,6 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
 
 }
 
-static void vvc_await_progress(const VVCFrameContext *fc, VVCFrame *ref,
-    const Mv *mv, const int y0, const int height)
-{
-    //todo: check why we need magic number 9
-    const int y = FFMAX(0, (mv->y >> 4) + y0 + height + 9);
-
-    ff_vvc_await_progress(ref, y);
-}
-
-static int pred_await_progress(const VVCFrameContext *fc, VVCFrame *ref[2],
-    const MvField *mv, const int y0, const int height)
-{
-    for (int mask = PF_L0; mask <= PF_L1; mask++) {
-        if (mv->pred_flag & mask) {
-            const int lx = mask - PF_L0;
-            ref[lx] = fc->ref->refPicList[lx].ref[mv->ref_idx[lx]];
-            if (!ref[lx])
-                return AVERROR_INVALIDDATA;
-            vvc_await_progress(fc, ref[lx], mv->mv + lx, y0, height);
-        }
-    }
-    return 0;
-}
-
 static int pred_get_refs(const VVCFrameContext *fc, VVCFrame *ref[2],
     const MvField *mv)
 {
@@ -624,7 +600,7 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
     const ptrdiff_t inter_stride    = ciip_flag ? (MAX_PB_SIZE * sizeof(uint16_t)) : dst_stride;
     VVCFrame *ref[2];
 
-    if (pred_await_progress(fc, ref, mv, y0, sbh) < 0)
+    if (pred_get_refs(fc, ref, mv) < 0)
         return;
 
     if (mv->pred_flag != PF_BI) {
@@ -869,7 +845,7 @@ static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int
         *sb_bdof_flag = 1;
     if (pu->dmvr_flag) {
         VVCFrame* ref[2];
-        if (pred_await_progress(fc, ref, mv, y0, sbh) < 0)
+        if (pred_get_refs(fc, ref, mv) < 0)
             return;
         dmvr_mv_refine(lc, mv, orig_mv, sb_bdof_flag, ref[0]->frame, ref[1]->frame, x0, y0, sbw, sbh);
         set_dmvr_info(fc, x0, y0, sbw, sbh, mv);
@@ -997,56 +973,65 @@ static int pred_get_y(const int y0, const Mv *mv, const int height)
     return FFMAX(0, y0 + (mv->y >> 4) + height);
 }
 
-static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
+static void cu_get_max_y(CodingUnit *cu, int max_y[2][VVC_MAX_REF_ENTRIES], const VVCFrameContext *fc)
 {
-    const VVCFrameContext *fc   = lc->fc;
-    CodingUnit *cu = ctu->cus;
-    int max_y[2][VVC_MAX_REF_ENTRIES];
+    const PredictionUnit *pu    = &cu->pu;
 
-    memset(max_y, -1, sizeof(max_y));
-    while (cu) {
-        if (has_inter_luma(cu)) {
-            const PredictionUnit *pu    = &cu->pu;
-            if (pu->merge_gpm_flag) {
-                for (int i = 0; i < FF_ARRAY_ELEMS(pu->gpm_mv); i++) {
-                    const MvField *mvf  = pu->gpm_mv + i;
-                    const int lx        = mvf->pred_flag - PF_L0;
-                    const int idx       = mvf->ref_idx[lx];
-                    const int y         = pred_get_y(cu->y0, mvf->mv + lx, cu->cb_height);
-                    max_y[lx][idx]      = FFMAX(max_y[lx][idx], y);
-                }
-            } else if (pu->inter_affine_flag) {
-                const MotionInfo *mi    = &pu->mi;
-                const int sbw           = cu->cb_width / mi->num_sb_x;
-                const int sbh           = cu->cb_height / mi->num_sb_y;
-                for (int sby = 0; sby < mi->num_sb_y; sby++) {
-                    for (int sbx = 0; sbx < mi->num_sb_x; sbx++) {
-                        const int x0        = cu->x0 + sbx * sbw;
-                        const int y0        = cu->y0 + sby * sbh;
-                        const MvField *mvf  = ff_vvc_get_mvf(fc, x0, y0);
-                        for (int lx = 0; lx < 2; lx++) {
-                            const PredFlag mask = 1 << lx;
-                            if (mvf->pred_flag & mask) {
-                                const int y     = pred_get_y(y0, mvf->mv + lx, sbh);
-                                const int idx   = mvf->ref_idx[lx];
-                                max_y[lx][idx]  = FFMAX(max_y[lx][idx], y);
-                            }
-                        }
+    if (pu->merge_gpm_flag) {
+        for (int i = 0; i < FF_ARRAY_ELEMS(pu->gpm_mv); i++) {
+            const MvField *mvf  = pu->gpm_mv + i;
+            const int lx        = mvf->pred_flag - PF_L0;
+            const int idx       = mvf->ref_idx[lx];
+            const int y         = pred_get_y(cu->y0, mvf->mv + lx, cu->cb_height);
+
+            max_y[lx][idx]      = FFMAX(max_y[lx][idx], y);
+        }
+    } else {
+        const MotionInfo *mi    = &pu->mi;
+        const int max_dmvr_off  = (!pu->inter_affine_flag && pu->dmvr_flag) ? 2 : 0;
+        const int sbw           = cu->cb_width / mi->num_sb_x;
+        const int sbh           = cu->cb_height / mi->num_sb_y;
+        for (int sby = 0; sby < mi->num_sb_y; sby++) {
+            for (int sbx = 0; sbx < mi->num_sb_x; sbx++) {
+                const int x0        = cu->x0 + sbx * sbw;
+                const int y0        = cu->y0 + sby * sbh;
+                const MvField *mvf  = ff_vvc_get_mvf(fc, x0, y0);
+                for (int lx = 0; lx < 2; lx++) {
+                    const PredFlag mask = 1 << lx;
+                    if (mvf->pred_flag & mask) {
+                        const int idx   = mvf->ref_idx[lx];
+                        const int y     = pred_get_y(y0, mvf->mv + lx, sbh);
+
+                        max_y[lx][idx]  = FFMAX(max_y[lx][idx], y + max_dmvr_off);
                     }
                 }
             }
         }
+    }
+}
+
+static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSH *sh             = &lc->sc->sh;
+    CodingUnit *cu = ctu->cus;
+    int max_y[2][VVC_MAX_REF_ENTRIES];
+
+    for (int lx = 0; lx < 2; lx++)
+        memset(max_y[lx], -1, sizeof(max_y[0][0]) * sh->nb_refs[lx]);
+
+    while (cu) {
+        if (has_inter_luma(cu))
+            cu_get_max_y(cu, max_y, fc);
         cu = cu->next;
     }
 
     for (int lx = 0; lx < 2; lx++) {
-        for (int i = 0; i < VVC_MAX_REF_ENTRIES; i++) {
+        for (int i = 0; i < sh->nb_refs[lx]; i++) {
             const int y = max_y[lx][i];
-            if (y >= 0) {
-                VVCFrame *ref = fc->ref->refPicList[lx].ref[i];
-                if (ref)
-                    ff_vvc_await_progress(ref, y + 9);
-            }
+            VVCFrame *ref = fc->ref->refPicList[lx].ref[i];
+            if (ref && y >= 0)
+                ff_vvc_await_progress(ref, y + LUMA_EXTRA_AFTER);
         }
     }
 }
