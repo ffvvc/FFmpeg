@@ -514,6 +514,20 @@ static int pred_await_progress(const VVCFrameContext *fc, VVCFrame *ref[2],
     return 0;
 }
 
+static int pred_get_refs(const VVCFrameContext *fc, VVCFrame *ref[2],
+    const MvField *mv)
+{
+    for (int mask = PF_L0; mask <= PF_L1; mask++) {
+        if (mv->pred_flag & mask) {
+            const int lx = mask - PF_L0;
+            ref[lx] = fc->ref->refPicList[lx].ref[mv->ref_idx[lx]];
+            if (!ref[lx])
+                return AVERROR_INVALIDDATA;
+        }
+    }
+    return 0;
+}
+
 #define POS(c_idx, x, y)                                                                            \
         &fc->frame->data[c_idx][((y) >> fc->ps.sps->vshift[c_idx]) * fc->frame->linesize[c_idx] +   \
             (((x) >> fc->ps.sps->hshift[c_idx]) << fc->ps.sps->pixel_shift)]
@@ -930,7 +944,7 @@ static void pred_affine_blk(VVCLocalContext *lc)
             const MvField *mv = ff_vvc_get_mvf(fc, x, y);
             VVCFrame *ref[2];
 
-            if (pred_await_progress(fc, ref, mv, y, sbh) < 0)
+            if (pred_get_refs(fc, ref, mv) < 0)
                 return;
 
             if (mi->pred_flag != PF_BI) {
@@ -978,6 +992,11 @@ static int has_inter_luma(const CodingUnit *cu)
     return cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA;
 }
 
+static int pred_get_y(const int y0, const Mv *mv, const int height)
+{
+    return FFMAX(0, y0 + (mv->y >> 4) + height);
+}
+
 static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -989,12 +1008,31 @@ static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
         if (has_inter_luma(cu)) {
             const PredictionUnit *pu    = &cu->pu;
             if (pu->merge_gpm_flag) {
-                for (int i = 0; i < 2; i++) {
-                    const MvField *mv   = pu->gpm_mv + i;
-                    const int lx        = mv->pred_flag - PF_L0;
-                    const int idx       = mv->ref_idx[lx];
-                    const int y         = cu->y0 + (mv->mv[lx].y >> 4) + cu->cb_height;
-                    max_y[lx][idx]      = FFMAX(max_y[lx][idx], FFMAX(y, 0));
+                for (int i = 0; i < FF_ARRAY_ELEMS(pu->gpm_mv); i++) {
+                    const MvField *mvf  = pu->gpm_mv + i;
+                    const int lx        = mvf->pred_flag - PF_L0;
+                    const int idx       = mvf->ref_idx[lx];
+                    const int y         = pred_get_y(cu->y0, mvf->mv + lx, cu->cb_height);
+                    max_y[lx][idx]      = FFMAX(max_y[lx][idx], y);
+                }
+            } else if (pu->inter_affine_flag) {
+                const MotionInfo *mi    = &pu->mi;
+                const int sbw           = cu->cb_width / mi->num_sb_x;
+                const int sbh           = cu->cb_height / mi->num_sb_y;
+                for (int sby = 0; sby < mi->num_sb_y; sby++) {
+                    for (int sbx = 0; sbx < mi->num_sb_x; sbx++) {
+                        const int x0        = cu->x0 + sbx * sbw;
+                        const int y0        = cu->y0 + sby * sbh;
+                        const MvField *mvf  = ff_vvc_get_mvf(fc, x0, y0);
+                        for (int lx = 0; lx < 2; lx++) {
+                            const PredFlag mask = 1 << lx;
+                            if (mvf->pred_flag & mask) {
+                                const int y     = pred_get_y(y0, mvf->mv + lx, sbh);
+                                const int idx   = mvf->ref_idx[lx];
+                                max_y[lx][idx]  = FFMAX(max_y[lx][idx], y);
+                            }
+                        }
+                    }
                 }
             }
         }
