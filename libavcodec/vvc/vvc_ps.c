@@ -108,7 +108,7 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
 
     gci->present_flag = get_bits1(gb);
     if (gci->present_flag) {
-        unsigned int gci_num_addtional_bits, num_additional_bits_used;
+        unsigned int gci_num_additional_bits, num_additional_bits_used;
         /* general */
         gci->intra_only_constraint_flag = get_bits1(gb);
         gci->all_layers_independent_constraint_flag = get_bits1(gb);
@@ -198,8 +198,8 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
         gci->no_lmcs_constraint_flag = get_bits1(gb);
         gci->no_ladf_constraint_flag = get_bits1(gb);
         gci->no_virtual_boundaries_constraint_flag = get_bits1(gb);
-        gci_num_addtional_bits = get_bits(gb, 8);
-        if (gci_num_addtional_bits > 5) {
+        gci_num_additional_bits = get_bits(gb, 8);
+        if (gci_num_additional_bits > 5) {
             gci->all_rap_pictures_constraint_flag = get_bits1(gb);
             gci->no_extended_precision_processing_constraint_flag = get_bits1(gb);
             gci->no_ts_residual_coding_rice_constraint_flag = get_bits1(gb);
@@ -208,7 +208,7 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
             gci->no_reverse_last_sig_coeff_constraint_flag = get_bits1(gb);
             num_additional_bits_used = 6;
         }
-        for (i = 0; i < gci_num_addtional_bits - num_additional_bits_used; i++) {
+        for (i = 0; i < gci_num_additional_bits - num_additional_bits_used; i++) {
             skip_bits1(gb);          // gci_reserved_bit[i]
         }
     }
