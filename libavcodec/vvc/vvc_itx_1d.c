@@ -698,8 +698,7 @@ DEFINE_INV_DST7_1D(16)
 DEFINE_INV_DST7_1D(32)
 
 void ff_vvc_inv_lfnst_1d(int *v, const int *u, int no_zero_size, int n_tr_s,
-                         int pred_mode_intra, int lfnst_idx, int coeff_min,
-                         int coeff_max)
+    int pred_mode_intra, int lfnst_idx, int log2_transform_range)
 {
      int lfnst_tr_set_idx    = pred_mode_intra < 0 ? 1 : ff_vvc_lfnst_tr_set_index[pred_mode_intra];
      const int8_t *tr_mat = n_tr_s > 16 ? ff_vvc_lfnst_8x8[lfnst_tr_set_idx][lfnst_idx-1][0] : ff_vvc_lfnst_4x4[lfnst_tr_set_idx][lfnst_idx - 1][0];
@@ -709,6 +708,6 @@ void ff_vvc_inv_lfnst_1d(int *v, const int *u, int no_zero_size, int n_tr_s,
 
         for (int i = 0; i < no_zero_size; i++)
             t += u[i] * tr_mat[i * n_tr_s];
-        v[j] = av_clip((t + 64) >> 7 , coeff_min, coeff_max);
+        v[j] = av_clip_intp2((t + 64) >> 7 , log2_transform_range);
      }
 }
