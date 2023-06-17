@@ -775,6 +775,8 @@ typedef struct ResidualCoding {
     int log2_sb_w;
     int log2_sb_h;
     int last_sub_block;
+    int hist_value;
+    int update_hist;
     int num_sb_coeff;
     int rem_bins_pass1;
 
@@ -810,11 +812,18 @@ static int cabac_reinit(VVCLocalContext *lc)
 
 static void cabac_init_state(VVCLocalContext *lc)
 {
+    const VVCSPS *sps = lc->fc->ps.sps;
     const VVCSH *sh = &lc->sc->sh;
     const int qp    = av_clip_uintp2(sh->slice_qp_y, 6);
     int init_type   = 2 - sh->slice_type;
 
     av_assert0(VVC_CONTEXTS == SYNTAX_ELEMENT_LAST);
+    
+    for (size_t i = 0; i < FF_ARRAY_ELEMS(lc->ep->stat_coeff); ++i) {
+        lc->ep->stat_coeff[i] = sps->persistent_rice_adaptation_enabled_flag
+            ? 2 * (int) (av_log2(sps->bit_depth - 10))
+            : 0;
+    }
 
     if (sh->cabac_init_flag && sh->slice_type != VVC_SLICE_TYPE_I)
         init_type ^= 3;
@@ -1726,7 +1735,7 @@ int ff_vvc_transform_skip_flag(VVCLocalContext *lc, const int inc)
 
 //9.3.4.2.7 Derivation process for the variables locNumSig, locSumAbsPass1
 static int get_local_sum(const int *level, const int w, const int h,
-    const int xc, const int yc)
+    const int xc, const int yc, const int hist_value)
 {
     int loc_sum = 0;
     level += w * yc + xc;
@@ -1734,13 +1743,23 @@ static int get_local_sum(const int *level, const int w, const int h,
         loc_sum += level[1];
         if (xc < w - 2)
             loc_sum += level[2];
+        else
+            loc_sum += hist_value;
         if (yc < h - 1)
             loc_sum += level[w + 1];
+        else
+            loc_sum += hist_value;
+    } else {
+        loc_sum += 2 * hist_value;
     }
     if (yc < h - 1) {
         loc_sum += level[w];
         if (yc < h - 2)
             loc_sum += level[w << 1];
+        else
+            loc_sum += hist_value;
+    } else {
+        loc_sum += hist_value;
     }
     return loc_sum;
 }
@@ -1766,8 +1785,10 @@ static int get_gtx_flag_inc(const ResidualCoding* rc, const int xc, const int yc
         inc =  incs[tb->c_idx];
     } else {
         const int d = xc + yc;
-        const int local_sum_sig = get_local_sum(rc->sig_coeff_flag, tb->tb_width, tb->tb_height, xc, yc);
-        const int loc_sum_abs_pass1 = get_local_sum(rc->abs_level_pass1, tb->tb_width, tb->tb_height, xc, yc);
+        const int local_sum_sig = get_local_sum(rc->sig_coeff_flag,
+                tb->tb_width,tb->tb_height, xc, yc, rc->hist_value);
+        const int loc_sum_abs_pass1 = get_local_sum(rc->abs_level_pass1,
+                tb->tb_width, tb->tb_height, xc, yc, rc->hist_value);
         const int offset = FFMIN(loc_sum_abs_pass1 - local_sum_sig, 4);
 
         if (!tb->c_idx)
@@ -1826,7 +1847,8 @@ static int sig_coeff_flag_decode(VVCLocalContext *lc, const ResidualCoding* rc, 
         inc = 60 + local_num_sig;
     } else {
         const int d = xc + yc;
-        const int loc_sum_abs_pass1 = get_local_sum(rc->abs_level_pass1, tb->tb_width, tb->tb_height, xc, yc);
+        const int loc_sum_abs_pass1 = get_local_sum(rc->abs_level_pass1,
+                tb->tb_width, tb->tb_height, xc, yc, 0);
 
         if (!tb->c_idx) {
             inc = 12 * FFMAX(0, rc->qstate - 1) + FFMIN((loc_sum_abs_pass1 + 1) >> 1, 3) + ((d < 2) ? 8 : (d < 5 ? 4 : 0));
@@ -1851,7 +1873,8 @@ static int abs_get_rice_param(VVCLocalContext *lc, const ResidualCoding* rc,
     int loc_sum_abs;
     int shift_val;
 
-    loc_sum_abs = get_local_sum(rc->abs_level, tb->tb_width, tb->tb_height, xc, yc);
+    loc_sum_abs = get_local_sum(rc->abs_level, tb->tb_width, tb->tb_height, xc,
+            yc, rc->hist_value);
 
     if (!sps->rrc_rice_extension_flag) {
         shift_val = 0;
@@ -1965,22 +1988,26 @@ static const uint8_t qstate_translate_table[][2] = {
     { 0, 2 }, { 2, 0 }, { 1, 3 }, { 3, 1 }
 };
 
-static int abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const int xc, const int yc)
-{
+static int dec_abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const int xc, const int yc, int *abs_level) {
     const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc, 0);
-    int abs_dec_level =  abs_decode(lc, c_rice_param);
+    int dec_abs_level =  abs_decode(lc, c_rice_param);
     const int zero_pos = (rc->qstate < 2 ? 1 : 2) << c_rice_param;
-    if (abs_dec_level != zero_pos) {
-        if (abs_dec_level < zero_pos)
-            abs_dec_level++;
+    if (dec_abs_level == zero_pos) {
+        *abs_level = 0;
     } else {
-        abs_dec_level = 0;
+        if (dec_abs_level < zero_pos)
+            *abs_level = dec_abs_level + 1;
+        else
+            *abs_level = dec_abs_level;
     }
-    return abs_dec_level;
+    return dec_abs_level;
 }
 
-static void init_residual_coding(ResidualCoding *rc, const int log2_zo_tb_width, const int log2_zo_tb_height, TransformBlock *tb)
+static void init_residual_coding(VVCLocalContext *lc, ResidualCoding *rc,
+        const int log2_zo_tb_width, const int log2_zo_tb_height,
+        TransformBlock *tb)
 {
+    const VVCSPS *sps   = lc->fc->ps.sps;
     int log2_sb_w = (FFMIN(log2_zo_tb_width, log2_zo_tb_height ) < 2 ? 1 : 2 );
     int log2_sb_h = log2_sb_w;
 
@@ -1997,6 +2024,8 @@ static void init_residual_coding(ResidualCoding *rc, const int log2_zo_tb_width,
     rc->log2_sb_h = log2_sb_h;
     rc->num_sb_coeff   = 1 << (log2_sb_w + log2_sb_h);
     rc->last_sub_block = ( 1 << ( log2_zo_tb_width + log2_zo_tb_height - (log2_sb_w + log2_sb_h))) - 1;
+    rc->hist_value     = sps->persistent_rice_adaptation_enabled_flag ? (1 << lc->ep->stat_coeff[tb->c_idx]) : 0;
+    rc->update_hist    = sps->persistent_rice_adaptation_enabled_flag ? 1 : 0;
     rc->rem_bins_pass1 = (( 1 << ( log2_zo_tb_width + log2_zo_tb_height)) * 7 ) >> 2;
 
 
@@ -2140,7 +2169,7 @@ static int hls_residual_ts_coding(VVCLocalContext *lc, TransformBlock *tb)
 {
     ResidualCoding rc;
     tb->min_scan_x = tb->min_scan_y = INT_MAX;
-    init_residual_coding(&rc, tb->log2_tb_width, tb->log2_tb_height, tb);
+    init_residual_coding(lc, &rc, tb->log2_tb_width, tb->log2_tb_height, tb);
     for (int i = 0; i <= rc.last_sub_block; i++) {
         int ret = residual_ts_coding_subblock(lc, &rc, i);
         if (ret < 0)
@@ -2231,17 +2260,34 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
         const int yc = (ys << rc->log2_sb_h) + rc->scan_y_off[n];
         const int *abs_level_pass1  = rc->abs_level_pass1 + yc * tb->tb_width + xc;
         int *abs_level              = rc->abs_level + yc * tb->tb_width + xc;
+        int abs_remainder;
 
         *abs_level = *abs_level_pass1;
-        if (abs_level_gt2_flag[n])
-            *abs_level += abs_remainder_decode(lc, rc, xc, yc) << 1;
+        if (abs_level_gt2_flag[n]) {
+            abs_remainder = abs_remainder_decode(lc, rc, xc, yc);
+            if (rc->update_hist && abs_remainder > 0) {
+                lc->ep->stat_coeff[tb->c_idx] = (lc->ep->stat_coeff[tb->c_idx]
+                                      + (int) (av_log2(abs_remainder)) + 2) >> 1;
+                rc->update_hist = 0;
+            }
+            *abs_level += 2 * abs_remainder;
+        }
     }
     for (n = first_pos_mode1; n >= 0; n--) {
         const int xc    = (xs << rc->log2_sb_w) + rc->scan_x_off[n];
         const int yc    = (ys << rc->log2_sb_h) + rc->scan_y_off[n];
+        int dec_abs_level;
         int *abs_level  = rc->abs_level + yc * tb->tb_width + xc;
 
-        *abs_level = abs_level_decode(lc, rc, xc, yc);
+        if (*sb_coded_flag) {
+            dec_abs_level = dec_abs_level_decode(lc, rc, xc, yc, abs_level);
+
+            if (rc->update_hist && dec_abs_level > 0) {
+                lc->ep->stat_coeff[tb->c_idx] = (lc->ep->stat_coeff[tb->c_idx]
+                                      + (int) (av_log2(dec_abs_level))) >> 1;
+                rc->update_hist = 0;
+            }
+        }
         if (*abs_level > 0) {
             if (last_sig_scan_pos_sb == -1)
                 last_sig_scan_pos_sb = n;
@@ -2356,7 +2402,7 @@ static int hls_residual_coding(VVCLocalContext *lc, TransformBlock *tb)
     else
         log2_zo_tb_height = FFMIN(log2_tb_height, 5);
 
-    init_residual_coding(&rc, log2_zo_tb_width, log2_zo_tb_height, tb);
+    init_residual_coding(lc, &rc, log2_zo_tb_width, log2_zo_tb_height, tb);
     last_significant_coeff_x_y_decode(&rc, lc, log2_zo_tb_width, log2_zo_tb_height);
     derive_last_scan_pos(&rc, log2_zo_tb_width, log2_zo_tb_height);
 
