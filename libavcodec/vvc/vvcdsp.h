@@ -141,13 +141,13 @@ typedef struct VVCLFDSPContext {
 struct SAOParams;
 typedef struct VVCSAODSPContext {
     void (*band_filter[9])(uint8_t *dst, const uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
-        const int16_t *sao_offset_val, const int sao_left_class, const int width, const int height);
+        const int16_t *sao_offset_val, int sao_left_class, int width, int height);
     /* implicit src_stride parameter has value of 2 * MAX_PB_SIZE + AV_INPUT_BUFFER_PADDING_SIZE */
     void (*edge_filter[9])(uint8_t *dst /* align 16 */, const uint8_t *src /* align 32 */, ptrdiff_t dst_stride,
-        const int16_t *sao_offset_val, const int sao_eo_class, const int width, const int height);
-    void (*edge_restore[2])(uint8_t *dst, uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
-        struct SAOParams *sao, int *borders, int width, int height, int c_idx,
-        uint8_t *vert_edge, uint8_t *horiz_edge, uint8_t *diag_edge);
+        const int16_t *sao_offset_val, int sao_eo_class, int width, int height);
+    void (*edge_restore[2])(uint8_t *dst, const uint8_t *src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+        const struct SAOParams *sao, const int *borders, int width, int height, int c_idx,
+        const uint8_t *vert_edge, const uint8_t *horiz_edge, const uint8_t *diag_edge);
 } VVCSAODSPContext;
 
 typedef struct VVCALFDSPContext {

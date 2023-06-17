@@ -33,11 +33,11 @@ static void FUNC(lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const in
     }
 }
 
-static void FUNC(sao_band_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
-    int16_t *sao_offset_val, const int sao_left_class, const int width, const int height)
+static void FUNC(sao_band_filter)(uint8_t *_dst, const uint8_t *_src, ptrdiff_t dst_stride, ptrdiff_t src_stride,
+    const int16_t *sao_offset_val, const int sao_left_class, const int width, const int height)
 {
-    pixel *dst = (pixel *)_dst;
-    pixel *src = (pixel *)_src;
+    pixel *dst       = (pixel *)_dst;
+    const pixel *src = (pixel *)_src;
     int offset_table[32] = { 0 };
     int k, y, x;
     int shift  = BIT_DEPTH - 5;
@@ -57,8 +57,8 @@ static void FUNC(sao_band_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_st
 
 #define CMP(a, b) (((a) > (b)) - ((a) < (b)))
 
-static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_stride,
-    int16_t *sao_offset_val, const int eo, const int width, const int height)
+static void FUNC(sao_edge_filter)(uint8_t *_dst, const uint8_t *_src, ptrdiff_t dst_stride,
+    const int16_t *sao_offset_val, const int eo, const int width, const int height)
 {
     static const uint8_t edge_idx[] = { 1, 2, 0, 3, 4 };
     static const int8_t pos[4][2][2] = {
@@ -67,8 +67,8 @@ static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_st
         { { -1, -1 }, {  1, 1 } }, // 45 degree
         { {  1, -1 }, { -1, 1 } }, // 135 degree
     };
-    pixel *dst = (pixel *)_dst;
-    pixel *src = (pixel *)_src;
+    pixel *dst          = (pixel *)_dst;
+    const pixel *src    = (pixel *)_src;
     int a_stride, b_stride;
     int x, y;
     ptrdiff_t src_stride = (2 * MAX_PB_SIZE + AV_INPUT_BUFFER_PADDING_SIZE) / sizeof(pixel);
@@ -88,16 +88,16 @@ static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t dst_st
     }
 }
 
-static void FUNC(sao_edge_restore_0)(uint8_t *_dst, uint8_t *_src,
-    ptrdiff_t dst_stride, ptrdiff_t src_stride, SAOParams *sao,
-    int *borders, const int _width, const int _height, const int c_idx,
-    uint8_t *vert_edge, uint8_t *horiz_edge, uint8_t *diag_edge)
+static void FUNC(sao_edge_restore_0)(uint8_t *_dst, const uint8_t *_src,
+    ptrdiff_t dst_stride, ptrdiff_t src_stride, const SAOParams *sao,
+    const int *borders, const int _width, const int _height, const int c_idx,
+    const uint8_t *vert_edge, const uint8_t *horiz_edge, const uint8_t *diag_edge)
 {
     int x, y;
-    pixel *dst = (pixel *)_dst;
-    pixel *src = (pixel *)_src;
-    int16_t *sao_offset_val = sao->offset_val[c_idx];
-    int sao_eo_class    = sao->eo_class[c_idx];
+    pixel *dst                      = (pixel *)_dst;
+    const pixel *src                = (pixel *)_src;
+    const int16_t *sao_offset_val   = sao->offset_val[c_idx];
+    const int sao_eo_class          = sao->eo_class[c_idx];
     int init_x = 0, width = _width, height = _height;
 
     dst_stride /= sizeof(pixel);
@@ -137,16 +137,16 @@ static void FUNC(sao_edge_restore_0)(uint8_t *_dst, uint8_t *_src,
     }
 }
 
-static void FUNC(sao_edge_restore_1)(uint8_t *_dst, uint8_t *_src,
-    ptrdiff_t dst_stride, ptrdiff_t src_stride, SAOParams *sao,
-    int *borders, int _width, int _height, int c_idx,
-    uint8_t *vert_edge, uint8_t *horiz_edge, uint8_t *diag_edge)
+static void FUNC(sao_edge_restore_1)(uint8_t *_dst, const uint8_t *_src,
+    ptrdiff_t dst_stride, ptrdiff_t src_stride, const SAOParams *sao,
+    const int *borders, const int _width, const int _height, const int c_idx,
+    const uint8_t *vert_edge, const uint8_t *horiz_edge, const uint8_t *diag_edge)
 {
     int x, y;
-    pixel *dst = (pixel *)_dst;
-    pixel *src = (pixel *)_src;
-    int16_t *sao_offset_val = sao->offset_val[c_idx];
-    int sao_eo_class    = sao->eo_class[c_idx];
+    pixel *dst                      = (pixel *)_dst;
+    const pixel *src                = (pixel *)_src;
+    const int16_t *sao_offset_val   = sao->offset_val[c_idx];
+    const int sao_eo_class          = sao->eo_class[c_idx];
     int init_x = 0, init_y = 0, width = _width, height = _height;
 
     dst_stride /= sizeof(pixel);
