@@ -892,6 +892,9 @@ static void derive_chroma_intra_pred_mode(VVCLocalContext *lc,
         const int modes[4] = {INTRA_PLANAR, INTRA_VERT, INTRA_HORZ, INTRA_DC};
         int idx;
 
+        // This workaround is necessary to have 4:4:4 video decode correctly
+        // See VVC ticket https://jvet.hhi.fraunhofer.de/trac/vvc/ticket/1602
+        // and VTM source https://vcgit.hhi.fraunhofer.de/jvet/VVCSoftware_VTM/-/blob/master/source/Lib/CommonLib/UnitTools.cpp#L736
         if (cu->tree_type == SINGLE_TREE && sps->chroma_format_idc == CHROMA_FORMAT_444 && intra_mip_flag) {
             idx = 4;
         } else {
