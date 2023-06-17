@@ -108,7 +108,7 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
 
     gci->present_flag = get_bits1(gb);
     if (gci->present_flag) {
-        unsigned int num_reserved_bits, num_additional_bits_used;
+        unsigned int gci_num_addtional_bits, num_additional_bits_used;
         /* general */
         gci->intra_only_constraint_flag = get_bits1(gb);
         gci->all_layers_independent_constraint_flag = get_bits1(gb);
@@ -198,8 +198,8 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
         gci->no_lmcs_constraint_flag = get_bits1(gb);
         gci->no_ladf_constraint_flag = get_bits1(gb);
         gci->no_virtual_boundaries_constraint_flag = get_bits1(gb);
-        num_reserved_bits = get_bits(gb, 8);
-        if (num_reserved_bits > 5) {
+        gci_num_addtional_bits = get_bits(gb, 8);
+        if (gci_num_addtional_bits > 5) {
             gci->all_rap_pictures_constraint_flag = get_bits1(gb);
             gci->no_extended_precision_processing_constraint_flag = get_bits1(gb);
             gci->no_ts_residual_coding_rice_constraint_flag = get_bits1(gb);
@@ -207,17 +207,9 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
             gci->no_persistent_rice_adaptation_constraint_flag = get_bits1(gb);
             gci->no_reverse_last_sig_coeff_constraint_flag = get_bits1(gb);
             num_additional_bits_used = 6;
-        } else {
-            gci->all_rap_pictures_constraint_flag = 0;
-            gci->no_extended_precision_processing_constraint_flag = 0;
-            gci->no_ts_residual_coding_rice_constraint_flag = 0;
-            gci->no_rrc_rice_extension_constraint_flag = 0;
-            gci->no_persistent_rice_adaptation_constraint_flag = 0;
-            gci->no_reverse_last_sig_coeff_constraint_flag = 0;
-            num_additional_bits_used = 0;
         }
-        for (i = 0; i < num_reserved_bits - num_additional_bits_used; i++) {
-            skip_bits1(gb);          //reserved_zero_bit[i]
+        for (i = 0; i < gci_num_addtional_bits - num_additional_bits_used; i++) {
+            skip_bits1(gb);          // gci_reserved_bit[i]
         }
     }
     align_get_bits(gb);
@@ -1031,15 +1023,8 @@ static int sps_parse_vui(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
 
 static int sps_parse_extension(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
 {
-    int range_extension_flag;
-    sps->extended_precision_flag = 0;
-    sps->ts_residual_coding_rice_present_in_sh_flag = 0;
-    sps->rrc_rice_extension_flag = 0;
-    sps->persistent_rice_adaptation_enabled_flag = 0;
-    sps->reverse_last_sig_coeff_enabled_flag = 0;
-
     if (get_bits1(gb)) {  // sps_extension_present_flag
-        range_extension_flag = get_bits1(gb);
+        const unsigned int range_extension_flag = get_bits1(gb);
         skip_bits(gb, 7);  // sps_extension_7bits
         if (range_extension_flag) {
             sps->extended_precision_flag = get_bits1(gb);
@@ -1056,12 +1041,6 @@ static int sps_parse_extension(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
     sps->log2_transform_range = sps->extended_precision_flag
                               ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
                               : 15;
-    sps->coeff_min = -(1 << (sps->extended_precision_flag
-                            ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
-                            : 15));
-    sps->coeff_max = (1 << (sps->extended_precision_flag
-                           ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
-                           : 15)) - 1;
 
     return 0;
 }
@@ -3271,11 +3250,9 @@ static void sh_parse_transform(VVCSH *sh, const VVCSPS *sps, GetBitContext *gb)
 }
 
 static void sh_parse_range_extension(VVCSH *sh, const VVCSPS *sps, GetBitContext *gb) {
-    sh->ts_residual_coding_rice_idx_minus1 = 0;
     if (sps->ts_residual_coding_rice_present_in_sh_flag)
         sh->ts_residual_coding_rice_idx_minus1 = get_bits(gb, 3);
 
-    sh->reverse_last_sig_coeff_flag = 0;
     if (sps->reverse_last_sig_coeff_enabled_flag)
         sh->reverse_last_sig_coeff_flag = get_bits1(gb);
 }

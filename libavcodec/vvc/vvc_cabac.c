@@ -1856,15 +1856,12 @@ static int abs_get_rice_param(VVCLocalContext *lc, const ResidualCoding* rc,
     if (!sps->rrc_rice_extension_flag) {
         shift_val = 0;
     } else {
-        shift_val = (loc_sum_abs < tx[0])
-                         ? rx[0]
-                         : ((loc_sum_abs < tx[1])
-                             ? rx[1]
-                             : ((loc_sum_abs < tx[2])
-                                 ? rx[2]
-                                 : ((loc_sum_abs < tx[3])
-                                     ? rx[3]
-                                     : rx[4])));
+        int i;
+        for (i = FF_ARRAY_ELEMS(tx); i > 0; --i) {
+            if (loc_sum_abs >= tx[i - 1])
+                break;
+        }
+        shift_val = rx[i];
     }
 
     loc_sum_abs = av_clip_uintp2((loc_sum_abs >> shift_val) - base_level * 5, 5);
@@ -1899,10 +1896,12 @@ static int abs_remainder_decode(VVCLocalContext *lc, const ResidualCoding* rc, c
 {
     const VVCSPS *sps = lc->fc->ps.sps;
     const VVCSH *sh = &lc->sc->sh;
-    const int base_level = sps->rrc_rice_extension_flag
-        ? (sps->bit_depth > 12) ? ((sh->slice_type == VVC_SLICE_TYPE_I) ? 1 : 2) : ((sh->slice_type == VVC_SLICE_TYPE_I) ? 2 : 3)
-        : 4;
-    const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc, base_level);
+    const int base_level[][2][2] = {
+        { {4, 4}, {4, 4} },
+        { {3, 2}, {2, 1} }
+    };
+    const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc,
+        base_level[sps->rrc_rice_extension_flag][sps->bit_depth > 12][sh->slice_type == VVC_SLICE_TYPE_I]);
     const int rem = abs_decode(lc, c_rice_param);
     return rem;
 }

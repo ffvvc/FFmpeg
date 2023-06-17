@@ -81,7 +81,7 @@ static void ilfnst_transform(const VVCLocalContext *lc, TransformBlock *tb)
         u[x] = tb->coeffs[w * yc + xc];
     }
     ff_vvc_inv_lfnst_1d(v, u, non_zero_size, n_lfnst_out_size, pred_mode_intra,
-                        cu->lfnst_idx, sps->coeff_min, sps->coeff_max);
+                        cu->lfnst_idx, sps->log2_transform_range);
     if (transpose) {
         int *dst = tb->coeffs;
         const int *src = v;
@@ -273,13 +273,13 @@ static void predict_intra(VVCLocalContext *lc, const TransformUnit *tu, const in
 }
 
 static void scale_clip(int *coeff, const int nzw, const int w, const int h,
-                       const int shift, const int coeff_min, const int coeff_max)
+    const int shift, const int log2_transform_range)
 {
     const int add = 1 << (shift - 1);
     for (int y = 0; y < h; y++) {
         int *p = coeff + y * w;
         for (int x = 0; x < nzw; x++) {
-            *p = av_clip((*p + add) >> shift, coeff_min, coeff_max);
+            *p = av_clip_intp2((*p + add) >> shift, log2_transform_range);
             p++;
         }
         memset(p, 0, sizeof(*p) * (w - nzw));
@@ -415,11 +415,10 @@ static const uint8_t* derive_scale_m(const VVCLocalContext *lc, const TransformB
 
 //8.7.3 Scaling process for transform coefficients
 static av_always_inline int scale_coeff(const TransformBlock *tb, int coeff,
-                                        const int scale, const int scale_m,
-                                        const int coeff_min, const int coeff_max)
+    const int scale, const int scale_m, const int log2_transform_range)
 {
     coeff = (coeff * scale * scale_m + tb->bd_offset) >> tb->bd_shift;
-    coeff = av_clip(coeff, coeff_min, coeff_max);
+    coeff = av_clip_intp2(coeff, log2_transform_range);
     return coeff;
 }
 
@@ -439,8 +438,7 @@ static void dequant(const VVCLocalContext *lc, const TransformUnit *tu, Transfor
             int *coeff = tb->coeffs + y * tb->tb_width + x;
 
             if (*coeff)
-                *coeff = scale_coeff(tb, *coeff, scale, *scale_m,
-                                     sps->coeff_min, sps->coeff_max);
+                *coeff = scale_coeff(tb, *coeff, scale, *scale_m, sps->log2_transform_range);
             scale_m++;
         }
     }
@@ -455,7 +453,7 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
 
     for (int x = 0; x < nzw; x++)
         fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w);
-    scale_clip(temp, nzw, w, h, 7, sps->coeff_min, sps->coeff_max);
+    scale_clip(temp, nzw, w, h, 7, sps->log2_transform_range);
 
     for (int y = 0; y < h; y++)
         fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1);
@@ -481,7 +479,7 @@ static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const
     const IntraPredMode mode = tb->c_idx ? cu->intra_pred_mode_c : cu->intra_pred_mode_y;
     const int vertical       = mode == INTRA_VERT;
     lc->fc->vvcdsp.itx.transform_bdpcm(tb->coeffs, tb->tb_width, tb->tb_height,
-                                       vertical, sps->coeff_min, sps->coeff_max);
+                                       vertical, sps->log2_transform_range);
     if (vertical)
         tb->max_scan_y = tb->tb_height - 1;
     else
