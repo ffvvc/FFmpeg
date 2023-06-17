@@ -282,6 +282,8 @@ typedef struct VVCCabacState {
 typedef struct EntryPoint {
     int8_t qp_y;                                    //< QpY
 
+    int stat_coeff[VVC_MAX_SAMPLE_ARRAYS];          ///< StatCoeff
+
     VVCCabacState cabac_state[VVC_CONTEXTS];
     CABACContext cc;
 
