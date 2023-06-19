@@ -267,11 +267,7 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             if (next < sc->eps + sc->nb_eps) {
                 memcpy(next->cabac_state, ep->cabac_state, sizeof(next->cabac_state));
                 av_assert0(!next->parse_task->type);
-                for (size_t i = 0; i < FF_ARRAY_ELEMS(lc->ep->stat_coeff); ++i) {
-                    lc->ep->stat_coeff[i] = sps->persistent_rice_adaptation_enabled_flag
-                        ? 2 * (int) (av_log2(sps->bit_depth - 10))
-                        : 0;
-                }
+                ff_vvc_ep_init_stat_coeff(lc->ep, sps->bit_depth, sps->persistent_rice_adaptation_enabled_flag);
                 ff_vvc_frame_add_task(s, next->parse_task);
             }
         }

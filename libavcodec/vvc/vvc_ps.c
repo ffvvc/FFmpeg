@@ -1038,9 +1038,8 @@ static int sps_parse_extension(VVCSPS *sps, GetBitContext *gb, void *log_ctx)
     }
 
     // Derived values
-    sps->log2_transform_range = sps->extended_precision_flag
-                              ? FFMAX(15, FFMIN(20, sps->bit_depth + 6))
-                              : 15;
+    sps->log2_transform_range =
+        sps->extended_precision_flag ? FFMAX(15, FFMIN(20, sps->bit_depth + 6)) : 15;
 
     return 0;
 }

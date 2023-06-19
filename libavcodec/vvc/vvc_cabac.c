@@ -819,11 +819,7 @@ static void cabac_init_state(VVCLocalContext *lc)
 
     av_assert0(VVC_CONTEXTS == SYNTAX_ELEMENT_LAST);
     
-    for (size_t i = 0; i < FF_ARRAY_ELEMS(lc->ep->stat_coeff); ++i) {
-        lc->ep->stat_coeff[i] = sps->persistent_rice_adaptation_enabled_flag
-            ? 2 * (int) (av_log2(sps->bit_depth - 10))
-            : 0;
-    }
+    ff_vvc_ep_init_stat_coeff(lc->ep, sps->bit_depth, sps->persistent_rice_adaptation_enabled_flag);
 
     if (sh->cabac_init_flag && sh->slice_type != VVC_SLICE_TYPE_I)
         init_type ^= 3;
@@ -1737,29 +1733,19 @@ int ff_vvc_transform_skip_flag(VVCLocalContext *lc, const int inc)
 static int get_local_sum(const int *level, const int w, const int h,
     const int xc, const int yc, const int hist_value)
 {
-    int loc_sum = 0;
+    int loc_sum = 3 * hist_value;
     level += w * yc + xc;
     if (xc < w - 1) {
         loc_sum += level[1];
         if (xc < w - 2)
-            loc_sum += level[2];
-        else
-            loc_sum += hist_value;
+            loc_sum += level[2] - hist_value;
         if (yc < h - 1)
-            loc_sum += level[w + 1];
-        else
-            loc_sum += hist_value;
-    } else {
-        loc_sum += 2 * hist_value;
+            loc_sum += level[w + 1] - hist_value;
     }
     if (yc < h - 1) {
         loc_sum += level[w];
         if (yc < h - 2)
-            loc_sum += level[w << 1];
-        else
-            loc_sum += hist_value;
-    } else {
-        loc_sum += hist_value;
+            loc_sum += level[w << 1] - hist_value;
     }
     return loc_sum;
 }
@@ -1868,8 +1854,6 @@ static int abs_get_rice_param(VVCLocalContext *lc, const ResidualCoding* rc,
         0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2,
         2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3,
     };
-    const int tx[] = {32, 128, 512, 2048};
-    const int rx[] = {0, 2, 4, 6, 8};
     int loc_sum_abs;
     int shift_val;
 
@@ -1879,12 +1863,9 @@ static int abs_get_rice_param(VVCLocalContext *lc, const ResidualCoding* rc,
     if (!sps->rrc_rice_extension_flag) {
         shift_val = 0;
     } else {
-        int i;
-        for (i = FF_ARRAY_ELEMS(tx); i > 0; --i) {
-            if (loc_sum_abs >= tx[i - 1])
-                break;
-        }
-        shift_val = rx[i];
+        // NB: Integer division is being used to round down to the nearest
+        //     multiple of two.
+        shift_val = (av_log2(FFMAX(FFMIN(loc_sum_abs, 2048), 8)) - 3) / 2 * 2;
     }
 
     loc_sum_abs = av_clip_uintp2((loc_sum_abs >> shift_val) - base_level * 5, 5);
@@ -1988,20 +1969,37 @@ static const uint8_t qstate_translate_table[][2] = {
     { 0, 2 }, { 2, 0 }, { 1, 3 }, { 3, 1 }
 };
 
-static int dec_abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const int xc, const int yc, int *abs_level) {
+static int abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const int xc, const int yc, int *dec_abs_level)
+{
     const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc, 0);
-    int dec_abs_level =  abs_decode(lc, c_rice_param);
+    int abs_level =  abs_decode(lc, c_rice_param);
     const int zero_pos = (rc->qstate < 2 ? 1 : 2) << c_rice_param;
-    if (dec_abs_level == zero_pos) {
-        *abs_level = 0;
+    *dec_abs_level = abs_level;
+    if (abs_level != zero_pos) {
+        if (abs_level < zero_pos)
+            abs_level++;
     } else {
-        if (dec_abs_level < zero_pos)
-            *abs_level = dec_abs_level + 1;
-        else
-            *abs_level = dec_abs_level;
+        abs_level = 0;
     }
-    return dec_abs_level;
+    return abs_level;
 }
+
+static void ep_update_hist(VVCLocalContext *lc, ResidualCoding *rc, int remainder, int remainder_flag) {
+    EntryPoint *ep           = lc->ep;
+    const TransformBlock *tb = rc->tb;
+
+    if (rc->update_hist && remainder > 0) {
+	if (remainder_flag) {
+		ep->stat_coeff[tb->c_idx] = (ep->stat_coeff[tb->c_idx]
+				      + (av_log2(remainder)) + 2) >> 1;
+	} else {
+                ep->stat_coeff[tb->c_idx] = (lc->ep->stat_coeff[tb->c_idx]
+                                      + (av_log2(remainder))) >> 1;
+	}
+	rc->update_hist = 0;
+    }
+}
+
 
 static void init_residual_coding(VVCLocalContext *lc, ResidualCoding *rc,
         const int log2_zo_tb_width, const int log2_zo_tb_height,
@@ -2260,33 +2258,23 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
         const int yc = (ys << rc->log2_sb_h) + rc->scan_y_off[n];
         const int *abs_level_pass1  = rc->abs_level_pass1 + yc * tb->tb_width + xc;
         int *abs_level              = rc->abs_level + yc * tb->tb_width + xc;
-        int abs_remainder;
 
         *abs_level = *abs_level_pass1;
         if (abs_level_gt2_flag[n]) {
-            abs_remainder = abs_remainder_decode(lc, rc, xc, yc);
-            if (rc->update_hist && abs_remainder > 0) {
-                lc->ep->stat_coeff[tb->c_idx] = (lc->ep->stat_coeff[tb->c_idx]
-                                      + (int) (av_log2(abs_remainder)) + 2) >> 1;
-                rc->update_hist = 0;
-            }
+            int abs_remainder = abs_remainder_decode(lc, rc, xc, yc);
+            ep_update_hist(lc, rc, abs_remainder, 1);
             *abs_level += 2 * abs_remainder;
         }
     }
     for (n = first_pos_mode1; n >= 0; n--) {
         const int xc    = (xs << rc->log2_sb_w) + rc->scan_x_off[n];
         const int yc    = (ys << rc->log2_sb_h) + rc->scan_y_off[n];
-        int dec_abs_level;
         int *abs_level  = rc->abs_level + yc * tb->tb_width + xc;
 
         if (*sb_coded_flag) {
-            dec_abs_level = dec_abs_level_decode(lc, rc, xc, yc, abs_level);
-
-            if (rc->update_hist && dec_abs_level > 0) {
-                lc->ep->stat_coeff[tb->c_idx] = (lc->ep->stat_coeff[tb->c_idx]
-                                      + (int) (av_log2(dec_abs_level))) >> 1;
-                rc->update_hist = 0;
-            }
+            int dec_abs_level;
+            *abs_level = abs_level_decode(lc, rc, xc, yc, &dec_abs_level);
+            ep_update_hist(lc, rc, dec_abs_level, 0);
         }
         if (*abs_level > 0) {
             if (last_sig_scan_pos_sb == -1)

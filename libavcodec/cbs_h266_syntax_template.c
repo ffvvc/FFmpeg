@@ -2975,8 +2975,8 @@ static int FUNC(slice_header)(CodedBitstreamContext *ctx, RWContext *rw,
     else
         infer(sh_ts_residual_coding_disabled_flag, 0);
 
-    if (!current->sh_ts_residual_coding_disabled_flag
-      && sps->sps_ts_residual_coding_rice_present_in_sh_flag)
+    if (!current->sh_ts_residual_coding_disabled_flag &&
+        sps->sps_ts_residual_coding_rice_present_in_sh_flag)
         u(3, sh_ts_residual_coding_rice_idx_minus1, 0, 7);
     else
         infer(sh_ts_residual_coding_rice_idx_minus1, 0);
