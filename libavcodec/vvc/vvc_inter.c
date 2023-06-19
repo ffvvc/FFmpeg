@@ -490,13 +490,14 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
 
 }
 
-static int pred_get_refs(const VVCFrameContext *fc, VVCFrame *ref[2],
-    const MvField *mv)
+static int pred_get_refs(const VVCLocalContext *lc, VVCFrame *ref[2],  const MvField *mv)
 {
+    const RefPicList *rpl = lc->sc->rpl;
+
     for (int mask = PF_L0; mask <= PF_L1; mask++) {
         if (mv->pred_flag & mask) {
             const int lx = mask - PF_L0;
-            ref[lx] = fc->ref->refPicList[lx].ref[mv->ref_idx[lx]];
+            ref[lx] = rpl[lx].ref[mv->ref_idx[lx]];
             if (!ref[lx])
                 return AVERROR_INVALIDDATA;
         }
@@ -553,7 +554,7 @@ static void pred_gpm_blk(VVCLocalContext *lc)
         for (int i = 0; i < 2; i++) {
             const MvField *mv = pu->gpm_mv + i;
             const int lx = mv->pred_flag - PF_L0;
-            VVCFrame *ref = fc->ref->refPicList[lx].ref[mv->ref_idx[lx]];
+            VVCFrame *ref = lc->sc->rpl[lx].ref[mv->ref_idx[lx]];
             if (!ref)
                 return;
             if (c_idx)
@@ -600,7 +601,7 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
     const ptrdiff_t inter_stride    = ciip_flag ? (MAX_PB_SIZE * sizeof(uint16_t)) : dst_stride;
     VVCFrame *ref[2];
 
-    if (pred_get_refs(fc, ref, mv) < 0)
+    if (pred_get_refs(lc, ref, mv) < 0)
         return;
 
     if (mv->pred_flag != PF_BI) {
@@ -649,24 +650,28 @@ static void pred_regular_chroma(VVCLocalContext *lc, const MvField *mv,
     //fix me
     const int hf_idx = 0;
     const int vf_idx = 0;
+    VVCFrame *ref[2];
+
+    if (pred_get_refs(lc, ref, mv) < 0)
+        return;
+
     if (mv->pred_flag != PF_BI) {
         const int lx = mv->pred_flag - PF_L0;
-        VVCFrame* ref = fc->ref->refPicList[lx].ref[mv->ref_idx[lx]];
-        if (!ref)
+        if (!ref[lx])
             return;
-        chroma_mc_uni(lc, inter1, inter1_stride, ref->frame->data[1], ref->frame->linesize[1],
+
+        chroma_mc_uni(lc, inter1, inter1_stride, ref[lx]->frame->data[1], ref[lx]->frame->linesize[1],
             x0_c, y0_c, w_c, h_c, mv, CB, hf_idx, vf_idx);
-        chroma_mc_uni(lc, inter2, inter2_stride, ref->frame->data[2], ref->frame->linesize[2],
+        chroma_mc_uni(lc, inter2, inter2_stride, ref[lx]->frame->data[2], ref[lx]->frame->linesize[2],
             x0_c, y0_c, w_c, h_c, mv, CR, hf_idx, vf_idx);
     } else {
-        VVCFrame* ref0 = fc->ref->refPicList[0].ref[mv->ref_idx[0]];
-        VVCFrame* ref1 = fc->ref->refPicList[1].ref[mv->ref_idx[1]];
-        if (!ref0 || !ref1)
+        if (!ref[0] || !ref[1])
             return;
-        chroma_mc_bi(lc, inter1, inter1_stride, ref0->frame, ref1->frame,
+
+        chroma_mc_bi(lc, inter1, inter1_stride, ref[0]->frame, ref[1]->frame,
             x0_c, y0_c, w_c, h_c, mv, CB, hf_idx, vf_idx, orig_mv, dmvr_flag, lc->cu->ciip_flag);
 
-        chroma_mc_bi(lc, inter2, inter2_stride, ref0->frame, ref1->frame,
+        chroma_mc_bi(lc, inter2, inter2_stride, ref[0]->frame, ref[1]->frame,
             x0_c, y0_c, w_c, h_c, mv, CR, hf_idx, vf_idx, orig_mv, dmvr_flag, lc->cu->ciip_flag);
 
     }
@@ -845,7 +850,7 @@ static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int
         *sb_bdof_flag = 1;
     if (pu->dmvr_flag) {
         VVCFrame* ref[2];
-        if (pred_get_refs(fc, ref, mv) < 0)
+        if (pred_get_refs(lc, ref, mv) < 0)
             return;
         dmvr_mv_refine(lc, mv, orig_mv, sb_bdof_flag, ref[0]->frame, ref[1]->frame, x0, y0, sbw, sbh);
         set_dmvr_info(fc, x0, y0, sbw, sbh, mv);
@@ -920,7 +925,7 @@ static void pred_affine_blk(VVCLocalContext *lc)
             const MvField *mv = ff_vvc_get_mvf(fc, x, y);
             VVCFrame *ref[2];
 
-            if (pred_get_refs(fc, ref, mv) < 0)
+            if (pred_get_refs(lc, ref, mv) < 0)
                 return;
 
             if (mi->pred_flag != PF_BI) {
@@ -973,7 +978,7 @@ static int pred_get_y(const int y0, const Mv *mv, const int height)
     return FFMAX(0, y0 + (mv->y >> 4) + height);
 }
 
-static void cu_get_max_y(CodingUnit *cu, int max_y[2][VVC_MAX_REF_ENTRIES], const VVCFrameContext *fc)
+static void cu_get_max_y(const CodingUnit *cu, int max_y[2][VVC_MAX_REF_ENTRIES], const VVCFrameContext *fc)
 {
     const PredictionUnit *pu    = &cu->pu;
 
@@ -1029,7 +1034,7 @@ static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
     for (int lx = 0; lx < 2; lx++) {
         for (int i = 0; i < sh->nb_refs[lx]; i++) {
             const int y = max_y[lx][i];
-            VVCFrame *ref = fc->ref->refPicList[lx].ref[i];
+            VVCFrame *ref = lc->sc->rpl[lx].ref[i];
             if (ref && y >= 0)
                 ff_vvc_await_progress(ref, y + LUMA_EXTRA_AFTER);
         }

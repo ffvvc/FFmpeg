@@ -322,14 +322,15 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
 #define LUMA_GRID               4
 #define CHROMA_GRID             8
 
-static int boundary_strength(const VVCFrameContext *fc, MvField *curr, MvField *neigh,
-                             const RefPicList *neigh_refPicList)
+static int boundary_strength(const VVCLocalContext *lc, MvField *curr, MvField *neigh,
+    const RefPicList *neigh_rpl)
 {
+    RefPicList *rpl = lc->sc->rpl;
     if (curr->pred_flag == PF_BI &&  neigh->pred_flag == PF_BI) {
         // same L0 and L1
-        if (fc->ref->refPicList[0].list[curr->ref_idx[0]] == neigh_refPicList[0].list[neigh->ref_idx[0]]  &&
-            fc->ref->refPicList[0].list[curr->ref_idx[0]] == fc->ref->refPicList[1].list[curr->ref_idx[1]] &&
-            neigh_refPicList[0].list[neigh->ref_idx[0]] == neigh_refPicList[1].list[neigh->ref_idx[1]]) {
+        if (rpl[0].list[curr->ref_idx[0]] == neigh_rpl[0].list[neigh->ref_idx[0]]  &&
+            rpl[0].list[curr->ref_idx[0]] == rpl[1].list[curr->ref_idx[1]] &&
+            neigh_rpl[0].list[neigh->ref_idx[0]] == neigh_rpl[1].list[neigh->ref_idx[1]]) {
             if ((FFABS(neigh->mv[0].x - curr->mv[0].x) >= 8 || FFABS(neigh->mv[0].y - curr->mv[0].y) >= 8 ||
                  FFABS(neigh->mv[1].x - curr->mv[1].x) >= 8 || FFABS(neigh->mv[1].y - curr->mv[1].y) >= 8) &&
                 (FFABS(neigh->mv[1].x - curr->mv[0].x) >= 8 || FFABS(neigh->mv[1].y - curr->mv[0].y) >= 8 ||
@@ -337,15 +338,15 @@ static int boundary_strength(const VVCFrameContext *fc, MvField *curr, MvField *
                 return 1;
             else
                 return 0;
-        } else if (neigh_refPicList[0].list[neigh->ref_idx[0]] == fc->ref->refPicList[0].list[curr->ref_idx[0]] &&
-                   neigh_refPicList[1].list[neigh->ref_idx[1]] == fc->ref->refPicList[1].list[curr->ref_idx[1]]) {
+        } else if (neigh_rpl[0].list[neigh->ref_idx[0]] == rpl[0].list[curr->ref_idx[0]] &&
+                   neigh_rpl[1].list[neigh->ref_idx[1]] == rpl[1].list[curr->ref_idx[1]]) {
             if (FFABS(neigh->mv[0].x - curr->mv[0].x) >= 8 || FFABS(neigh->mv[0].y - curr->mv[0].y) >= 8 ||
                 FFABS(neigh->mv[1].x - curr->mv[1].x) >= 8 || FFABS(neigh->mv[1].y - curr->mv[1].y) >= 8)
                 return 1;
             else
                 return 0;
-        } else if (neigh_refPicList[1].list[neigh->ref_idx[1]] == fc->ref->refPicList[0].list[curr->ref_idx[0]] &&
-                   neigh_refPicList[0].list[neigh->ref_idx[0]] == fc->ref->refPicList[1].list[curr->ref_idx[1]]) {
+        } else if (neigh_rpl[1].list[neigh->ref_idx[1]] == rpl[0].list[curr->ref_idx[0]] &&
+                   neigh_rpl[0].list[neigh->ref_idx[0]] == rpl[1].list[curr->ref_idx[1]]) {
             if (FFABS(neigh->mv[1].x - curr->mv[0].x) >= 8 || FFABS(neigh->mv[1].y - curr->mv[0].y) >= 8 ||
                 FFABS(neigh->mv[0].x - curr->mv[1].x) >= 8 || FFABS(neigh->mv[0].y - curr->mv[1].y) >= 8)
                 return 1;
@@ -360,18 +361,18 @@ static int boundary_strength(const VVCFrameContext *fc, MvField *curr, MvField *
 
         if (curr->pred_flag & 1) {
             A     = curr->mv[0];
-            ref_A = fc->ref->refPicList[0].list[curr->ref_idx[0]];
+            ref_A = rpl[0].list[curr->ref_idx[0]];
         } else {
             A     = curr->mv[1];
-            ref_A = fc->ref->refPicList[1].list[curr->ref_idx[1]];
+            ref_A = rpl[1].list[curr->ref_idx[1]];
         }
 
         if (neigh->pred_flag & 1) {
             B     = neigh->mv[0];
-            ref_B = neigh_refPicList[0].list[neigh->ref_idx[0]];
+            ref_B = neigh_rpl[0].list[neigh->ref_idx[0]];
         } else {
             B     = neigh->mv[1];
-            ref_B = neigh_refPicList[1].list[neigh->ref_idx[1]];
+            ref_B = neigh_rpl[1].list[neigh->ref_idx[1]];
         }
 
         if (ref_A == ref_B) {
@@ -412,11 +413,12 @@ static void derive_max_filter_length_luma(const VVCFrameContext *fc, const int q
         *max_len_p = FFMIN(5, *max_len_p);
 }
 
-static void vvc_deblock_subblock_bs_vertical(const VVCFrameContext  *fc,
+static void vvc_deblock_subblock_bs_vertical(const VVCLocalContext *lc,
     const int cb_x, const int cb_y, const int x0, const int y0, const int width, const int height)
 {
-    MvField* tab_mvf            = fc->ref->tab_mvf;
-    RefPicList* rpl             = fc->ref->refPicList;
+    const VVCFrameContext  *fc  = lc->fc;
+    MvField *tab_mvf            = fc->ref->tab_mvf;
+    RefPicList *rpl             = lc->sc->rpl;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     const int log2_min_pu_size  = MIN_PU_LOG2;
     uint8_t max_len_p, max_len_q;
@@ -434,7 +436,7 @@ static void vvc_deblock_subblock_bs_vertical(const VVCFrameContext  *fc,
             const int x = x0 + i;
             const int y = y0 + j;
 
-            bs = boundary_strength(fc, curr, left, rpl);
+            bs = boundary_strength(lc, curr, left, rpl);
             TAB_BS(fc->tab.vertical_bs[LUMA], x, y) = bs;
 
 
@@ -452,11 +454,12 @@ static void vvc_deblock_subblock_bs_vertical(const VVCFrameContext  *fc,
     }
 }
 
-static void vvc_deblock_subblock_bs_horizontal(const VVCFrameContext  *fc,
+static void vvc_deblock_subblock_bs_horizontal(const VVCLocalContext *lc,
     const int cb_x, const int cb_y, const int x0, const int y0, const int width, const int height)
 {
+    const VVCFrameContext  *fc  = lc->fc;
     MvField* tab_mvf            = fc->ref->tab_mvf;
-    RefPicList* rpl             = fc->ref->refPicList;
+    RefPicList* rpl             = lc->sc->rpl;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     const int log2_min_pu_size  = MIN_PU_LOG2;
     uint8_t max_len_p, max_len_q;
@@ -474,7 +477,7 @@ static void vvc_deblock_subblock_bs_horizontal(const VVCFrameContext  *fc,
             const int x = x0 + i;
             const int y = y0 + j;
 
-            bs = boundary_strength(fc, curr, top, rpl);
+            bs = boundary_strength(lc, curr, top, rpl);
             TAB_BS(fc->tab.horizontal_bs[LUMA], x, y) = bs;
 
             //fixme:
@@ -497,7 +500,7 @@ static void vvc_deblock_subblock_bs_horizontal(const VVCFrameContext  *fc,
 static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
     const int x0, const int y0, const int width, const int height)
 {
-    const VVCFrameContext *fc        = lc->fc;
+    const VVCFrameContext *fc  = lc->fc;
     MvField *tab_mvf           = fc->ref->tab_mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_TU_LOG2;
@@ -533,9 +536,8 @@ static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
         boundary_left = 0;
 
     if (boundary_left) {
-        const RefPicList *rpl_left = (lc->boundary_flags & BOUNDARY_LEFT_SLICE) ?
-                                ff_vvc_get_ref_list(fc, fc->ref, x0 - 1, y0) :
-                                fc->ref->refPicList;
+        const RefPicList *rpl_left =
+            (lc->boundary_flags & BOUNDARY_LEFT_SLICE) ? ff_vvc_get_ref_list(fc, fc->ref, x0 - 1, y0) : lc->sc->rpl;
         int xp_pu = (x0 - 1) >> log2_min_pu_size;
         int xq_pu =  x0      >> log2_min_pu_size;
         int xp_tu = (x0 - 1) >> log2_min_tu_size;
@@ -561,7 +563,7 @@ static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
             else if (off_x && ((off_x % 8) || !has_vertical_sb))
                 bs = 0;                                     ////inside a cu, not aligned to 8 or with no subblocks
             else
-                bs = boundary_strength(fc, curr, left, rpl_left);
+                bs = boundary_strength(lc, curr, left, rpl_left);
 
             TAB_BS(fc->tab.vertical_bs[LUMA], x0, (y0 + i)) = bs;
 
@@ -573,7 +575,7 @@ static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
 
     if (!is_intra) {
         if (fc->tab.msf[off_q] || fc->tab.iaf[off_q])
-            vvc_deblock_subblock_bs_vertical(fc, cb_x, cb_y, x0, y0, width, height);
+            vvc_deblock_subblock_bs_vertical(lc, cb_x, cb_y, x0, y0, width, height);
     }
 
 }
@@ -615,9 +617,8 @@ static void vvc_deblock_bs_luma_horizontal(const VVCLocalContext *lc,
         boundary_upper = 0;
 
     if (boundary_upper) {
-        const RefPicList *rpl_top = (lc->boundary_flags & BOUNDARY_UPPER_SLICE) ?
-                                ff_vvc_get_ref_list(fc, fc->ref, x0, y0 - 1) :
-                                fc->ref->refPicList;
+        const RefPicList *rpl_top =
+            (lc->boundary_flags & BOUNDARY_UPPER_SLICE) ? ff_vvc_get_ref_list(fc, fc->ref, x0, y0 - 1) : lc->sc->rpl;
         int yp_pu = (y0 - 1) >> log2_min_pu_size;
         int yq_pu =  y0      >> log2_min_pu_size;
         int yp_tu = (y0 - 1) >> log2_min_tu_size;
@@ -643,7 +644,7 @@ static void vvc_deblock_bs_luma_horizontal(const VVCLocalContext *lc,
             else if (off_y && ((off_y % 8) || !has_horizontal_sb))
                 bs = 0;                                     //inside a cu, not aligned to 8 or with no subblocks
             else
-                bs = boundary_strength(fc, curr, top, rpl_top);
+                bs = boundary_strength(lc, curr, top, rpl_top);
 
             TAB_BS(fc->tab.horizontal_bs[LUMA], x0 + i, y0) = bs;
 
@@ -655,7 +656,7 @@ static void vvc_deblock_bs_luma_horizontal(const VVCLocalContext *lc,
 
     if (!is_intra) {
         if (fc->tab.msf[off_q] || fc->tab.iaf[off_q])
-            vvc_deblock_subblock_bs_horizontal(fc, cb_x, cb_y, x0, y0, width, height);
+            vvc_deblock_subblock_bs_horizontal(lc, cb_x, cb_y, x0, y0, width, height);
     }
 }
 

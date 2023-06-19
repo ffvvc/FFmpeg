@@ -489,9 +489,10 @@ static int max_negtive(const int idx, const int diff, const int max_diff)
 
 typedef int (*smvd_find_fxn)(const int idx, const int diff, const int old_diff);
 
-static int8_t smvd_find(const VVCFrameContext *fc, const VVCSH *sh, int lx, smvd_find_fxn find)
+static int8_t smvd_find(const VVCFrameContext *fc, const SliceContext *sc, int lx, smvd_find_fxn find)
 {
-    const RefPicList *rpl   = fc->ref->refPicList + lx;
+    const VVCSH *sh         = &sc->sh;
+    const RefPicList *rpl   = sc->rpl + lx;
     const int poc           = fc->ref->poc;
     int8_t idx              = -1;
     int old_diff            = -1;
@@ -507,14 +508,15 @@ static int8_t smvd_find(const VVCFrameContext *fc, const VVCSH *sh, int lx, smvd
     return idx;
 }
 
-static void vvc_smvd_ref_idx(const VVCFrameContext *fc, VVCSH *sh)
+static void vvc_smvd_ref_idx(const VVCFrameContext *fc, SliceContext *sc)
 {
+    VVCSH *sh = &sc->sh;
     if (IS_B(sh)) {
-        sh->ref_idx_sym[0] = smvd_find(fc, sh, 0, min_positive);
-        sh->ref_idx_sym[1] = smvd_find(fc, sh, 1, max_negtive);
+        sh->ref_idx_sym[0] = smvd_find(fc, sc, 0, min_positive);
+        sh->ref_idx_sym[1] = smvd_find(fc, sc, 1, max_negtive);
         if (sh->ref_idx_sym[0] == -1 || sh->ref_idx_sym[1] == -1) {
-            sh->ref_idx_sym[0] = smvd_find(fc, sh, 0, max_negtive);
-            sh->ref_idx_sym[1] = smvd_find(fc, sh, 1, min_positive);
+            sh->ref_idx_sym[0] = smvd_find(fc, sc, 0, max_negtive);
+            sh->ref_idx_sym[1] = smvd_find(fc, sc, 1, min_positive);
         }
     }
 }
@@ -784,7 +786,7 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
 
 
     if (!IS_I(sh))
-        vvc_smvd_ref_idx(fc, sh);
+        vvc_smvd_ref_idx(fc, sc);
 
     ret = init_slice_context(sc, fc, nal, gb);
     if (ret < 0)

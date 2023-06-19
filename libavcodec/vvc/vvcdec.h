@@ -141,7 +141,6 @@ typedef struct VVCFrame {
     ThreadFrame tf;
 
     MvField  *tab_mvf;
-    RefPicList *refPicList;
     RefPicListTab **rpl_tab;
 
     int ctb_count;
@@ -171,6 +170,7 @@ struct SliceContext {
     VVCSH sh;
     EntryPoint *eps;
     int nb_eps;
+    RefPicList *rpl;
 };
 
 struct VVCFrameContext {

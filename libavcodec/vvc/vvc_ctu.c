@@ -1200,16 +1200,17 @@ static void set_cu_tabs(const VVCLocalContext *lc, const CodingUnit *cu)
 }
 
 //8.5.2.7 Derivation process for merge motion vector difference
-static void derive_mmvd(MvField *mvf, const VVCFrameContext *fc, const Mv *mmvd_offset)
+static void derive_mmvd(const VVCLocalContext *lc, MvField *mvf, const Mv *mmvd_offset)
 {
+    const SliceContext *sc  = lc->sc;
     Mv mmvd[2];
 
     if (mvf->pred_flag == PF_BI) {
-        const RefPicList *refPicList = fc->ref->refPicList;
-        const int poc = fc->ps.ph->poc;
+        const RefPicList *rpl = sc->rpl;
+        const int poc = lc->fc->ps.ph->poc;
         const int diff[] = {
-            poc - refPicList[0].list[mvf->ref_idx[0]],
-            poc - refPicList[1].list[mvf->ref_idx[1]]
+            poc - rpl[0].list[mvf->ref_idx[0]],
+            poc - rpl[1].list[mvf->ref_idx[1]]
         };
         const int sign = FFSIGN(diff[0]) != FFSIGN(diff[1]);
 
@@ -1220,7 +1221,7 @@ static void derive_mmvd(MvField *mvf, const VVCFrameContext *fc, const Mv *mmvd_
             const int i = FFABS(diff[0]) < FFABS(diff[1]);
             const int o = !i;
             mmvd[i] = *mmvd_offset;
-            if (!refPicList[0].isLongTerm[mvf->ref_idx[0]] && !refPicList[1].isLongTerm[mvf->ref_idx[1]]) {
+            if (!rpl[0].isLongTerm[mvf->ref_idx[0]] && !rpl[1].isLongTerm[mvf->ref_idx[1]]) {
                 ff_vvc_mv_scale(&mmvd[o], mmvd_offset, diff[i], diff[o]);
             }
             else {
@@ -1232,8 +1233,7 @@ static void derive_mmvd(MvField *mvf, const VVCFrameContext *fc, const Mv *mmvd_
         mvf->mv[0].y += mmvd[0].y;
         mvf->mv[1].x += mmvd[1].x;
         mvf->mv[1].y += mmvd[1].y;
-    }
-    else {
+    } else {
         const int idx = mvf->pred_flag - PF_L0;
         mvf->mv[idx].x += mmvd_offset->x;
         mvf->mv[idx].y += mmvd_offset->y;
@@ -1303,7 +1303,7 @@ static void merge_data_regular(VVCLocalContext *lc)
     }
     ff_vvc_luma_mv_merge_mode(lc, merge_idx, 0, &mvf);
     if (pu->mmvd_merge_flag)
-        derive_mmvd(&mvf, fc, &mmvd_offset);
+        derive_mmvd(lc, &mvf, &mmvd_offset);
     mv_merge_refine_pred_flag(&mvf, cu->cb_width, cu->cb_height);
     ff_vvc_store_mvf(lc, &mvf);
     mvf_to_mi(&mvf, &pu->mi);
@@ -1452,7 +1452,7 @@ static int bcw_idx_decode(VVCLocalContext *lc, const MotionInfo *mi, const int c
         !w->weight_flag[L0][CHROMA][mi->ref_idx[0]] &&
         !w->weight_flag[L1][CHROMA][mi->ref_idx[1]] &&
         cb_width * cb_height >= 256) {
-        bcw_idx = ff_vvc_bcw_idx(lc, ff_vvc_no_backward_pred_flag(fc));
+        bcw_idx = ff_vvc_bcw_idx(lc, ff_vvc_no_backward_pred_flag(lc));
     }
     return bcw_idx;
 }
@@ -1570,8 +1570,8 @@ static void derive_dmvr_bdof_flag(const VVCLocalContext *lc, PredictionUnit *pu)
     const VVCPH *ph             = fc->ps.ph;
     const VVCSH *sh             = &lc->sc->sh;
     const int poc               = ph->poc;
-    const RefPicList *rpl0      = fc->ref->refPicList + L0;
-    const RefPicList *rpl1      = fc->ref->refPicList + L1;
+    const RefPicList *rpl0      = lc->sc->rpl + L0;
+    const RefPicList *rpl1      = lc->sc->rpl + L1;
     const int8_t *ref_idx       = pu->mi.ref_idx;
     const MotionInfo *mi        = &pu->mi;
     const CodingUnit *cu        = lc->cu;

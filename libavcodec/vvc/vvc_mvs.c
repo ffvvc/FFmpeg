@@ -118,15 +118,15 @@ static int check_mvset(Mv *mvLXCol, Mv *mvCol,
                 refPicList_col, L ## l, temp_col.ref_idx[l])
 
 //derive NoBackwardPredFlag
-int ff_vvc_no_backward_pred_flag(const VVCFrameContext *fc)
+int ff_vvc_no_backward_pred_flag(const VVCLocalContext *lc)
 {
     int check_diffpicount = 0;
     int i, j;
-    const RefPicList *refPicList = fc->ref->refPicList;
+    const RefPicList *rpl = lc->sc->rpl;
 
     for (j = 0; j < 2; j++) {
-        for (i = 0; i < refPicList[j].nb_refs; i++) {
-            if (refPicList[j].list[i] > fc->ps.ph->poc) {
+        for (i = 0; i < rpl[j].nb_refs; i++) {
+            if (rpl[j].list[i] > lc->fc->ps.ph->poc) {
                 check_diffpicount++;
                 break;
             }
@@ -141,7 +141,8 @@ static int derive_temporal_colocated_mvs(const VVCLocalContext *lc, MvField temp
                                          int colPic, const RefPicList *refPicList_col, int sb_flag)
 {
     const VVCFrameContext *fc   = lc->fc;
-    RefPicList* refPicList      = fc->ref->refPicList;
+    const SliceContext *sc      = lc->sc;
+    RefPicList* refPicList      = sc->rpl;
 
     if (temp_col.pred_flag == PF_INTRA)
         return 0;
@@ -150,12 +151,12 @@ static int derive_temporal_colocated_mvs(const VVCLocalContext *lc, MvField temp
         if (X == 0) {
             if (temp_col.pred_flag & PF_L0)
                 return CHECK_MVSET(0);
-            else if (ff_vvc_no_backward_pred_flag(fc) && (temp_col.pred_flag & PF_L1))
+            else if (ff_vvc_no_backward_pred_flag(lc) && (temp_col.pred_flag & PF_L1))
                 return CHECK_MVSET(1);
         } else {
             if (temp_col.pred_flag & PF_L1)
                 return CHECK_MVSET(1);
-            else if (ff_vvc_no_backward_pred_flag(fc) && (temp_col.pred_flag & PF_L0))
+            else if (ff_vvc_no_backward_pred_flag(lc) && (temp_col.pred_flag & PF_L0))
                 return CHECK_MVSET(0);
         }
     } else {
@@ -164,7 +165,7 @@ static int derive_temporal_colocated_mvs(const VVCLocalContext *lc, MvField temp
         else if (temp_col.pred_flag == PF_L0)
             return CHECK_MVSET(0);
         else if (temp_col.pred_flag == PF_BI) {
-            if (ff_vvc_no_backward_pred_flag(fc)) {
+            if (ff_vvc_no_backward_pred_flag(lc)) {
                 if (X == 0)
                     return CHECK_MVSET(0);
                 else
@@ -1034,6 +1035,7 @@ static int sb_temporal_luma_motion_data(const VVCLocalContext *lc, const MvField
     const int x_ctb, const int y_ctb, MvField *ctr_mvf, Mv *temp_mv)
 {
     const VVCFrameContext *fc   = lc->fc;
+    const RefPicList *rpl       = lc->sc->rpl;
     const CodingUnit *cu        = lc->cu;
     const int x                 = cu->x0  + cu->cb_width / 2;
     const int y                 = cu->y0  + cu->cb_height / 2;
@@ -1052,9 +1054,9 @@ static int sb_temporal_luma_motion_data(const VVCLocalContext *lc, const MvField
 
     AV_ZERO64(temp_mv);
     if (a1) {
-        if ((a1->pred_flag & PF_L0) && colPic == fc->ref->refPicList[0].list[a1->ref_idx[0]])
+        if ((a1->pred_flag & PF_L0) && colPic == rpl[0].list[a1->ref_idx[0]])
             *temp_mv = a1->mv[0];
-        else if ((a1->pred_flag & PF_L1) && colPic == fc->ref->refPicList[1].list[a1->ref_idx[1]])
+        else if ((a1->pred_flag & PF_L1) && colPic == rpl[1].list[a1->ref_idx[1]])
             *temp_mv = a1->mv[1];
         ff_vvc_round_mv(temp_mv, 0, 4);
     }
@@ -1405,26 +1407,25 @@ void ff_vvc_sb_mv_merge_mode(VVCLocalContext *lc, const int merge_subblock_idx, 
     }
 }
 
-static int mvp_candidate(const VVCFrameContext *fc,
-    const int x_cand, const int y_cand, const int lx, const int8_t *ref_idx,
-    Mv *mv)
+static int mvp_candidate(const VVCLocalContext *lc, const int x_cand, const int y_cand,
+    const int lx, const int8_t *ref_idx, Mv *mv)
 {
-
+    const VVCFrameContext *fc       = lc->fc;
+    const RefPicList *rpl           = lc->sc->rpl;
     const int min_pu_width          = fc->ps.pps->min_pu_width;
     const MvField* tab_mvf          = fc->ref->tab_mvf;
     const MvField *mvf              = &TAB_MVF(x_cand, y_cand);
-    const RefPicList* refPicList    = fc->ref->refPicList;
     const PredFlag maskx = lx + 1;
-    const int poc = refPicList[lx].list[ref_idx[lx]];
+    const int poc = rpl[lx].list[ref_idx[lx]];
     int available = 0;
 
-    if ((mvf->pred_flag & maskx) &&  refPicList[lx].list[mvf->ref_idx[lx]] == poc) {
+    if ((mvf->pred_flag & maskx) && rpl[lx].list[mvf->ref_idx[lx]] == poc) {
         available = 1;
         *mv = mvf->mv[lx];
     } else {
         const int ly = !lx;
         const PredFlag masky = ly + 1;
-        if ((mvf->pred_flag & masky) &&  refPicList[ly].list[mvf->ref_idx[ly]] == poc) {
+        if ((mvf->pred_flag & masky) && rpl[ly].list[mvf->ref_idx[ly]] == poc) {
             available = 1;
             *mv = mvf->mv[ly];
         }
@@ -1445,17 +1446,17 @@ static int affine_mvp_candidate(const VVCLocalContext *lc,
         const int min_pu_width = fc->ps.pps->min_pu_width;
         const MvField* tab_mvf = fc->ref->tab_mvf;
         const MvField *mvf = &TAB_MVF(x_nb, y_nb);
-        RefPicList* refPicList = fc->ref->refPicList;
+        RefPicList* rpl = lc->sc->rpl;
         const PredFlag maskx = lx + 1;
-        const int poc = refPicList[lx].list[ref_idx[lx]];
+        const int poc = rpl[lx].list[ref_idx[lx]];
 
-        if ((mvf->pred_flag & maskx) &&  refPicList[lx].list[mvf->ref_idx[lx]] == poc) {
+        if ((mvf->pred_flag & maskx) && rpl[lx].list[mvf->ref_idx[lx]] == poc) {
             available = 1;
             affine_cps_from_nb(lc, x_nb, y_nb, nbw, nbh, lx, cps, num_cp);
         } else {
             const int ly = !lx;
             const PredFlag masky = ly + 1;
-            if ((mvf->pred_flag & masky) &&  refPicList[ly].list[mvf->ref_idx[ly]] == poc) {
+            if ((mvf->pred_flag & masky) && rpl[ly].list[mvf->ref_idx[ly]] == poc) {
                 available = 1;
                 affine_cps_from_nb(lc, x_nb, y_nb, nbw, nbh, ly, cps, num_cp);
             }
@@ -1470,7 +1471,6 @@ static int mvp_from_nbs(NeighbourContext *ctx,
     Mv *cps, const int num_cps)
 {
     const VVCLocalContext *lc   = ctx->lc;
-    const VVCFrameContext *fc   = lc->fc;
     const int is_mvp            = 1;
     int available               = 0;
 
@@ -1480,7 +1480,7 @@ static int mvp_from_nbs(NeighbourContext *ctx,
             if (num_cps > 1)
                 available = affine_mvp_candidate(lc, n->x, n->y, lx, ref_idx, cps, num_cps);
             else
-                available = mvp_candidate(fc, n->x, n->y, lx, ref_idx, cps);
+                available = mvp_candidate(lc, n->x, n->y, lx, ref_idx, cps);
             if (available) {
                 for (int c = 0; c < num_cps; c++)
                     ff_vvc_round_mv(cps + c, amvr_shift, amvr_shift);
@@ -1547,10 +1547,9 @@ static int mvp_history_candidates(const VVCLocalContext *lc,
     const int mvp_lx_flag, const int lx, const int8_t ref_idx, const int amvr_shift,
     Mv *mv, int num_cands)
 {
-    const VVCFrameContext *fc       = lc->fc;
     const EntryPoint* ep            = lc->ep;
-    const RefPicList* refPicList    = fc->ref->refPicList;
-    const int poc                   = refPicList[lx].list[ref_idx];
+    const RefPicList* rpl           = lc->sc->rpl;
+    const int poc                   = rpl[lx].list[ref_idx];
 
     if (ep->num_hmvp == 0)
         return 0;
@@ -1559,7 +1558,7 @@ static int mvp_history_candidates(const VVCLocalContext *lc,
         for (int j = 0; j < 2; j++) {
             const int ly = (j ? !lx : lx);
             PredFlag mask = PF_L0 + ly;
-            if ((h->pred_flag & mask) && poc == refPicList[ly].list[h->ref_idx[ly]]) {
+            if ((h->pred_flag & mask) && poc == rpl[ly].list[h->ref_idx[ly]]) {
                 if (mvp_lx_flag == num_cands) {
                     *mv = h->mv[ly];
                     ff_vvc_round_mv(mv, amvr_shift, amvr_shift);
@@ -1607,10 +1606,11 @@ static int affine_mvp_constructed_cp(NeighbourContext *ctx,
     const NeighbourIdx *neighbour, const int num_neighbour,
     const int lx, const int8_t ref_idx, const int amvr_shift, Mv *cp)
 {
-    const VVCFrameContext *fc       = ctx->lc->fc;
+    const VVCLocalContext *lc       = ctx->lc;
+    const VVCFrameContext *fc       = lc->fc;
     const MvField *tab_mvf          = fc->ref->tab_mvf;
     const int min_pu_width          = fc->ps.pps->min_pu_width;
-    const RefPicList* refPicList    = fc->ref->refPicList;
+    const RefPicList* rpl           = lc->sc->rpl;
     const int is_mvp                = 1;
     int available                   = 0;
 
@@ -1619,14 +1619,14 @@ static int affine_mvp_constructed_cp(NeighbourContext *ctx,
         if (check_available(n, ctx->lc, is_mvp)) {
             const PredFlag maskx = lx + 1;
             const MvField* mvf = &TAB_MVF(n->x, n->y);
-            const int poc = refPicList[lx].list[ref_idx];
-            if ((mvf->pred_flag & maskx) &&  refPicList[lx].list[mvf->ref_idx[lx]] == poc) {
+            const int poc = rpl[lx].list[ref_idx];
+            if ((mvf->pred_flag & maskx) && rpl[lx].list[mvf->ref_idx[lx]] == poc) {
                 available = 1;
                 *cp = mvf->mv[lx];
             } else {
                 const int ly = !lx;
                 const PredFlag masky = ly + 1;
-                if ((mvf->pred_flag & masky) &&  refPicList[ly].list[mvf->ref_idx[ly]] == poc) {
+                if ((mvf->pred_flag & masky) && rpl[ly].list[mvf->ref_idx[ly]] == poc) {
                     available = 1;
                     *cp = mvf->mv[ly];
                 }
