@@ -1475,6 +1475,53 @@ static int8_t ref_idx_decode(VVCLocalContext *lc, const VVCSH *sh, const int sym
     return ref_idx;
 }
 
+static int mvds_decode(VVCLocalContext *lc, Mv mvds[2][MAX_CONTROL_POINTS],
+    const int num_cp_mv, const int lx)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCPH *ph             = fc->ps.ph;
+    const PredictionUnit *pu    = &lc->cu->pu;
+    const MotionInfo *mi        = &pu->mi;
+    int has_no_zero_mvd         = 0;
+
+    if (lx == L1 && ph->mvd_l1_zero_flag && mi->pred_flag == PF_BI) {
+        for (int j = 0; j < num_cp_mv; j++)
+            AV_ZERO64(&mvds[lx][j]);
+    } else {
+        Mv *mvd0 = &mvds[lx][0];
+        if (lx == L1 && pu->sym_mvd_flag) {
+            mvd0->x = -mvds[L0][0].x;
+            mvd0->y = -mvds[L0][0].y;
+        } else {
+            hls_mvd_coding(lc, mvd0);
+        }
+        has_no_zero_mvd |= (mvd0->x || mvd0->y);
+        for (int j = 1; j < num_cp_mv; j++) {
+            Mv *mvd = &mvds[lx][j];
+            hls_mvd_coding(lc, mvd);
+            mvd->x += mvd0->x;
+            mvd->y += mvd0->y;
+            has_no_zero_mvd |= (mvd->x || mvd->y);
+        }
+    }
+    return has_no_zero_mvd;
+}
+
+static void mvp_add_difference(MotionInfo *mi, const int num_cp_mv,
+    const Mv mvds[2][MAX_CONTROL_POINTS], const int amvr_shift)
+{
+    for (int i = 0; i < 2; i++) {
+        const PredFlag mask = i + PF_L0;
+        if (mi->pred_flag & mask) {
+            for (int j = 0; j < num_cp_mv; j++) {
+                const Mv *mvd = &mvds[i][j];
+                mi->mv[i][j].x += mvd->x << amvr_shift;
+                mi->mv[i][j].y += mvd->y << amvr_shift;
+            }
+        }
+    }
+}
+
 static int mvp_data(VVCLocalContext *lc)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -1489,9 +1536,8 @@ static int mvp_data(VVCLocalContext *lc)
 
     int mvp_lx_flag[2] = {0};
     int cu_affine_type_flag = 0;
-    int i, num_cp_mv;
+    int num_cp_mv;
     int amvr_enabled, has_no_zero_mvd = 0, amvr_shift;
-
     Mv mvds[2][MAX_CONTROL_POINTS];
 
     mi->pred_flag = ff_vvc_pred_flag(lc, IS_B(sh));
@@ -1513,26 +1559,7 @@ static int mvp_data(VVCLocalContext *lc)
         const PredFlag pred_flag = PF_L0 + !i;
         if (mi->pred_flag != pred_flag) {
             mi->ref_idx[i] = ref_idx_decode(lc, sh, pu->sym_mvd_flag, i);
-            if (i == L1 && ph->mvd_l1_zero_flag && mi->pred_flag == PF_BI) {
-                for (int j = 0; j < num_cp_mv; j++)
-                    AV_ZERO64(&mvds[i][j]);
-            } else {
-                Mv *mvd0 = &mvds[i][0];
-                if (i == L1 && pu->sym_mvd_flag) {
-                    mvd0->x = -mvds[L0][0].x;
-                    mvd0->y = -mvds[L0][0].y;
-                }
-                else
-                    hls_mvd_coding(lc, mvd0);
-                has_no_zero_mvd |= (mvd0->x || mvd0->y);
-                for (int j = 1; j < num_cp_mv; j++) {
-                    Mv *mvd = &mvds[i][j];
-                    hls_mvd_coding(lc, mvd);
-                    mvd->x += mvd0->x;
-                    mvd->y += mvd0->y;
-                    has_no_zero_mvd |= (mvd->x || mvd->y);
-                }
-            }
+            has_no_zero_mvd |= mvds_decode(lc, mvds, num_cp_mv, i);
             mvp_lx_flag[i] = ff_vvc_mvp_lx_flag(lc);
         }
     }
@@ -1551,16 +1578,8 @@ static int mvp_data(VVCLocalContext *lc)
     else
         ff_vvc_mvp(lc, mvp_lx_flag, amvr_shift, mi);
 
-    for (i = 0; i < 2; i++) {
-        const PredFlag lx = i + 1;
-        if (mi->pred_flag & lx) {
-            for (int j = 0; j < num_cp_mv; j++) {
-                    const Mv *mvd = &mvds[i][j];
-                    mi->mv[i][j].x += mvd->x << amvr_shift;
-                    mi->mv[i][j].y += mvd->y << amvr_shift;
-            }
-        }
-    }
+    mvp_add_difference(mi, num_cp_mv, mvds, amvr_shift);
+
     if (mi->motion_model_idc)
         ff_vvc_store_sb_mvs(lc, pu);
     else
