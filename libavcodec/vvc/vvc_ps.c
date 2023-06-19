@@ -198,6 +198,8 @@ static int gci_parse(GeneralConstraintsInfo *gci, GetBitContext *gb, void *log_c
         gci->no_lmcs_constraint_flag = get_bits1(gb);
         gci->no_ladf_constraint_flag = get_bits1(gb);
         gci->no_virtual_boundaries_constraint_flag = get_bits1(gb);
+
+        num_additional_bits_used = 0;
         gci_num_additional_bits = get_bits(gb, 8);
         if (gci_num_additional_bits > 5) {
             gci->all_rap_pictures_constraint_flag = get_bits1(gb);
