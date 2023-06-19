@@ -1863,9 +1863,7 @@ static int abs_get_rice_param(VVCLocalContext *lc, const ResidualCoding* rc,
     if (!sps->rrc_rice_extension_flag) {
         shift_val = 0;
     } else {
-        // NB: Integer division is being used to round down to the nearest
-        //     multiple of two.
-        shift_val = (av_log2(FFMAX(FFMIN(loc_sum_abs, 2048), 8)) - 3) / 2 * 2;
+        shift_val = (av_log2(FFMAX(FFMIN(loc_sum_abs, 2048), 8)) - 3) & ~1;
     }
 
     loc_sum_abs = av_clip_uintp2((loc_sum_abs >> shift_val) - base_level * 5, 5);
@@ -1984,18 +1982,13 @@ static int abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const
     return abs_level;
 }
 
-static void ep_update_hist(VVCLocalContext *lc, ResidualCoding *rc, int remainder, int remainder_flag) {
+static void ep_update_hist(VVCLocalContext *lc, ResidualCoding *rc, int remainder, int addin) {
     EntryPoint *ep           = lc->ep;
     const TransformBlock *tb = rc->tb;
 
     if (rc->update_hist && remainder > 0) {
-	if (remainder_flag) {
-		ep->stat_coeff[tb->c_idx] = (ep->stat_coeff[tb->c_idx]
-				      + (av_log2(remainder)) + 2) >> 1;
-	} else {
-                ep->stat_coeff[tb->c_idx] = (lc->ep->stat_coeff[tb->c_idx]
-                                      + (av_log2(remainder))) >> 1;
-	}
+        ep->stat_coeff[tb->c_idx] = (ep->stat_coeff[tb->c_idx]
+                              + (av_log2(remainder)) + addin) >> 1;
 	rc->update_hist = 0;
     }
 }
@@ -2261,8 +2254,8 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
 
         *abs_level = *abs_level_pass1;
         if (abs_level_gt2_flag[n]) {
-            int abs_remainder = abs_remainder_decode(lc, rc, xc, yc);
-            ep_update_hist(lc, rc, abs_remainder, 1);
+            const int abs_remainder = abs_remainder_decode(lc, rc, xc, yc);
+            ep_update_hist(lc, rc, abs_remainder, 2);
             *abs_level += 2 * abs_remainder;
         }
     }
