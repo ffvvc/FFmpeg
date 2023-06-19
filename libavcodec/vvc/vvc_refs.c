@@ -55,7 +55,6 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
         av_buffer_unref(&frame->rpl_buf);
         av_buffer_unref(&frame->rpl_tab_buf);
         frame->rpl_tab    = NULL;
-        frame->refPicList = NULL;
 
         frame->collocated_ref = NULL;
     }
@@ -384,7 +383,7 @@ static int add_candidate_ref(VVCContext *s, VVCFrameContext *fc, RefPicList *lis
     return 0;
 }
 
-static int init_slice_rpl(const VVCFrameContext *fc, const SliceContext *sc)
+static int init_slice_rpl(const VVCFrameContext *fc, SliceContext *sc)
 {
     VVCFrame *frame = fc->ref;
     const VVCSH *sh = &sc->sh;
@@ -397,12 +396,12 @@ static int init_slice_rpl(const VVCFrameContext *fc, const SliceContext *sc)
         frame->rpl_tab[rs] = (RefPicListTab *)frame->rpl_buf->data + sc->slice_idx;
     }
 
-    frame->refPicList = (RefPicList *)frame->rpl_tab[sh->ctb_addr_in_curr_slice[0]];
+    sc->rpl = (RefPicList *)frame->rpl_tab[sh->ctb_addr_in_curr_slice[0]];
 
     return 0;
 }
 
-int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc)
+int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 {
     const VVCSH *sh = &sc->sh;
     int i, ret = 0;
@@ -411,7 +410,7 @@ int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc)
 
     for (i = 0; i < 2; i++) {
         const VVCRefPicListStruct *rpls = sh->rpls + i;
-        RefPicList *rpl = fc->ref->refPicList + i;
+        RefPicList *rpl = sc->rpl + i;
         int poc_base = fc->ps.ph->poc;
         rpl->nb_refs = 0;
         for (int j = 0; j < rpls->num_ref_entries; j++) {
@@ -446,7 +445,7 @@ fail:
     return ret;
 }
 
-int ff_vvc_frame_rpl(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc)
+int ff_vvc_frame_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 {
     int i, ret = 0;
 

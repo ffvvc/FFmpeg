@@ -38,7 +38,7 @@ void ff_vvc_store_mv(const VVCLocalContext *lc, const MotionInfo *mi);
 void ff_vvc_store_mvf(const VVCLocalContext *lc, const MvField *mvf);
 void ff_vvc_store_gpm_mvf(const VVCLocalContext *lc, const PredictionUnit* pu);
 void ff_vvc_update_hmvp(VVCLocalContext *lc, const MotionInfo *mi);
-int ff_vvc_no_backward_pred_flag(const VVCFrameContext *fc);
+int ff_vvc_no_backward_pred_flag(const VVCLocalContext *lc);
 MvField* ff_vvc_get_mvf(const VVCFrameContext *fc, const int x0, const int y0);
 void ff_vvc_set_mvf(const VVCLocalContext *lc, const int x0, const int y0, const int w, const int h, const MvField *mvf);
 void ff_vvc_set_intra_mvf(const VVCLocalContext *lc);
