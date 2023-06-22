@@ -1136,11 +1136,9 @@ static void set_cb_pos(const VVCFrameContext *fc, const CodingUnit *cu)
     }
 }
 
-static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
-    const int cb_width, const int cb_height, const int cqt_depth, const VVCTreeType tree_type)
+static CodingUnit* alloc_cu(VVCLocalContext *lc, const int x0, const int y0)
 {
     VVCFrameContext *fc = lc->fc;
-    const int ch_type   = tree_type == DUAL_TREE_CHROMA ? 1 : 0;
     const VVCSPS *sps   = fc->ps.sps;
     const VVCPPS *pps   = fc->ps.pps;
     const int rx        = x0 >> sps->ctb_log2_size_y;
@@ -1155,11 +1153,24 @@ static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
     cu->next = NULL;
     cu->buf = buf;
 
-    if (ctu->cus)
+    if (lc->cu)
         lc->cu->next = cu;
     else
         ctu->cus = cu;
     lc->cu = cu;
+
+    return cu;
+}
+
+static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
+    const int cb_width, const int cb_height, const int cqt_depth, const VVCTreeType tree_type)
+{
+    VVCFrameContext *fc = lc->fc;
+    const int ch_type   = tree_type == DUAL_TREE_CHROMA ? 1 : 0;
+    CodingUnit *cu      = alloc_cu(lc, x0, y0);
+
+    if (!cu)
+        return NULL;
 
     memset(&cu->pu, 0, sizeof(cu->pu));
 
@@ -2222,6 +2233,7 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, const int ctb_addr, const int r
     }
 
     lc->coeffs = fc->tab.coeffs + (ry * pps->ctb_width + rx) * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
+    lc->cu     = NULL;
 
     ff_vvc_cabac_init(lc, ctb_addr, rx, ry);
     fc->tab.slice_idx[rs] = lc->sc->slice_idx;
