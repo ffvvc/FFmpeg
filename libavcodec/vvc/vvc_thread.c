@@ -582,7 +582,7 @@ int ff_vvc_task_run(Tasklet *_t, void *local_context, void *user_data)
 
     if (!atomic_load(&ft->ret)) {
         if ((ret = run[t->type](s, lc, t)) < 0) {
-#ifdef WIN32
+#ifdef COMPAT_ATOMICS_WIN32_STDATOMIC_H
             intptr_t zero = 0;
 #else
             int zero = 0;
