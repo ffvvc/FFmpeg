@@ -35,6 +35,7 @@ enum TxType {
 };
 
 enum TxSize {
+    TX_SIZE_1 = 0,
     TX_SIZE_2,
     TX_SIZE_4,
     TX_SIZE_8,
@@ -115,7 +116,7 @@ typedef struct VVCItxDSPContext {
     void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
     void (*pred_residual_joint)(int *buf, int width, int height, int c_sign, int shift);
 
-    void (*itx[N_TX_TYPE][N_TX_SIZE])(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step);
+    void (*itx[N_TX_TYPE][N_TX_TYPE][N_TX_SIZE][N_TX_SIZE])(int *dst, const int *coeff, int nzw, int log2_transform_range);
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int log2_transform_range);
 } VVCItxDSPContext;
 
@@ -166,13 +167,14 @@ typedef struct VVCDSPContext {
     VVCALFDSPContext alf;
 } VVCDSPContext;
 
-void ff_vvc_dsp_init(VVCDSPContext *hpc, int bit_depth);
+void ff_vvc_dsp_init(VVCDSPContext *hpc, int bit_depth,
+    int extended_precision_flag);
 
 extern const int8_t ff_vvc_chroma_filters[3][32][4];
 extern const int8_t ff_vvc_luma_filters[3][16][8];
 extern const int8_t ff_vvc_dmvr_filters[16][2];
 
-void ff_vvc_dsp_init_x86(VVCDSPContext *c, const int bit_depth);
-void ff_vvc_dsp_init_aarch64(VVCDSPContext *c, const int bit_depth);
+void ff_vvc_dsp_init_x86(VVCDSPContext *c, const int bit_depth, int extended_precision_flag);
+void ff_vvc_dsp_init_aarch64(VVCDSPContext *c, const int bit_depth, int extended_precision_flag);
 
 #endif /* AVCODEC_VVCDSP_H */
