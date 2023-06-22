@@ -18,7 +18,7 @@ jobs:
       matrix:
         os:
           - { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
-          - { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
+          - { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
         compiler:
           - { name: gcc, flags: --cc=gcc }
           - { name: clang, flags: --cc=clang }
@@ -34,9 +34,9 @@ jobs:
             assembler: { name: yasm, flags: --as=yasm }
           - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
             assembler: { name: nasm, flags: --as=nasm }
-          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
             compiler: { name: gcc, flags: --cc=gcc }
-          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 2 }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
             compiler: { name: clang, flags: --cc=clang }
 
     runs-on: ${{ matrix.os.runner }}
@@ -73,7 +73,7 @@ jobs:
       run: cd FFmpeg && ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
 
     - name: Build
-      run: cd FFmpeg && make -j
+      run: cd FFmpeg && make -j8
 
     - name: Get tests
       uses: actions/checkout@v3
