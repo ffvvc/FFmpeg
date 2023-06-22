@@ -34,6 +34,14 @@
 #define PIXEL_MAX_10 ((1 << 10) - 1)
 #define PIXEL_MAX_12 ((1 << 12) - 1)
 
+static void alf_filter_luma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+{
+    const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
+    ff_vvc_alf_filter_luma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, param_stride, vb_pos, PIXEL_MAX_8);
+}
+
 static void alf_filter_luma_16bpc_avx2(uint8_t *dst, const ptrdiff_t dst_stride,
     const uint8_t *src, const ptrdiff_t src_stride, const int width, const int height,
     const int16_t *filter, const int16_t *clip, const int vb_pos, const int pixel_max)
@@ -50,12 +58,18 @@ static void alf_filter_luma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const ui
         filter, clip, vb_pos, PIXEL_MAX_10);
 }
 
-static void alf_filter_luma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+static void alf_filter_luma_12_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
 {
-    const int param_stride  = (width >> 2) * ALF_NUM_COEFF_LUMA;
-    ff_vvc_alf_filter_luma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
-        filter, clip, param_stride, vb_pos, PIXEL_MAX_8);
+    alf_filter_luma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, vb_pos, PIXEL_MAX_12);
+}
+
+static void alf_filter_chroma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+    int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+{
+    ff_vvc_alf_filter_chroma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, 0, vb_pos, PIXEL_MAX_8);
 }
 
 static void alf_filter_chroma_16bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
@@ -72,27 +86,32 @@ static void alf_filter_chroma_10_avx2(uint8_t *dst, ptrdiff_t dst_stride, const 
         filter, clip, vb_pos, PIXEL_MAX_10);
 }
 
-static void alf_filter_chroma_8_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
+static void alf_filter_chroma_12_avx2(uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride,
     int width, int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
 {
-    ff_vvc_alf_filter_chroma_8bpc_avx2(dst, dst_stride, src, src_stride, width, height,
-        filter, clip, 0, vb_pos, PIXEL_MAX_8);
+    alf_filter_chroma_16bpc_avx2(dst, dst_stride, src, src_stride, width, height,
+        filter, clip, vb_pos, PIXEL_MAX_12);
 }
 
 static void alf_classify_8_avx2(int *class_idx, int *transpose_idx,
-    const uint8_t *src, ptrdiff_t src_stride, int width, int height,
-    int vb_pos, int *gradient_tmp)
+    const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos, int *gradient_tmp)
 {
     ff_vvc_alf_classify_grad_8bpc_avx2(gradient_tmp, src, src_stride, width, height, vb_pos);
     ff_vvc_alf_classify_8bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 8);
 }
 
 static void alf_classify_10_avx2(int *class_idx, int *transpose_idx,
-    const uint8_t *src, ptrdiff_t src_stride, int width, int height,
-    int vb_pos, int *gradient_tmp)
+    const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos, int *gradient_tmp)
 {
     ff_vvc_alf_classify_grad_16bpc_avx2(gradient_tmp, src, src_stride, width, height, vb_pos);
     ff_vvc_alf_classify_16bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 10);
+}
+
+static void alf_classify_12_avx2(int *class_idx, int *transpose_idx,
+    const uint8_t *src, ptrdiff_t src_stride, int width, int height, int vb_pos, int *gradient_tmp)
+{
+    ff_vvc_alf_classify_grad_16bpc_avx2(gradient_tmp, src, src_stride, width, height, vb_pos);
+    ff_vvc_alf_classify_16bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 12);
 }
 
 #define ALF_DSP(depth) do {                                                     \
@@ -189,6 +208,9 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
             case 10:
                 ALF_DSP(10);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
+                break;
+            case 12:
+                ALF_DSP(12);
                 break;
             default:
                 break;
