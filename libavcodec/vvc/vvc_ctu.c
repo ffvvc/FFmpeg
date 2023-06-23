@@ -204,14 +204,33 @@ static void set_qp_c(VVCLocalContext *lc)
     }
 }
 
-static TransformUnit* add_tu(CodingUnit *cu, const int x0, const int y0, const int tu_width, const int tu_height)
+static TransformUnit* alloc_tu(VVCFrameContext *fc, CodingUnit *cu)
 {
     TransformUnit *tu;
-
-    if (cu->num_tus >= FF_ARRAY_ELEMS(cu->tus))
+    AVBufferRef *buf = av_buffer_pool_get(fc->tu_pool);
+    if (!buf)
         return NULL;
 
-    tu = &cu->tus[cu->num_tus];
+    tu = (TransformUnit *)buf->data;
+    tu->next = NULL;
+    tu->buf = buf;
+
+    if (cu->tus.tail)
+        cu->tus.tail->next =  tu;
+    else
+        cu->tus.head = tu;
+    cu->tus.tail = tu;
+
+    return tu;
+}
+
+static TransformUnit* add_tu(VVCFrameContext *fc, CodingUnit *cu, const int x0, const int y0, const int tu_width, const int tu_height)
+{
+    TransformUnit *tu = alloc_tu(fc, cu);
+
+    if (!tu)
+        return NULL;
+
     tu->x0 = x0;
     tu->y0 = y0;
     tu->width = tu_width;
@@ -219,7 +238,6 @@ static TransformUnit* add_tu(CodingUnit *cu, const int x0, const int y0, const i
     tu->joint_cbcr_residual_flag = 0;
     memset(tu->coded_flag, 0, sizeof(tu->coded_flag));
     tu->nb_tbs = 0;
-    cu->num_tus++;
 
     return tu;
 }
@@ -295,7 +313,7 @@ static int hls_transform_unit(VVCLocalContext *lc, int x0, int y0,int tu_width, 
     const VVCSPS *sps   = fc->ps.sps;
     const VVCPPS *pps   = fc->ps.pps;
     CodingUnit *cu      = lc->cu;
-    TransformUnit *tu   = add_tu(cu, x0, y0, tu_width, tu_height);
+    TransformUnit *tu   = add_tu(fc, cu, x0, y0, tu_width, tu_height);
     const int min_cb_width      = pps->min_cb_width;
     const VVCTreeType tree_type = cu->tree_type;
     const int is_128            = cu->cb_width > 64 || cu->cb_height > 64;
@@ -459,7 +477,7 @@ static int hls_transform_tree(VVCLocalContext *lc, int x0, int y0,int tu_width, 
 
 static int skipped_transform_tree(VVCLocalContext *lc, int x0, int y0,int tu_width, int tu_height)
 {
-    const VVCFrameContext *fc   = lc->fc;
+    VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
 
     if (tu_width > sps->max_tb_size_y || tu_height > sps->max_tb_size_y) {
@@ -479,7 +497,7 @@ static int skipped_transform_tree(VVCLocalContext *lc, int x0, int y0,int tu_wid
         else
             SKIPPED_TRANSFORM_TREE(x0, y0 + trafo_height);
     } else {
-        TransformUnit *tu = add_tu(lc->cu, x0, y0, tu_width, tu_height);
+        TransformUnit *tu = add_tu(fc, lc->cu, x0, y0, tu_width, tu_height);
         const int c_end = sps->chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : (LUMA + 1);
         if (!tu)
             return AVERROR_INVALIDDATA;
@@ -773,6 +791,7 @@ static int lfnst_idx_decode(VVCLocalContext *lc)
     const VVCSPS *sps           = lc->fc->ps.sps;
     const int cb_width          = cu->cb_width;
     const int cb_height         = cu->cb_height;
+    const TransformUnit  *tu    = cu->tus.head;
     int lfnst_width, lfnst_height, min_lfnst;
     int lfnst_idx = 0;
 
@@ -781,13 +800,13 @@ static int lfnst_idx_decode(VVCLocalContext *lc)
     if (!sps->lfnst_enabled_flag || cu->pred_mode != MODE_INTRA || FFMAX(cb_width, cb_height) > sps->max_tb_size_y)
         return 0;
 
-    for (int i = 0; i < cu->num_tus; i++) {
-        const TransformUnit  *tu  = &cu->tus[i];
+    while (tu) {
         for (int j = 0; j < tu->nb_tbs; j++) {
             const TransformBlock *tb = tu->tbs + j;
             if (tu->coded_flag[tb->c_idx] && tb->ts)
                 return 0;
         }
+        tu = tu->next;
     }
 
     if (tree_type == DUAL_TREE_CHROMA) {
@@ -822,7 +841,7 @@ static MtsIdx mts_idx_decode(VVCLocalContext *lc)
     const VVCSPS     *sps   = lc->fc->ps.sps;
     const int cb_width      = cu->cb_width;
     const int cb_height     = cu->cb_height;
-    const uint8_t transform_skip_flag = cu->tus[0].tbs[0].ts; //fix me
+    const uint8_t transform_skip_flag = cu->tus.head->tbs[0].ts; //fix me
     int mts_idx = MTS_DCT2_DCT2;
     if (cu->tree_type != DUAL_TREE_CHROMA && !cu->lfnst_idx &&
         !transform_skip_flag && FFMAX(cb_width, cb_height) <= 32 &&
@@ -1186,7 +1205,7 @@ static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
     cu->cb_height = cb_height;
     cu->ch_type = ch_type;
     cu->cqt_depth = cqt_depth;
-    cu->num_tus = 0;
+    cu->tus.head = cu->tus.tail = NULL;
     cu->bdpcm_flag[LUMA] = cu->bdpcm_flag[CB] = cu->bdpcm_flag[CR] = 0;
     cu->isp_split_type = ISP_NO_SPLIT;
     cu->intra_mip_flag = 0;
@@ -1200,21 +1219,22 @@ static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
 
 static void set_cu_tabs(const VVCLocalContext *lc, const CodingUnit *cu)
 {
-    const VVCFrameContext *fc = lc->fc;
+    const VVCFrameContext *fc   = lc->fc;
+    const TransformUnit *tu     = cu->tus.head;
 
     set_cb_tab(lc, fc->tab.cpm[cu->ch_type], cu->pred_mode);
     if (cu->tree_type != DUAL_TREE_CHROMA)
         set_cb_tab(lc, fc->tab.skip, cu->skip_flag);
 
-    for (int i = 0; i < cu->num_tus; i++) {
-        const TransformUnit *tu = cu->tus + i;
-        for (int j = 0; j < tu->nb_tbs; j++) {
+    while (tu) {
+          for (int j = 0; j < tu->nb_tbs; j++) {
             const TransformBlock *tb = tu->tbs + j;
             if (tb->c_idx != LUMA)
                 set_qp_c_tab(lc, tu, tb);
             if (tb->c_idx != CR && cu->bdpcm_flag[tb->c_idx])
                 set_tb_tab(fc->tab.pcmf[tb->c_idx], 1, fc, tb);
         }
+        tu = tu->next;
     }
 }
 
@@ -2310,13 +2330,22 @@ void ff_vvc_set_neighbour_available(VVCLocalContext *lc,
 
 void ff_vvc_ctu_free_cus(CTU *ctu)
 {
-    while (ctu->cus) {
-        CodingUnit *cu      = ctu->cus;
-        AVBufferRef *buf    = cu->buf;
+    CodingUnit *cu  = ctu->cus;
+    while (cu) {
+        AVBufferRef *cu_buf = cu->buf;
+        TransformUnit *tu   = cu->tus.head;
 
-        ctu->cus = ctu->cus->next;
-        av_buffer_unref(&buf);
+        while (tu) {
+            AVBufferRef *buf = tu->buf;
+            tu  = tu->next;
+            av_buffer_unref(&buf);
+        }
+        cu->tus.head = cu->tus.tail = NULL;
+
+        cu = cu->next;
+        av_buffer_unref(&cu_buf);
     }
+    ctu->cus = NULL;
 }
 
 int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)

@@ -104,6 +104,8 @@ typedef enum VVCTreeType {
 } VVCTreeType;
 
 typedef struct TransformUnit {
+    AVBufferRef *buf;
+
     int x0;
     int y0;
     int width;
@@ -114,6 +116,8 @@ typedef struct TransformUnit {
     uint8_t coded_flag[VVC_MAX_SAMPLE_ARRAYS];          ///< tu_y_coded_flag, tu_cb_coded_flag, tu_cr_coded_flag
     uint8_t nb_tbs;
     TransformBlock tbs[VVC_MAX_SAMPLE_ARRAYS];
+
+    struct TransformUnit *next;
 } TransformUnit;
 
 typedef enum PredMode {
@@ -206,7 +210,6 @@ typedef struct PredictionUnit {
     int cb_prof_flag[2];
 } PredictionUnit;
 
-struct CodingUnit;
 typedef struct CodingUnit {
     AVBufferRef *buf;
 
@@ -251,9 +254,14 @@ typedef struct CodingUnit {
 
     int apply_lfnst_flag[VVC_MAX_SAMPLE_ARRAYS];    ///< ApplyLfnstFlag[]
 
+    struct {
+        TransformUnit *head;
+        TransformUnit *tail;
+    } tus;
+#if 0
     TransformUnit tus[MAX_TUS_IN_CU];
     int num_tus;
-
+#endif
     int8_t qp[4];                                   ///< QpY, Qp′Cb, Qp′Cr, Qp′CbCr
 
     PredictionUnit pu;

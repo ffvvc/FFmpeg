@@ -203,6 +203,7 @@ struct VVCFrameContext {
     AVBufferPool *rpl_tab_pool;
 
     AVBufferPool *cu_pool;
+    AVBufferPool *tu_pool;
 
     struct {
         int16_t *slice_idx;
