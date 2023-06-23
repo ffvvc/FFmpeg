@@ -58,7 +58,7 @@ static int get_qPc(const VVCFrameContext *fc, const int x0, const int y0, const 
     return fc->tab.qp[chroma][x + y * min_tu_width];
 }
 
-static void copy_CTB(uint8_t *dst, const uint8_t *src, const int width, const int height,
+static void copy_ctb(uint8_t *dst, const uint8_t *src, const int width, const int height,
     const ptrdiff_t dst_stride, const ptrdiff_t src_stride)
 {
     for (int y = 0; y < height; y++) {
@@ -96,7 +96,7 @@ static void copy_vert(uint8_t *dst, const uint8_t *src, const int pixel_shift, c
     }
 }
 
-static void copy_CTB_to_hv(VVCFrameContext *fc, const uint8_t *src,
+static void copy_ctb_to_hv(VVCFrameContext *fc, const uint8_t *src,
     const ptrdiff_t src_stride, const int x, const int y, const int width, const int height,
     const int c_idx, const int x_ctb, const int y_ctb)
 {
@@ -190,7 +190,7 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
 
         switch (sao->type_idx[c_idx]) {
         case SAO_BAND:
-            copy_CTB_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx, x_ctb, y_ctb);
+            copy_ctb_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx, x_ctb, y_ctb);
             fc->vvcdsp.sao.band_filter[tab](src, src, src_stride, src_stride,
                 sao->offset_val[c_idx], sao->band_position[c_idx], width, height);
             sao->type_idx[c_idx] = SAO_APPLIED;
@@ -280,12 +280,12 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                 }
             }
 
-            copy_CTB(dst - (left_pixels << sh),
+            copy_ctb(dst - (left_pixels << sh),
                      src - (left_pixels << sh),
                      (width + left_pixels + right_pixels) << sh,
                      height, dst_stride, src_stride);
 
-            copy_CTB_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx,
+            copy_ctb_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx,
                            x_ctb, y_ctb);
             fc->vvcdsp.sao.edge_filter[tab](src, dst, src_stride, sao->offset_val[c_idx],
                                             sao->eo_class[c_idx], width, height);
@@ -1109,7 +1109,7 @@ static void alf_prepare_buffer(VVCFrameContext *fc, uint8_t *_dst, const uint8_t
     const int border_pixels = c_idx == 0 ? ALF_BORDER_LUMA : ALF_BORDER_CHROMA;
     uint8_t *dst, *src;
 
-    copy_CTB(_dst, _src, width << ps, height, dst_stride, src_stride);
+    copy_ctb(_dst, _src, width << ps, height, dst_stride, src_stride);
 
     //top
     src = fc->tab.alf_pixel_buffer_h[c_idx][1] + (((border_pixels * (y_ctb - 1)) * w + x) << ps);
