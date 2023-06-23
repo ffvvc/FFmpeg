@@ -61,22 +61,11 @@ static int get_qPc(const VVCFrameContext *fc, const int x0, const int y0, const 
 static void copy_CTB(uint8_t *dst, const uint8_t *src, const int width, const int height,
     const ptrdiff_t dst_stride, const ptrdiff_t src_stride)
 {
-    int i, j;
+    for (int y = 0; y < height; y++) {
+        memcpy(dst, src, width);
 
-    if (((intptr_t)dst | (intptr_t)src | dst_stride | src_stride) & 15) {
-        for (i = 0; i < height; i++) {
-            for (j = 0; j < width; j+=8)
-                AV_COPY64U(dst+j, src+j);
-            dst += dst_stride;
-            src += src_stride;
-        }
-    } else {
-        for (i = 0; i < height; i++) {
-            for (j = 0; j < width; j+=16)
-                AV_COPY128(dst+j, src+j);
-            dst += dst_stride;
-            src += src_stride;
-        }
+        dst += dst_stride;
+        src += src_stride;
     }
 }
 
