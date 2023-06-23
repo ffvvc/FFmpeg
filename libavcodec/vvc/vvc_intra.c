@@ -542,11 +542,11 @@ static int reconstruct(VVCLocalContext *lc)
     const int end       = fc->ps.sps->chroma_format_idc && (cu->tree_type != DUAL_TREE_LUMA);
 
     for (int ch_type = start; ch_type <= end; ch_type++) {
-        for (int i = 0; i < cu->num_tus; i++) {
-            TransformUnit *tu = &cu->tus[i];
-
+        TransformUnit *tu = cu->tus.head;
+        for (int i = 0; tu; i++) {
             predict_intra(lc, tu, i, ch_type);
             itransform(lc, tu, i, ch_type);
+            tu = tu->next;
         }
     }
     return 0;
