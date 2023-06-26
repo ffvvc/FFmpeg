@@ -2228,13 +2228,15 @@ static void deblock_params(VVCLocalContext *lc, const int rx, const int ry)
     CTB(fc->tab.deblock, rx, ry) = sh->deblock;
 }
 
-static int hls_coding_tree_unit(VVCLocalContext *lc,  int x0, int y0)
+static int hls_coding_tree_unit(VVCLocalContext *lc,
+    const int x0, const int y0, const ctb_addr, const int rx, const int ry)
 {
-    int ret = 0;
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
+    const VVCPPS *pps           = fc->ps.pps;
     const VVCSH *sh             = &lc->sc->sh;
     const unsigned int ctb_size = sps->ctb_size_y;
+    int ret                     = 0;
 
     memset(lc->parse.chroma_qp_offset, 0, sizeof(lc->parse.chroma_qp_offset));
 
@@ -2250,10 +2252,31 @@ static int hls_coding_tree_unit(VVCLocalContext *lc,  int x0, int y0)
     if (ret < 0)
         return ret;
 
+    if (rx == pps->ctb_to_col_bd[rx + 1] - 1) {
+        if (ctb_addr == sh->num_ctus_in_curr_slice - 1) {
+            const int end_of_slice_one_bit = ff_vvc_end_of_slice_flag_decode(lc);
+            if (!end_of_slice_one_bit)
+                return AVERROR_INVALIDDATA;
+        } else {
+            if (ry == pps->ctb_to_row_bd[ry + 1] - 1) {
+                const int end_of_tile_one_bit = ff_vvc_end_of_tile_one_bit(lc);
+                if (!end_of_tile_one_bit)
+                    return AVERROR_INVALIDDATA;
+            } else {
+                if (fc->ps.sps->entropy_coding_sync_enabled_flag) {
+                    const int end_of_subset_one_bit = ff_vvc_end_of_subset_one_bit(lc);
+                    if (!end_of_subset_one_bit)
+                        return AVERROR_INVALIDDATA;
+                }
+            }
+        }
+    }
+
     return 0;
 }
 
-int ff_vvc_coding_tree_unit(VVCLocalContext *lc, const int ctb_addr, const int rs, const int rx, const int ry)
+int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
+    const int ctb_addr, const int rs, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
@@ -2277,30 +2300,7 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc, const int ctb_addr, const int r
     ff_vvc_cabac_init(lc, ctb_addr, rx, ry);
     fc->tab.slice_idx[rs] = lc->sc->slice_idx;
     ff_vvc_decode_neighbour(lc, x_ctb, y_ctb, rx, ry, rs);
-    ret = hls_coding_tree_unit(lc, x_ctb, y_ctb);
-    if (ret < 0)
-        return ret;
-
-    if (rx == pps->ctb_to_col_bd[rx + 1] - 1) {
-        if (ctb_addr == sh->num_ctus_in_curr_slice - 1) {
-            const int end_of_slice_one_bit = ff_vvc_end_of_slice_flag_decode(lc);
-            if (!end_of_slice_one_bit)
-                return AVERROR_INVALIDDATA;
-        } else {
-            if (ry == pps->ctb_to_row_bd[ry + 1] - 1) {
-                const int end_of_tile_one_bit = ff_vvc_end_of_tile_one_bit(lc);
-                if (!end_of_tile_one_bit)
-                    return AVERROR_INVALIDDATA;
-            } else {
-                if (fc->ps.sps->entropy_coding_sync_enabled_flag) {
-                    const int end_of_subset_one_bit = ff_vvc_end_of_subset_one_bit(lc);
-                    if (!end_of_subset_one_bit)
-                        return AVERROR_INVALIDDATA;
-                }
-            }
-        }
-    }
-    return 0;
+    return hls_coding_tree_unit(lc, x_ctb, y_ctb, ctb_addr, rx, ry);
 }
 
 void ff_vvc_decode_neighbour(VVCLocalContext *lc, const int x_ctb, const int y_ctb,
