@@ -25,7 +25,7 @@
 
 #include "vvc_ctu.h"
 
-int ff_vvc_cabac_init(VVCLocalContext *lc, int ctb_addr, int ctb_addr_x, int ctb_addr_y);
+int ff_vvc_cabac_init(VVCLocalContext *lc, int ctu_idx, int rx, int ry);
 
 //sao
 int ff_vvc_sao_merge_flag_decode(VVCLocalContext *lc);

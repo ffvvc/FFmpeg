@@ -818,7 +818,7 @@ static void cabac_init_state(VVCLocalContext *lc)
     int init_type   = 2 - sh->slice_type;
 
     av_assert0(VVC_CONTEXTS == SYNTAX_ELEMENT_LAST);
-    
+
     ff_vvc_ep_init_stat_coeff(lc->ep, sps->bit_depth, sps->persistent_rice_adaptation_enabled_flag);
 
     if (sh->cabac_init_flag && sh->slice_type != VVC_SLICE_TYPE_I)
@@ -839,13 +839,13 @@ static void cabac_init_state(VVCLocalContext *lc)
     }
 }
 
-int ff_vvc_cabac_init(VVCLocalContext *lc, const int ctb_addr,
-    const int ctb_addr_x, const int ctb_addr_y)
+int ff_vvc_cabac_init(VVCLocalContext *lc,
+    const int ctu_idx, const int rx, const int ry)
 {
     int ret = 0;
     const VVCPPS *pps               = lc->fc->ps.pps;
-    const int first_ctb_in_slice    = !ctb_addr;
-    const int first_ctb_in_tile     = ctb_addr_x == pps->ctb_to_col_bd[ctb_addr_x] && ctb_addr_y == pps->ctb_to_row_bd[ctb_addr_y];
+    const int first_ctb_in_slice    = !ctu_idx;
+    const int first_ctb_in_tile     = rx == pps->ctb_to_col_bd[rx] && ry == pps->ctb_to_row_bd[ry];
 
     if (first_ctb_in_slice|| first_ctb_in_tile) {
         if (lc->sc->nb_eps == 1 && !first_ctb_in_slice)

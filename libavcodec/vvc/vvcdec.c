@@ -628,7 +628,7 @@ static int init_slice_context(SliceContext *sc, VVCFrameContext *fc, const H2645
     {
         EntryPoint *ep = sc->eps + i;
         ff_vvc_parse_task_init(ep->parse_task, VVC_TASK_TYPE_PARSE, fc, sc, ep, ctu_addr);
-        ep->ctu_addr_last = (i + 1 == sc->nb_eps ? sh->num_ctus_in_curr_slice : sh->entry_point_start_ctu[i]);
+        ep->ctu_end = (i + 1 == sc->nb_eps ? sh->num_ctus_in_curr_slice : sh->entry_point_start_ctu[i]);
         ep_init_cabac_decoder(sc, i, nal, gb);
         if (i + 1 < sc->nb_eps)
             ctu_addr = sh->entry_point_start_ctu[i];
