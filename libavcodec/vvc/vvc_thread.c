@@ -92,15 +92,15 @@ void ff_vvc_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc)
 }
 
 void ff_vvc_parse_task_init(VVCTask *t, VVCTaskType type, VVCFrameContext *fc,
-    SliceContext *sc, EntryPoint *ep, const int ctu_addr)
+    SliceContext *sc, EntryPoint *ep, const int ctu_idx)
 {
     const VVCFrameThread *ft = fc->frame_thread;
-    const int rs = sc->sh.ctb_addr_in_curr_slice[ctu_addr];
+    const int rs = sc->sh.ctb_addr_in_curr_slice[ctu_idx];
 
     ff_vvc_task_init(t, type, fc);
     t->sc = sc;
     t->ep = ep;
-    t->ctb_addr_in_slice = ctu_addr;
+    t->ctu_idx = ctu_idx;
     t->rx = rs % ft->ctu_width;
     t->ry = rs / ft->ctu_width;
 }
@@ -250,12 +250,12 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     lc->ep = ep;
 
     //reconstruct one line a time
-    rs = sh->ctb_addr_in_curr_slice[t->ctb_addr_in_slice];
+    rs = sh->ctb_addr_in_curr_slice[t->ctu_idx];
     do {
 
         prev_ry = t->ry;
 
-        ret = ff_vvc_coding_tree_unit(lc, t->ctb_addr_in_slice, rs, t->rx, t->ry);
+        ret = ff_vvc_coding_tree_unit(lc, t->ctu_idx, rs, t->rx, t->ry);
         if (ret < 0)
             return ret;
 
@@ -272,16 +272,16 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             }
         }
 
-        t->ctb_addr_in_slice++;
-        if (t->ctb_addr_in_slice >= ep->ctu_addr_last)
+        t->ctu_idx++;
+        if (t->ctu_idx >= ep->ctu_end)
             break;
 
-        rs = sh->ctb_addr_in_curr_slice[t->ctb_addr_in_slice];
+        rs = sh->ctb_addr_in_curr_slice[t->ctu_idx];
         t->rx = rs % ft->ctu_width;
         t->ry = rs / ft->ctu_width;
     } while (t->ry == prev_ry && is_parse_ready(fc, t));
 
-    if (t->ctb_addr_in_slice < ep->ctu_addr_last)
+    if (t->ctu_idx < ep->ctu_end)
         ff_vvc_frame_add_task(s, t);
 
     return 0;

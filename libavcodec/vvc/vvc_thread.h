@@ -53,7 +53,7 @@ struct VVCTask {
     // reconstruct task only
     SliceContext *sc;
     EntryPoint *ep;
-    int ctb_addr_in_slice;
+    int ctu_idx;                    //ctu idx in the current slice
 };
 
 void ff_vvc_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc);

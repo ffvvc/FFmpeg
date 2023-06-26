@@ -296,7 +296,7 @@ typedef struct EntryPoint {
     CABACContext cc;
 
     VVCTask *parse_task;
-    int ctu_addr_last;
+    int ctu_end;
 
     uint8_t is_first_qg;
     MvField hmvp[MAX_NUM_HMVP_CANDS];               ///< HmvpCandList
@@ -409,7 +409,7 @@ struct ALFParams {
  * @param ry raster order y for the CTU.
  * @return AVERROR
  */
-int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctb_addr, int rs, int rx, int ry);
+int ff_vvc_coding_tree_unit(VVCLocalContext *lc, int ctu_idx, int rs, int rx, int ry);
 
 //utils
 void ff_vvc_set_neighbour_available(VVCLocalContext *lc, int x0, int y0, int w, int h);

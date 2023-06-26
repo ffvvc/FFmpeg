@@ -2229,7 +2229,7 @@ static void deblock_params(VVCLocalContext *lc, const int rx, const int ry)
 }
 
 static int hls_coding_tree_unit(VVCLocalContext *lc,
-    const int x0, const int y0, const ctb_addr, const int rx, const int ry)
+    const int x0, const int y0, const ctu_idx, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
@@ -2253,7 +2253,7 @@ static int hls_coding_tree_unit(VVCLocalContext *lc,
         return ret;
 
     if (rx == pps->ctb_to_col_bd[rx + 1] - 1) {
-        if (ctb_addr == sh->num_ctus_in_curr_slice - 1) {
+        if (ctu_idx == sh->num_ctus_in_curr_slice - 1) {
             const int end_of_slice_one_bit = ff_vvc_end_of_slice_flag_decode(lc);
             if (!end_of_slice_one_bit)
                 return AVERROR_INVALIDDATA;
@@ -2276,7 +2276,7 @@ static int hls_coding_tree_unit(VVCLocalContext *lc,
 }
 
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
-    const int ctb_addr, const int rs, const int rx, const int ry)
+    const int ctu_idx, const int rs, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
@@ -2291,16 +2291,16 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     if (rx == pps->ctb_to_col_bd[rx]) {
         //fix me for ibc
         ep->num_hmvp = 0;
-        ep->is_first_qg = ry == pps->ctb_to_row_bd[ry] || !ctb_addr;
+        ep->is_first_qg = ry == pps->ctb_to_row_bd[ry] || !ctu_idx;
     }
 
-    lc->coeffs = fc->tab.coeffs + (ry * pps->ctb_width + rx) * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
+    lc->coeffs = fc->tab.coeffs + rs * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
     lc->cu     = NULL;
 
-    ff_vvc_cabac_init(lc, ctb_addr, rx, ry);
+    ff_vvc_cabac_init(lc, ctu_idx, rx, ry);
     fc->tab.slice_idx[rs] = lc->sc->slice_idx;
     ff_vvc_decode_neighbour(lc, x_ctb, y_ctb, rx, ry, rs);
-    return hls_coding_tree_unit(lc, x_ctb, y_ctb, ctb_addr, rx, ry);
+    return hls_coding_tree_unit(lc, x_ctb, y_ctb, ctu_idx, rx, ry);
 }
 
 void ff_vvc_decode_neighbour(VVCLocalContext *lc, const int x_ctb, const int y_ctb,
