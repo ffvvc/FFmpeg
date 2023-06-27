@@ -1982,17 +1982,15 @@ static int abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const
     return abs_level;
 }
 
-static void ep_update_hist(VVCLocalContext *lc, ResidualCoding *rc, int remainder, int addin) {
-    EntryPoint *ep           = lc->ep;
-    const TransformBlock *tb = rc->tb;
-
+static void ep_update_hist(EntryPoint *ep, ResidualCoding *rc,
+    const int remainder, const int addin)
+{
+    int *stat = ep->stat_coeff + rc->tb->c_idx;
     if (rc->update_hist && remainder > 0) {
-        ep->stat_coeff[tb->c_idx] = (ep->stat_coeff[tb->c_idx]
-                              + (av_log2(remainder)) + addin) >> 1;
-	rc->update_hist = 0;
+        *stat = (*stat + av_log2(remainder) + addin) >> 1;
+        rc->update_hist = 0;
     }
 }
-
 
 static void init_residual_coding(VVCLocalContext *lc, ResidualCoding *rc,
         const int log2_zo_tb_width, const int log2_zo_tb_height,
@@ -2255,7 +2253,7 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
         *abs_level = *abs_level_pass1;
         if (abs_level_gt2_flag[n]) {
             const int abs_remainder = abs_remainder_decode(lc, rc, xc, yc);
-            ep_update_hist(lc, rc, abs_remainder, 2);
+            ep_update_hist(lc->ep, rc, abs_remainder, 2);
             *abs_level += 2 * abs_remainder;
         }
     }
@@ -2267,7 +2265,7 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
         if (*sb_coded_flag) {
             int dec_abs_level;
             *abs_level = abs_level_decode(lc, rc, xc, yc, &dec_abs_level);
-            ep_update_hist(lc, rc, dec_abs_level, 0);
+            ep_update_hist(lc->ep, rc, dec_abs_level, 0);
         }
         if (*abs_level > 0) {
             if (last_sig_scan_pos_sb == -1)
