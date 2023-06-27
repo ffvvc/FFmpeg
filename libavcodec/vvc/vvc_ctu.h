@@ -288,7 +288,7 @@ typedef struct VVCCabacState {
 // VVC_CONTEXTS matched with SYNTAX_ELEMENT_LAST, it's checked by cabac_init_state.
 #define VVC_CONTEXTS 378
 typedef struct EntryPoint {
-    int8_t qp_y;                                    //< QpY
+    int8_t qp_y;                                    ///< QpY
 
     int stat_coeff[VVC_MAX_SAMPLE_ARRAYS];          ///< StatCoeff
 
@@ -298,7 +298,7 @@ typedef struct EntryPoint {
     VVCTask *parse_task;
     int ctu_end;
 
-    uint8_t is_first_qg;
+    uint8_t is_first_qg;                            // first quantization group
     MvField hmvp[MAX_NUM_HMVP_CANDS];               ///< HmvpCandList
     int     num_hmvp;                               ///< NumHmvpCand
 } EntryPoint;
