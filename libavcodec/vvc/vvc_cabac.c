@@ -1967,19 +1967,20 @@ static const uint8_t qstate_translate_table[][2] = {
     { 0, 2 }, { 2, 0 }, { 1, 3 }, { 3, 1 }
 };
 
-static int abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc, const int xc, const int yc, int *dec_abs_level)
+static int dec_abs_level_decode(VVCLocalContext *lc, const ResidualCoding *rc,
+    const int xc, const int yc, int *abs_level)
 {
-    const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc, 0);
-    int abs_level =  abs_decode(lc, c_rice_param);
-    const int zero_pos = (rc->qstate < 2 ? 1 : 2) << c_rice_param;
-    *dec_abs_level = abs_level;
-    if (abs_level != zero_pos) {
-        if (abs_level < zero_pos)
-            abs_level++;
-    } else {
-        abs_level = 0;
+    const int c_rice_param  = abs_get_rice_param(lc, rc, xc, yc, 0);
+    const int dec_abs_level =  abs_decode(lc, c_rice_param);
+    const int zero_pos      = (rc->qstate < 2 ? 1 : 2) << c_rice_param;
+
+    *abs_level = 0;
+    if (dec_abs_level != zero_pos) {
+        *abs_level = dec_abs_level;
+        if (dec_abs_level < zero_pos)
+            *abs_level += 1;
     }
-    return abs_level;
+    return dec_abs_level;
 }
 
 static void ep_update_hist(EntryPoint *ep, ResidualCoding *rc,
@@ -2263,8 +2264,7 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
         int *abs_level  = rc->abs_level + yc * tb->tb_width + xc;
 
         if (*sb_coded_flag) {
-            int dec_abs_level;
-            *abs_level = abs_level_decode(lc, rc, xc, yc, &dec_abs_level);
+            const int dec_abs_level = dec_abs_level_decode(lc, rc, xc, yc, abs_level);
             ep_update_hist(lc->ep, rc, dec_abs_level, 0);
         }
         if (*abs_level > 0) {
