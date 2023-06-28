@@ -354,7 +354,7 @@ static VVCFrame *generate_missing_ref(VVCContext *s, VVCFrameContext *fc, int po
     frame->sequence = s->seq_decode;
     frame->flags    = 0;
 
-    ff_vvc_report_progress(frame, INT_MAX);
+    ff_vvc_report_frame_finished(frame);
 
     return frame;
 }
@@ -469,6 +469,10 @@ fail:
     return ret;
 }
 
+void ff_vvc_report_frame_finished(VVCFrame *frame)
+{
+    ff_vvc_report_progress(frame, INT_MAX);
+}
 
 void ff_vvc_report_progress(VVCFrame *frame, int n)
 {

@@ -757,7 +757,7 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
     }
 
     pthread_mutex_unlock(&ft->lock);
-    ff_vvc_report_progress(fc->ref, INT_MAX);
+    ff_vvc_report_frame_finished(fc->ref);
 
 #ifdef VVC_THREAD_DEBUG
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d done\r\n", (int)fc->decode_order);

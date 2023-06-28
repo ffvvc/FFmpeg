@@ -38,6 +38,7 @@ int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc);
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags);
 void ff_vvc_clear_refs(VVCFrameContext *fc);
 
+void ff_vvc_report_frame_finished(VVCFrame *frame);
 void ff_vvc_report_progress(VVCFrame *frame, int n);
 void ff_vvc_await_progress(VVCFrame *frame, int n);
 

@@ -938,7 +938,7 @@ static int decode_nal_units(VVCContext *s, VVCFrameContext *fc, const uint8_t *b
 
 fail:
     if (fc->ref)
-        ff_vvc_report_progress(fc->ref, INT_MAX);
+        ff_vvc_report_frame_finished(fc->ref);
     return ret;
 }
 
