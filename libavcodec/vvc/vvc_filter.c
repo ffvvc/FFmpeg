@@ -406,7 +406,7 @@ static void vvc_deblock_subblock_bs_vertical(const VVCLocalContext *lc,
     const int cb_x, const int cb_y, const int x0, const int y0, const int width, const int height)
 {
     const VVCFrameContext  *fc  = lc->fc;
-    MvField *tab_mvf            = fc->ref->tab_mvf;
+    MvField *tab_mvf            = fc->tab.mvf;
     RefPicList *rpl             = lc->sc->rpl;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     const int log2_min_pu_size  = MIN_PU_LOG2;
@@ -447,7 +447,7 @@ static void vvc_deblock_subblock_bs_horizontal(const VVCLocalContext *lc,
     const int cb_x, const int cb_y, const int x0, const int y0, const int width, const int height)
 {
     const VVCFrameContext  *fc  = lc->fc;
-    MvField* tab_mvf            = fc->ref->tab_mvf;
+    MvField* tab_mvf            = fc->tab.mvf;
     RefPicList* rpl             = lc->sc->rpl;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     const int log2_min_pu_size  = MIN_PU_LOG2;
@@ -490,7 +490,7 @@ static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
     const int x0, const int y0, const int width, const int height)
 {
     const VVCFrameContext *fc  = lc->fc;
-    MvField *tab_mvf           = fc->ref->tab_mvf;
+    MvField *tab_mvf           = fc->tab.mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_TU_LOG2;
     const int min_pu_width     = fc->ps.pps->min_pu_width;
@@ -572,7 +572,7 @@ static void vvc_deblock_bs_luma_horizontal(const VVCLocalContext *lc,
     const int x0, const int y0, const int width, const int height)
 {
     const VVCFrameContext *fc  = lc->fc;
-    MvField *tab_mvf           = fc->ref->tab_mvf;
+    MvField *tab_mvf           = fc->tab.mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_TU_LOG2;
     const int min_pu_width     = fc->ps.pps->min_pu_width;
@@ -653,7 +653,7 @@ static void vvc_deblock_bs_chroma_vertical(const VVCLocalContext *lc,
     const int x0, const int y0, const int width, const int height)
 {
     const VVCFrameContext *fc  = lc->fc;
-    MvField *tab_mvf           = fc->ref->tab_mvf;
+    MvField *tab_mvf           = fc->tab.mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_PU_LOG2;
     const int min_pu_width     = fc->ps.pps->min_pu_width;
@@ -709,7 +709,7 @@ static void vvc_deblock_bs_chroma_horizontal(const VVCLocalContext *lc,
     const int x0, const int y0, const int width, const int height)
 {
     const VVCFrameContext *fc = lc->fc;
-    MvField *tab_mvf = fc->ref->tab_mvf;
+    MvField *tab_mvf = fc->tab.mvf;
     const int log2_min_pu_size = MIN_PU_LOG2;
     const int log2_min_tu_size = MIN_PU_LOG2;
     const int min_pu_width = fc->ps.pps->min_pu_width;

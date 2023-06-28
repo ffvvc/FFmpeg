@@ -218,7 +218,7 @@ static int temporal_luma_motion_vector(const VVCLocalContext *lc,
     if (!fc->ps.ph->temporal_mvp_enabled_flag || (cu->cb_width * cu->cb_height <= 32))
         return 0;
 
-    tab_mvf = ref->tab_mvf;
+    tab_mvf = ref->tab_dmvr_mvf;
     colPic  = ref->poc;
 
     //bottom right collocated motion vector
@@ -253,7 +253,7 @@ static int temporal_luma_motion_vector(const VVCLocalContext *lc,
 void ff_vvc_set_mvf(const VVCLocalContext *lc, const int x0, const int y0, const int w, const int h, const MvField *mvf)
 {
     const VVCFrameContext *fc   = lc->fc;
-    MvField *tab_mvf            = fc->ref->tab_mvf;
+    MvField *tab_mvf            = fc->tab.mvf;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     const int min_pu_size       = 1 << MIN_PU_LOG2;
     for (int dy = 0; dy < h; dy += min_pu_size) {
@@ -269,7 +269,7 @@ void ff_vvc_set_intra_mvf(const VVCLocalContext *lc)
 {
     const VVCFrameContext *fc   = lc->fc;
     const CodingUnit *cu        = lc->cu;
-    MvField *tab_mvf            = fc->ref->tab_mvf;
+    MvField *tab_mvf            = fc->tab.mvf;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     const int min_pu_size       = 1 << MIN_PU_LOG2;
     for (int dy = 0; dy < cu->cb_height; dy += min_pu_size) {
@@ -599,7 +599,7 @@ static int check_available(Neighbour *n, const VVCLocalContext *lc, const int is
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
     const CodingUnit *cu        = lc->cu;
-    const MvField *tab_mvf      = fc->ref->tab_mvf;
+    const MvField *tab_mvf      = fc->tab.mvf;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
 
     if (!n->checked) {
@@ -616,7 +616,7 @@ static const MvField *mv_merge_candidate(const VVCLocalContext *lc, const int x_
 {
     const VVCFrameContext *fc   = lc->fc;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
-    const MvField* tab_mvf      = fc->ref->tab_mvf;
+    const MvField* tab_mvf      = fc->tab.mvf;
     const MvField *mvf          = &TAB_MVF(x_cand, y_cand);
 
     return mvf;
@@ -850,7 +850,7 @@ static void affine_cps_from_nb(const VVCLocalContext *lc,
     const int y0                = cu->y0;
     const int cb_width          = cu->cb_width;
     const int cb_height         = cu->cb_height;
-    const MvField* tab_mvf      = fc->ref->tab_mvf;
+    const MvField* tab_mvf      = fc->tab.mvf;
     const int min_cb_log2_size  = fc->ps.sps->min_cb_log2_size_y;
     const int min_cb_width      = fc->ps.pps->min_cb_width;
 
@@ -927,7 +927,7 @@ static int affine_merge_candidate(const VVCLocalContext *lc, const int x_cand, c
     motion_model_idc = affine_neighbour_cb(fc, x_cand, y_cand, &x, &y, &w, &h);
     if (motion_model_idc) {
         const int min_pu_width = fc->ps.pps->min_pu_width;
-        const MvField* tab_mvf = fc->ref->tab_mvf;
+        const MvField* tab_mvf = fc->tab.mvf;
         const MvField *mvf = &TAB_MVF(x, y);
 
         mi->bcw_idx   = mvf->bcw_idx;
@@ -961,7 +961,7 @@ static int affine_merge_from_nbs(NeighbourContext *ctx, const NeighbourIdx *nbs,
 static const MvField* derive_corner_mvf(NeighbourContext *ctx, const NeighbourIdx *neighbour, const int num_neighbour)
 {
     const VVCFrameContext *fc   = ctx->lc->fc;
-    const MvField *tab_mvf      = fc->ref->tab_mvf;
+    const MvField *tab_mvf      = fc->tab.mvf;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     for (int i = 0; i < num_neighbour; i++) {
         Neighbour *n = &ctx->neighbours[neighbour[i]];
@@ -1012,7 +1012,7 @@ static void sb_temproal_luma_motion(const VVCLocalContext *lc,
     const VVCSH *sh             = &lc->sc->sh;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
     VVCFrame *ref               = fc->ref->collocated_ref;
-    MvField *tab_mvf            = ref->tab_mvf;
+    MvField *tab_mvf            = ref->tab_dmvr_mvf;
     int colPic                  = ref->poc;
     int X                       = 0;
 
@@ -1413,7 +1413,7 @@ static int mvp_candidate(const VVCLocalContext *lc, const int x_cand, const int 
     const VVCFrameContext *fc       = lc->fc;
     const RefPicList *rpl           = lc->sc->rpl;
     const int min_pu_width          = fc->ps.pps->min_pu_width;
-    const MvField* tab_mvf          = fc->ref->tab_mvf;
+    const MvField* tab_mvf          = fc->tab.mvf;
     const MvField *mvf              = &TAB_MVF(x_cand, y_cand);
     const PredFlag maskx = lx + 1;
     const int poc = rpl[lx].list[ref_idx[lx]];
@@ -1444,7 +1444,7 @@ static int affine_mvp_candidate(const VVCLocalContext *lc,
     motion_model_idc = affine_neighbour_cb(fc, x_cand, y_cand, &x_nb, &y_nb, &nbw, &nbh);
     if (motion_model_idc) {
         const int min_pu_width = fc->ps.pps->min_pu_width;
-        const MvField* tab_mvf = fc->ref->tab_mvf;
+        const MvField* tab_mvf = fc->tab.mvf;
         const MvField *mvf = &TAB_MVF(x_nb, y_nb);
         RefPicList* rpl = lc->sc->rpl;
         const PredFlag maskx = lx + 1;
@@ -1608,7 +1608,7 @@ static int affine_mvp_constructed_cp(NeighbourContext *ctx,
 {
     const VVCLocalContext *lc       = ctx->lc;
     const VVCFrameContext *fc       = lc->fc;
-    const MvField *tab_mvf          = fc->ref->tab_mvf;
+    const MvField *tab_mvf          = fc->tab.mvf;
     const int min_pu_width          = fc->ps.pps->min_pu_width;
     const RefPicList* rpl           = lc->sc->rpl;
     const int is_mvp                = 1;
@@ -1774,7 +1774,7 @@ void ff_vvc_update_hmvp(VVCLocalContext *lc, const MotionInfo *mi)
     const VVCFrameContext *fc   = lc->fc;
     const CodingUnit *cu        = lc->cu;
     const int min_pu_width      = fc->ps.pps->min_pu_width;
-    const MvField* tab_mvf      = fc->ref->tab_mvf;
+    const MvField* tab_mvf      = fc->tab.mvf;
     EntryPoint* ep              = lc->ep;
     const MvField *mvf;
     int i;
@@ -1801,7 +1801,7 @@ void ff_vvc_update_hmvp(VVCLocalContext *lc, const MotionInfo *mi)
 MvField* ff_vvc_get_mvf(const VVCFrameContext *fc, const int x0, const int y0)
 {
     const int min_pu_width  = fc->ps.pps->min_pu_width;
-    MvField* tab_mvf        = fc->ref->tab_mvf;
+    MvField* tab_mvf        = fc->tab.mvf;
 
     return &TAB_MVF(x0, y0);
 }

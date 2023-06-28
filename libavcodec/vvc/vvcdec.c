@@ -252,11 +252,11 @@ static int min_tu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_tu)
 
 static void min_pu_arrays_free(VVCFrameContext *fc)
 {
+    av_freep(&fc->tab.mvf);
     av_freep(&fc->tab.msf);
     av_freep(&fc->tab.iaf);
     av_freep(&fc->tab.mmi);
-    av_freep(&fc->tab.dmvr);
-    av_buffer_pool_uninit(&fc->tab_mvf_pool);
+    av_buffer_pool_uninit(&fc->tab_dmvr_mvf_pool);
 }
 
 static int min_pu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_pu)
@@ -266,17 +266,17 @@ static int min_pu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_pu)
         fc->tab.msf  = av_mallocz(pic_size_in_min_pu);
         fc->tab.iaf  = av_mallocz(pic_size_in_min_pu);
         fc->tab.mmi  = av_mallocz(pic_size_in_min_pu);
-        fc->tab.dmvr = av_calloc(pic_size_in_min_pu, sizeof(*fc->tab.dmvr));
-        if (!fc->tab.msf || !fc->tab.iaf || !fc->tab.mmi || !fc->tab.dmvr)
+        fc->tab.mvf  = av_mallocz(pic_size_in_min_pu * sizeof(*fc->tab.mvf));
+        if (!fc->tab.msf || !fc->tab.iaf || !fc->tab.mmi || !fc->tab.mvf)
             return AVERROR(ENOMEM);
-        fc->tab_mvf_pool  = av_buffer_pool_init(pic_size_in_min_pu * sizeof(MvField), av_buffer_allocz);
-        if (!fc->tab_mvf_pool)
+        fc->tab_dmvr_mvf_pool  = av_buffer_pool_init(pic_size_in_min_pu * sizeof(MvField), av_buffer_allocz);
+        if (!fc->tab_dmvr_mvf_pool)
             return AVERROR(ENOMEM);
     } else {
         memset(fc->tab.msf, 0, pic_size_in_min_pu);
         memset(fc->tab.iaf, 0, pic_size_in_min_pu);
         memset(fc->tab.mmi, 0, pic_size_in_min_pu);
-        memset(fc->tab.dmvr, 0, pic_size_in_min_pu * sizeof(*fc->tab.dmvr));
+        memset(fc->tab.mvf, 0, pic_size_in_min_pu * sizeof(*fc->tab.mvf));
     }
 
     return 0;
@@ -654,10 +654,10 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
 
     dst->progress_buf = av_buffer_ref(src->progress_buf);
 
-    dst->tab_mvf_buf = av_buffer_ref(src->tab_mvf_buf);
-    if (!dst->tab_mvf_buf)
+    dst->tab_dmvr_mvf_buf = av_buffer_ref(src->tab_dmvr_mvf_buf);
+    if (!dst->tab_dmvr_mvf_buf)
         goto fail;
-    dst->tab_mvf = src->tab_mvf;
+    dst->tab_dmvr_mvf = src->tab_dmvr_mvf;
 
     dst->rpl_tab_buf = av_buffer_ref(src->rpl_tab_buf);
     if (!dst->rpl_tab_buf)

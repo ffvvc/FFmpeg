@@ -39,12 +39,4 @@ int ff_vvc_predict_inter(VVCLocalContext *lc, int rs);
  */
 void ff_vvc_predict_ciip(VVCLocalContext *lc);
 
-/**
- * apply DMVR(Decoder-Side Motion Vector Refinement) for the ctu
- * @param lc local context for CTU
- * @param x0 x position for the CTU
- * @param y0 y position for the CTU
- */
-void ff_vvc_ctu_apply_dmvr_info(VVCFrameContext *fc, int x0, const int y0);
-
 #endif // AVCODEC_VVC_INTER_H

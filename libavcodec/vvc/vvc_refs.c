@@ -49,8 +49,8 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 
         av_buffer_unref(&frame->progress_buf);
 
-        av_buffer_unref(&frame->tab_mvf_buf);
-        frame->tab_mvf = NULL;
+        av_buffer_unref(&frame->tab_dmvr_mvf_buf);
+        frame->tab_dmvr_mvf = NULL;
 
         av_buffer_unref(&frame->rpl_buf);
         av_buffer_unref(&frame->rpl_tab_buf);
@@ -130,12 +130,12 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         if (!frame->rpl_buf)
             goto fail;
 
-        frame->tab_mvf_buf = av_buffer_pool_get(fc->tab_mvf_pool);
-        if (!frame->tab_mvf_buf)
+        frame->tab_dmvr_mvf_buf = av_buffer_pool_get(fc->tab_dmvr_mvf_pool);
+        if (!frame->tab_dmvr_mvf_buf)
             goto fail;
-        frame->tab_mvf = (MvField *)frame->tab_mvf_buf->data;
+        frame->tab_dmvr_mvf = (MvField *)frame->tab_dmvr_mvf_buf->data;
         //fixme: remove this
-        memset(frame->tab_mvf, 0, frame->tab_mvf_buf->size);
+        memset(frame->tab_dmvr_mvf, 0, frame->tab_dmvr_mvf_buf->size);
 
         frame->rpl_tab_buf = av_buffer_pool_get(fc->rpl_tab_pool);
         if (!frame->rpl_tab_buf)
