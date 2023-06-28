@@ -291,7 +291,7 @@ static void report_frame_progress(VVCFrameContext *fc, VVCTask *t)
 {
     VVCFrameThread *ft  = fc->frame_thread;
     const int ctu_size  = ft->ctu_size;
-    const int idx       = VVC_PROGRESS_PIXEL;
+    const int idx       = t->type == VVC_TASK_TYPE_INTER ? VVC_PROGRESS_MV : VVC_PROGRESS_PIXEL;
     int old;
 
     if (atomic_fetch_add(&ft->rows[t->ry].progress[idx], 1) == ft->ctu_width - 1) {
@@ -323,6 +323,7 @@ static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             ff_vvc_frame_add_task(s, &ft->rows[t->ry].reconstruct_task);
     }
     set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_INTER);
+    report_frame_progress(fc, t);
 
     return 0;
 }

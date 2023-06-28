@@ -471,6 +471,7 @@ fail:
 
 void ff_vvc_report_frame_finished(VVCFrame *frame)
 {
+    ff_vvc_report_progress(frame, VVC_PROGRESS_MV, INT_MAX);
     ff_vvc_report_progress(frame, VVC_PROGRESS_PIXEL, INT_MAX);
 }
 
