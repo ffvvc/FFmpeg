@@ -488,7 +488,7 @@ static void report_frame_progress(VVCFrameContext *fc, VVCTask *t)
             ft->alf_row_progress++;
         if (old != ft->alf_row_progress) {
             const int progress = ft->alf_row_progress == ft->ctu_height ? INT_MAX : ft->alf_row_progress * ctu_size;
-            ff_vvc_report_progress(fc->ref, progress);
+            ff_vvc_report_progress(fc->ref, VVC_PROGRESS_PIXEL, progress);
         }
         pthread_mutex_unlock(&ft->lock);
     }
