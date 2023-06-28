@@ -231,7 +231,7 @@ static int temporal_luma_motion_vector(const VVCLocalContext *lc,
         x < fc->ps.sps->width) {
         x                 &= ~7;
         y                 &= ~7;
-        ff_vvc_await_progress(ref, VVC_PROGRESS_PIXEL, y);
+        ff_vvc_await_progress(ref, VVC_PROGRESS_MV, y);
         temp_col           = TAB_MVF(x, y);
         availableFlagLXCol = DERIVE_TEMPORAL_COLOCATED_MVS(sb_flag);
     }
@@ -242,7 +242,7 @@ static int temporal_luma_motion_vector(const VVCLocalContext *lc,
             y                  = cu->y0 + (cu->cb_height >> 1);
             x                 &= ~7;
             y                 &= ~7;
-            ff_vvc_await_progress(ref, VVC_PROGRESS_PIXEL, y);
+            ff_vvc_await_progress(ref, VVC_PROGRESS_MV, y);
             temp_col           = TAB_MVF(x, y);
             availableFlagLXCol = DERIVE_TEMPORAL_COLOCATED_MVS(sb_flag);
         }
@@ -1018,7 +1018,7 @@ static void sb_temproal_luma_motion(const VVCLocalContext *lc,
 
     sb_clip_location(fc, x_ctb, y_ctb, temp_mv, &x, &y);
 
-    ff_vvc_await_progress(ref, VVC_PROGRESS_PIXEL, y);
+    ff_vvc_await_progress(ref, VVC_PROGRESS_MV, y);
 
     temp_col    = TAB_MVF(x, y);
     mvLXCol     = mv + 0;
