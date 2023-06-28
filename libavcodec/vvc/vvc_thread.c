@@ -35,7 +35,7 @@ typedef struct VVCRowThread {
     VVCTask reconstruct_task;
     VVCTask deblock_v_task;
     VVCTask sao_task;
-    atomic_int  alf_progress;
+    atomic_int progress[VVC_PROGRESS_LAST];
 } VVCRowThread;
 
 typedef struct VVCColThread {
@@ -60,7 +60,7 @@ struct VVCFrameThread {
     //protected by lock
     int nb_scheduled_tasks;
     int nb_parse_tasks;
-    int alf_row_progress;
+    int row_progress[VVC_PROGRESS_LAST];
 
     pthread_mutex_t lock;
     pthread_cond_t  cond;
@@ -287,6 +287,28 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     return 0;
 }
 
+static void report_frame_progress(VVCFrameContext *fc, VVCTask *t)
+{
+    VVCFrameThread *ft  = fc->frame_thread;
+    const int ctu_size  = ft->ctu_size;
+    const int idx       = VVC_PROGRESS_PIXEL;
+    int old;
+
+    if (atomic_fetch_add(&ft->rows[t->ry].progress[idx], 1) == ft->ctu_width - 1) {
+        int y;
+        pthread_mutex_lock(&ft->lock);
+        y = old = ft->row_progress[idx];
+        while (y < ft->ctu_height && atomic_load(&ft->rows[y].progress[idx]) == ft->ctu_width)
+            y++;
+        if (old != y) {
+            const int progress = y == ft->ctu_height ? INT_MAX : y * ctu_size;
+            ft->row_progress[idx] = y;
+            ff_vvc_report_progress(fc->ref, idx, progress);
+        }
+        pthread_mutex_unlock(&ft->lock);
+    }
+}
+
 static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
@@ -473,25 +495,6 @@ static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         ff_vvc_frame_add_task(s, t);
 
     return 0;
-}
-
-static void report_frame_progress(VVCFrameContext *fc, VVCTask *t)
-{
-    VVCFrameThread *ft  = fc->frame_thread;
-    const int ctu_size  = ft->ctu_size;
-    int old;
-
-    if (atomic_fetch_add(&ft->rows[t->ry].alf_progress, 1) == ft->ctu_width - 1) {
-        pthread_mutex_lock(&ft->lock);
-        old = ft->alf_row_progress;
-        while (ft->alf_row_progress < ft->ctu_height && atomic_load(&ft->rows[ft->alf_row_progress].alf_progress) == ft->ctu_width)
-            ft->alf_row_progress++;
-        if (old != ft->alf_row_progress) {
-            const int progress = ft->alf_row_progress == ft->ctu_height ? INT_MAX : ft->alf_row_progress * ctu_size;
-            ff_vvc_report_progress(fc->ref, VVC_PROGRESS_PIXEL, progress);
-        }
-        pthread_mutex_unlock(&ft->lock);
-    }
 }
 
 static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
@@ -684,7 +687,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
         VVCRowThread *row = ft->rows + y;
 
         row->reconstruct_task.rx = 0;
-        row->alf_progress = 0;
+        memset(&row->progress[0], 0, sizeof(row->progress));
         row->deblock_v_task.rx = 0;
         row->sao_task.rx = 0;
     }
@@ -699,7 +702,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
         ft->tasks[rs].decode_order = fc->decode_order;
     }
 
-    ft->alf_row_progress = 0;
+    memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
     fc->frame_thread = ft;
 
     return 0;
