@@ -1028,7 +1028,7 @@ static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
             const int y = max_y[lx][i];
             VVCFrame *ref = lc->sc->rpl[lx].ref[i];
             if (ref && y >= 0)
-                ff_vvc_await_progress(ref, y + LUMA_EXTRA_AFTER);
+                ff_vvc_await_progress(ref, VVC_PROGRESS_PIXEL, y + LUMA_EXTRA_AFTER);
         }
     }
 }

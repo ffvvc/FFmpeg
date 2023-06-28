@@ -32,7 +32,7 @@
 #define VVC_FRAME_FLAG_BUMPING   (1 << 3)
 
 typedef struct FrameProgress {
-    atomic_int progress;
+    atomic_int progress[VVC_PROGRESS_LAST];
     pthread_mutex_t lock;
     pthread_cond_t cond;
 } FrameProgress;
@@ -471,30 +471,30 @@ fail:
 
 void ff_vvc_report_frame_finished(VVCFrame *frame)
 {
-    ff_vvc_report_progress(frame, INT_MAX);
+    ff_vvc_report_progress(frame, VVC_PROGRESS_PIXEL, INT_MAX);
 }
 
-void ff_vvc_report_progress(VVCFrame *frame, int n)
+void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
     FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
 
     pthread_mutex_lock(&p->lock);
 
-    av_assert0(p->progress < n || p->progress == INT_MAX);
-    p->progress = n;
+    av_assert0(p->progress[vp] < y || p->progress[vp] == INT_MAX);
+    p->progress[vp] = y;
 
     pthread_cond_broadcast(&p->cond);
     pthread_mutex_unlock(&p->lock);
 }
 
-void ff_vvc_await_progress(VVCFrame *frame, int n)
+void ff_vvc_await_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
     FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
 
     pthread_mutex_lock(&p->lock);
 
     // +1 for progress default value 0
-    while (p->progress < n + 1)
+    while (p->progress[vp] < y + 1)
         pthread_cond_wait(&p->cond, &p->lock);
 
     pthread_mutex_unlock(&p->lock);

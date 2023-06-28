@@ -38,8 +38,14 @@ int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc);
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags);
 void ff_vvc_clear_refs(VVCFrameContext *fc);
 
+typedef enum VVCProgress{
+    VVC_PROGRESS_MV,
+    VVC_PROGRESS_PIXEL,
+    VVC_PROGRESS_LAST,
+} VVCProgress;
+
 void ff_vvc_report_frame_finished(VVCFrame *frame);
-void ff_vvc_report_progress(VVCFrame *frame, int n);
-void ff_vvc_await_progress(VVCFrame *frame, int n);
+void ff_vvc_report_progress(VVCFrame *frame, VVCProgress vp, int y);
+void ff_vvc_await_progress(VVCFrame *frame, VVCProgress vp, int y);
 
 #endif // AVCODEC_VVC_REFS_H
