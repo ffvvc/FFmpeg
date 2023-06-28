@@ -2229,7 +2229,7 @@ static void deblock_params(VVCLocalContext *lc, const int rx, const int ry)
 }
 
 static int hls_coding_tree_unit(VVCLocalContext *lc,
-    const int x0, const int y0, const ctu_idx, const int rx, const int ry)
+    const int x0, const int y0, const int ctu_idx, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
@@ -2281,12 +2281,10 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     const VVCFrameContext *fc   = lc->fc;
     const VVCSPS *sps           = fc->ps.sps;
     const VVCPPS *pps           = fc->ps.pps;
-    const VVCSH *sh             = &lc->sc->sh;
     const int x_ctb             = rx << sps->ctb_log2_size_y;
     const int y_ctb             = ry << sps->ctb_log2_size_y;
     const int ctb_size          = 1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y;
     EntryPoint* ep              = lc->ep;
-    int ret;
 
     if (rx == pps->ctb_to_col_bd[rx]) {
         //fix me for ibc
@@ -2375,7 +2373,8 @@ int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)
     return fc->tab.qp[LUMA][x + y * fc->ps.pps->min_cb_width];
 }
 
-void ff_vvc_ep_init_stat_coeff(EntryPoint *ep, int bit_depth, int persistent_rice_adaptation_enabled_flag) {
+void ff_vvc_ep_init_stat_coeff(EntryPoint *ep, int bit_depth, int persistent_rice_adaptation_enabled_flag)
+{
     for (size_t i = 0; i < FF_ARRAY_ELEMS(ep->stat_coeff); ++i) {
         ep->stat_coeff[i] =
             persistent_rice_adaptation_enabled_flag ? 2 * (av_log2(bit_depth - 10)) : 0;
