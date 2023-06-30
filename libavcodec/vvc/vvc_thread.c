@@ -134,7 +134,30 @@ static int is_parse_ready(const VVCFrameContext *fc, const VVCTask *t)
 
 static int is_inter_ready(const VVCFrameContext *fc, const VVCTask *t)
 {
+    VVCFrameThread *ft  = fc->frame_thread;
+    const int rs        = t->ry * ft->ctu_width + t->rx;
+    const int slice_idx = fc->tab.slice_idx[rs];
+
     av_assert0(t->type == VVC_TASK_TYPE_INTER);
+
+    if (slice_idx != -1) {
+        const SliceContext *sc = fc->slices[slice_idx];
+        const VVCSH *sh        = &sc->sh;
+        CTU *ctu               = fc->tab.ctus + rs;
+        if (!IS_I(sh)) {
+            for (int lx = 0; lx < 2; lx++) {
+                for (int i = ctu->max_y_idx[lx]; i < sh->nb_refs[lx]; i++) {
+                    const int y = ctu->max_y[lx][i];
+                    VVCFrame *ref = sc->rpl[lx].ref[i];
+                    if (ref && y >= 0) {
+                        if (!ff_vvc_check_progress(ref, VVC_PROGRESS_PIXEL, y + LUMA_EXTRA_AFTER))
+                            return 0;
+                    }
+                    ctu->max_y_idx[lx]++;
+                }
+            }
+        }
+    }
     return 1;
 }
 
