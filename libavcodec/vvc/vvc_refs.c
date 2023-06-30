@@ -488,19 +488,6 @@ void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
     pthread_mutex_unlock(&p->lock);
 }
 
-void ff_vvc_await_progress(VVCFrame *frame, const VVCProgress vp, const int y)
-{
-    FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
-
-    pthread_mutex_lock(&p->lock);
-
-    // +1 for progress default value 0
-    while (p->progress[vp] < y + 1)
-        pthread_cond_wait(&p->cond, &p->lock);
-
-    pthread_mutex_unlock(&p->lock);
-}
-
 int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
     int ready ;
