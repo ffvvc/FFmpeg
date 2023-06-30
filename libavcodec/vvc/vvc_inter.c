@@ -965,81 +965,12 @@ static int has_inter_luma(const CodingUnit *cu)
     return cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA;
 }
 
-static int pred_get_y(const int y0, const Mv *mv, const int height)
-{
-    return FFMAX(0, y0 + (mv->y >> 4) + height);
-}
-
-static void cu_get_max_y(const CodingUnit *cu, int max_y[2][VVC_MAX_REF_ENTRIES], const VVCFrameContext *fc)
-{
-    const PredictionUnit *pu    = &cu->pu;
-
-    if (pu->merge_gpm_flag) {
-        for (int i = 0; i < FF_ARRAY_ELEMS(pu->gpm_mv); i++) {
-            const MvField *mvf  = pu->gpm_mv + i;
-            const int lx        = mvf->pred_flag - PF_L0;
-            const int idx       = mvf->ref_idx[lx];
-            const int y         = pred_get_y(cu->y0, mvf->mv + lx, cu->cb_height);
-
-            max_y[lx][idx]      = FFMAX(max_y[lx][idx], y);
-        }
-    } else {
-        const MotionInfo *mi    = &pu->mi;
-        const int max_dmvr_off  = (!pu->inter_affine_flag && pu->dmvr_flag) ? 2 : 0;
-        const int sbw           = cu->cb_width / mi->num_sb_x;
-        const int sbh           = cu->cb_height / mi->num_sb_y;
-        for (int sby = 0; sby < mi->num_sb_y; sby++) {
-            for (int sbx = 0; sbx < mi->num_sb_x; sbx++) {
-                const int x0        = cu->x0 + sbx * sbw;
-                const int y0        = cu->y0 + sby * sbh;
-                const MvField *mvf  = ff_vvc_get_mvf(fc, x0, y0);
-                for (int lx = 0; lx < 2; lx++) {
-                    const PredFlag mask = 1 << lx;
-                    if (mvf->pred_flag & mask) {
-                        const int idx   = mvf->ref_idx[lx];
-                        const int y     = pred_get_y(y0, mvf->mv + lx, sbh);
-
-                        max_y[lx][idx]  = FFMAX(max_y[lx][idx], y + max_dmvr_off);
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void ctu_wait_refs(VVCLocalContext *lc, const CTU *ctu)
-{
-    const VVCFrameContext *fc   = lc->fc;
-    const VVCSH *sh             = &lc->sc->sh;
-    CodingUnit *cu = ctu->cus;
-    int max_y[2][VVC_MAX_REF_ENTRIES];
-
-    for (int lx = 0; lx < 2; lx++)
-        memset(max_y[lx], -1, sizeof(max_y[0][0]) * sh->nb_refs[lx]);
-
-    while (cu) {
-        if (has_inter_luma(cu))
-            cu_get_max_y(cu, max_y, fc);
-        cu = cu->next;
-    }
-
-    for (int lx = 0; lx < 2; lx++) {
-        for (int i = 0; i < sh->nb_refs[lx]; i++) {
-            const int y = max_y[lx][i];
-            VVCFrame *ref = lc->sc->rpl[lx].ref[i];
-            if (ref && y >= 0)
-                ff_vvc_await_progress(ref, VVC_PROGRESS_PIXEL, y + LUMA_EXTRA_AFTER);
-        }
-    }
-}
-
 int ff_vvc_predict_inter(VVCLocalContext *lc, const int rs)
 {
     const VVCFrameContext *fc   = lc->fc;
     const CTU *ctu              = fc->tab.ctus + rs;
     CodingUnit *cu              = ctu->cus;
 
-    ctu_wait_refs(lc, ctu);
     while (cu) {
         lc->cu = cu;
         if (has_inter_luma(cu))

@@ -2275,6 +2275,74 @@ static int hls_coding_tree_unit(VVCLocalContext *lc,
     return 0;
 }
 
+static int has_inter_luma(const CodingUnit *cu)
+{
+    return cu->pred_mode != MODE_INTRA && cu->pred_mode != MODE_PLT && cu->tree_type != DUAL_TREE_CHROMA;
+}
+
+static int pred_get_y(const int y0, const Mv *mv, const int height)
+{
+    return FFMAX(0, y0 + (mv->y >> 4) + height);
+}
+
+static void cu_get_max_y(const CodingUnit *cu, int max_y[2][VVC_MAX_REF_ENTRIES], const VVCFrameContext *fc)
+{
+    const PredictionUnit *pu    = &cu->pu;
+
+    if (pu->merge_gpm_flag) {
+        for (int i = 0; i < FF_ARRAY_ELEMS(pu->gpm_mv); i++) {
+            const MvField *mvf  = pu->gpm_mv + i;
+            const int lx        = mvf->pred_flag - PF_L0;
+            const int idx       = mvf->ref_idx[lx];
+            const int y         = pred_get_y(cu->y0, mvf->mv + lx, cu->cb_height);
+
+            max_y[lx][idx]      = FFMAX(max_y[lx][idx], y);
+        }
+    } else {
+        const MotionInfo *mi    = &pu->mi;
+        const int max_dmvr_off  = (!pu->inter_affine_flag && pu->dmvr_flag) ? 2 : 0;
+        const int sbw           = cu->cb_width / mi->num_sb_x;
+        const int sbh           = cu->cb_height / mi->num_sb_y;
+        for (int sby = 0; sby < mi->num_sb_y; sby++) {
+            for (int sbx = 0; sbx < mi->num_sb_x; sbx++) {
+                const int x0        = cu->x0 + sbx * sbw;
+                const int y0        = cu->y0 + sby * sbh;
+                const MvField *mvf  = ff_vvc_get_mvf(fc, x0, y0);
+                for (int lx = 0; lx < 2; lx++) {
+                    const PredFlag mask = 1 << lx;
+                    if (mvf->pred_flag & mask) {
+                        const int idx   = mvf->ref_idx[lx];
+                        const int y     = pred_get_y(y0, mvf->mv + lx, sbh);
+
+                        max_y[lx][idx]  = FFMAX(max_y[lx][idx], y + max_dmvr_off);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void pred_get_max_y(VVCLocalContext *lc, const int rs)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSH *sh             = &lc->sc->sh;
+    CTU *ctu                    = fc->tab.ctus + rs;
+    const CodingUnit *cu        = ctu->cus;
+
+    if (IS_I(sh))
+        return;
+
+    for (int lx = 0; lx < 2; lx++)
+        memset(ctu->max_y[lx], -1, sizeof(ctu->max_y[0][0]) * sh->nb_refs[lx]);
+
+    while (cu) {
+        if (has_inter_luma(cu))
+            cu_get_max_y(cu, ctu->max_y, fc);
+        cu = cu->next;
+    }
+    ctu->max_y_idx[0] = ctu->max_y_idx[1] = 0;
+}
+
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     const int ctu_idx, const int rs, const int rx, const int ry)
 {
@@ -2285,6 +2353,7 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     const int y_ctb             = ry << sps->ctb_log2_size_y;
     const int ctb_size          = 1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y;
     EntryPoint* ep              = lc->ep;
+    int ret;
 
     if (rx == pps->ctb_to_col_bd[rx]) {
         //fix me for ibc
@@ -2298,7 +2367,12 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     ff_vvc_cabac_init(lc, ctu_idx, rx, ry);
     fc->tab.slice_idx[rs] = lc->sc->slice_idx;
     ff_vvc_decode_neighbour(lc, x_ctb, y_ctb, rx, ry, rs);
-    return hls_coding_tree_unit(lc, x_ctb, y_ctb, ctu_idx, rx, ry);
+    ret = hls_coding_tree_unit(lc, x_ctb, y_ctb, ctu_idx, rx, ry);
+    if (ret < 0)
+        return ret;
+    pred_get_max_y(lc, rs);
+
+    return 0;
 }
 
 void ff_vvc_decode_neighbour(VVCLocalContext *lc, const int x_ctb, const int y_ctb,
