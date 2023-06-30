@@ -110,9 +110,23 @@ VVCTask* ff_vvc_task_alloc(void)
     return av_malloc(sizeof(VVCTask));
 }
 
+static int check_colocation_ctu(const VVCFrameContext *fc, const VVCTask *t)
+{
+    if (fc->ps.ph->temporal_mvp_enabled_flag || fc->ps.sps->sbtmvp_enabled_flag) {
+        //-1 to avoid we are waiting for next CTU line.
+        const int y = (t->ry << fc->ps.sps->ctb_log2_size_y) - 1;
+        VVCFrame *col = fc->ref->collocated_ref;
+        if (col && !ff_vvc_check_progress(col, VVC_PROGRESS_MV, y))
+            return 0;
+    }
+    return 1;
+}
+
 static int is_parse_ready(const VVCFrameContext *fc, const VVCTask *t)
 {
     av_assert0(t->type == VVC_TASK_TYPE_PARSE);
+    if (!check_colocation_ctu(fc, t))
+        return 0;
     if (fc->ps.sps->entropy_coding_sync_enabled_flag && t->ry != fc->ps.pps->ctb_to_row_bd[t->ry])
         return get_avail(fc->frame_thread, t->rx, t->ry - 1, VVC_TASK_TYPE_PARSE);
     return 1;
