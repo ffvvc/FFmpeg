@@ -1160,7 +1160,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
             goto fail;
     }
 
-    s->executor = ff_executor_alloc(&callbacks, s->nb_fcs * 3 / 2);
+    s->executor = ff_executor_alloc(&callbacks, s->nb_fcs);
     s->eos = 1;
     GDR_SET_RECOVERED(s);
     pthread_once(&once_control, vvc_one_time_init);
