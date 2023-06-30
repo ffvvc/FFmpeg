@@ -239,31 +239,28 @@ int ff_vvc_task_ready(const Tasklet *_t, void *user_data)
     return ready;
 }
 
+#define CHECK(a, b)                         \
+    do {                                    \
+        if ((a) != (b))                     \
+            return (a) < (b);               \
+    } while (0)
+
 int ff_vvc_task_priority_higher(const Tasklet *_a, const Tasklet *_b)
 {
     const VVCTask *a = (const VVCTask*)_a;
     const VVCTask *b = (const VVCTask*)_b;
-    //order by frame decoder order
-    if (a->decode_order != b->decode_order)
-        return a->decode_order < b->decode_order;
 
-    if (a->type == b->type) {
-        // order by y
-        if (a->ry != b->ry)
-            return a->ry < b->ry;
-        // order by x
+    CHECK(a->decode_order, b->decode_order);                //decode order
+
+    if (a->type == VVC_TASK_TYPE_PARSE || b->type == VVC_TASK_TYPE_PARSE) {
+        CHECK(a->type, b->type);
+        CHECK(a->ry, b->ry);
         return a->rx < b->rx;
     }
-    if (a->type != VVC_TASK_TYPE_PARSE && b->type != VVC_TASK_TYPE_PARSE) {
-        // order by y
-        if (a->ry != b->ry)
-            return a->ry < b->ry;
-        // order by x
-        if (a->rx != b->rx)
-            return a->rx < b->rx;
-    }
-    // order by type
-    return a->type < b->type;
+
+    CHECK(a->rx + a->ry + a->type, b->rx + b->ry + b->type);    //zigzag with type
+    CHECK(a->rx + a->ry, b->rx + b->ry);                        //zigzag
+    return a->ry < b->ry;
 }
 
 static void add_task(VVCContext *s, VVCTask *t, const VVCTaskType type)
