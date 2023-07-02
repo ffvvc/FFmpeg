@@ -92,7 +92,7 @@ void checkasm_check_vvc_mc(void)
 {
     int bit_depth;
     VVCDSPContext h;
-    for (bit_depth = 8; bit_depth <= 10; bit_depth += 2) {
+    for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
         ff_vvc_dsp_init(&h, bit_depth);
         check_put_vvc_luma(&h, bit_depth);
     }
