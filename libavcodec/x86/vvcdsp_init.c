@@ -196,41 +196,50 @@ SAO_EDGE_FILTER_FUNCS(12, avx2)
     c->sao.edge_filter[8]       = ff_vvc_sao_edge_filter_128_##bitd##_##opt;    \
 } while (0)
 
-void ff_vvc_put_vvc_luma_h_8_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#define PUT_VVC_LUMA_8_FUNC(dir, opt)                                                                         \
+    void ff_vvc_put_vvc_luma_##dir##_8_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,  \
+    const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
+    const int hf_idx, const int vf_idx);                                                                      \
 
-void ff_vvc_put_vvc_luma_v_8_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#define PUT_VVC_LUMA_16_FUNC(dir, opt)                                                                        \
+    void ff_vvc_put_vvc_luma_##dir##_16_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
+    const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
+    const int hf_idx, const int vf_idx, const int bitdepth);
 
-void ff_vvc_put_vvc_luma_hv_8_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#define PUT_VVC_LUMA_FUNCS(bitd, opt)    \
+    PUT_VVC_LUMA_##bitd##_FUNC(h,  opt)  \
+    PUT_VVC_LUMA_##bitd##_FUNC(v,  opt)  \
+    PUT_VVC_LUMA_##bitd##_FUNC(hv, opt)
 
-void ff_vvc_put_vvc_luma_h_16_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#define PUT_VVC_LUMA_FORWARD_FUNC(dir, bitd, opt)                                                                      \
+static void ff_vvc_put_vvc_luma_##dir##_##bitd##_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
+    const int height, const intptr_t mx, const intptr_t my, const int width,                                           \
+    const int hf_idx, const int vf_idx)                                                                                \
+{                                                                                                                      \
+    ff_vvc_put_vvc_luma_##dir##_16_##opt(dst, _src, _src_stride, height, mx, my, width, hf_idx, vf_idx, bitd);         \
+}
 
-void ff_vvc_put_vvc_luma_v_16_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#define PUT_VVC_LUMA_FORWARD_FUNCS(bitd, opt) \
+    PUT_VVC_LUMA_FORWARD_FUNC(h,  bitd, opt)  \
+    PUT_VVC_LUMA_FORWARD_FUNC(v,  bitd, opt)  \
+    PUT_VVC_LUMA_FORWARD_FUNC(hv, bitd, opt)
 
-void ff_vvc_put_vvc_luma_hv_16_avx2(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+PUT_VVC_LUMA_FUNCS(8,  avx2)
+PUT_VVC_LUMA_FUNCS(16, avx2)
+PUT_VVC_LUMA_FORWARD_FUNCS(10, avx2)
+PUT_VVC_LUMA_FORWARD_FUNCS(12, avx2)
 
-void ff_vvc_put_vvc_luma_h_16_avx512icl(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#if HAVE_AVX512ICL_EXTERNAL
+PUT_VVC_LUMA_FUNCS(16, avx512icl)
+PUT_VVC_LUMA_FORWARD_FUNCS(10, avx512icl)
+PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
+#endif
 
-void ff_vvc_put_vvc_luma_v_16_avx512icl(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
-
-void ff_vvc_put_vvc_luma_hv_16_avx512icl(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-    const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx);
+#define PUT_VVC_LUMA_INIT(bitd, opt) do {                             \
+    c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_##bitd##_##opt;  \
+    c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_##bitd##_##opt;  \
+    c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bitd##_##opt; \
+} while (0)
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
 {
@@ -240,21 +249,18 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
         switch (bit_depth) {
             case 8:
                 ALF_DSP(8);
+                PUT_VVC_LUMA_INIT(8, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
-                c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_8_avx2;
-                c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_8_avx2;
-                c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_8_avx2;
                 break;
             case 10:
                 ALF_DSP(10);
+                PUT_VVC_LUMA_INIT(10, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
-                c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_16_avx2;
-                c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_16_avx2;
-                c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_16_avx2;
                 break;
             case 12:
                 ALF_DSP(12);
+                PUT_VVC_LUMA_INIT(12, avx2);
                 break;
             default:
                 break;
@@ -277,14 +283,18 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
                 break;
         }
     }
+#if HAVE_AVX512ICL_EXTERNAL
     if (EXTERNAL_AVX512ICL(cpu_flags)) {
         switch (bit_depth) {
             case 10:
-                c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_16_avx512icl;
-                c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_16_avx512icl;
-                c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_16_avx512icl;
+                PUT_VVC_LUMA_INIT(10, avx512icl);
+                break;
+            case 12:
+                PUT_VVC_LUMA_INIT(12, avx512icl);
+                break;
             default:
             break;
         }
     }
+#endif
 }

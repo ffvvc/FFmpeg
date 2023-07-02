@@ -230,11 +230,14 @@ SECTION .text
 
 %define MAX_PB_SIZE 128*2
 
-%macro MOVSXDIFNIDN 0
-    movsxdifnidn heightq, heightd
-    movsxdifnidn  widthq, widthd
-    movsxdifnidn hf_idxq, hf_idxd
-    movsxdifnidn vf_idxq, vf_idxd
+%macro MOVSXDIFNIDN 1
+    movsxdifnidn   heightq, heightd
+    movsxdifnidn    widthq, widthd
+    movsxdifnidn   hf_idxq, hf_idxd
+    movsxdifnidn   vf_idxq, vf_idxd
+%if %1 > 8
+    movsxdifnidn bitdepthq, bitdepthd
+%endif
 %endmacro
 
 %macro PRE_CAL_INDEX 3
@@ -286,7 +289,7 @@ SECTION .text
 %endmacro
 
 %macro H_COMPUTE_H8_16 1
-H_COMPUTE_8 %1, 4, 5, 6, 7, 2
+H_COMPUTE_8 %1, 4, 5, 6, 7, xm28
 %endmacro
 
 %macro H_COMPUTE_V8_10 1
@@ -322,7 +325,7 @@ H_COMPUTE_8 %1, 24, 25, 26, 27, 6
 %endmacro
 
 %macro H_COMPUTE_H4_16 2
-H_COMPUTE_H4 %1, %2, 4, 5, 6, 7, 2
+H_COMPUTE_H4 %1, %2, 4, 5, 6, 7, xm28
 %endmacro
 
 %macro H_COMPUTE_V4_16 2
@@ -355,12 +358,14 @@ H_COMPUTE_H4 %1, %2, 24, 25, 26, 27, 6
 ;                             const int hf_idx, const int vf_idx);
 ;
 %macro VVC_PUT_VVC_LUMA_HV_AVX512ICL 1
-cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
-    MOVSXDIFNIDN
+cglobal vvc_put_vvc_luma_hv_%1, 10, 13, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, bitdepth, r3src, _src, x
+    MOVSXDIFNIDN %1
     LOAD_FILTER_16 hf_idx, mx,  4,  5,  6,  7
     LOAD_FILTER_16 vf_idx, my, 24, 25, 26, 27
 
-    mov _srcq, srcq
+    sub        bitdepthq, 8
+    movq            xm28, bitdepthq
+    mov            _srcq, srcq
 
     cmp          heightq, 4
     je              .hv4
@@ -604,10 +609,13 @@ STORE_LOOP %1, %2, %3, vpmovdw, m, mmsize/2
 %endmacro
 
 %macro VVC_PUT_VVC_LUMA_H_AVX512ICL 1
-cglobal vvc_put_vvc_luma_h_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
-    MOVSXDIFNIDN
+cglobal vvc_put_vvc_luma_h_%1, 10, 13, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, bitdepth, r3src, _src, x
+    MOVSXDIFNIDN %1
     LOAD_FILTER_16 hf_idx, mx, 4, 5, 6, 7
 
+    sub        bitdepthq, 8
+    movq            xm28, bitdepthq
+    mov            _srcq, srcq
     lea           r3srcq, [srcstrideq * 3]
     sub             srcq, 6
 
@@ -744,11 +752,14 @@ cglobal vvc_put_vvc_luma_h_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, w
 %endmacro
 
 %macro VVC_PUT_VVC_LUMA_V_AVX512ICL 1
-cglobal vvc_put_vvc_luma_v_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
-    MOVSXDIFNIDN
+cglobal vvc_put_vvc_luma_v_%1, 10, 13, 32, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, bitdepth, r3src, _src, x
+    MOVSXDIFNIDN %1
     LOAD_FILTER_16 vf_idx, my, 4, 5, 6, 7
 
-    mov _srcq, srcq
+    sub        bitdepthq, 8
+    movq            xm28, bitdepthq
+    mov            _srcq, srcq
+    mov            _srcq, srcq
 
     cmp          heightq, 4
     je              .hv4
@@ -966,7 +977,7 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, w
 %endmacro
 
 %macro H_COMPUTE_H8_16_AVX2 5
-    H_COMPUTE_16_AVX2 %1, %2, %3, %4, %5, 2
+    H_COMPUTE_16_AVX2 %1, %2, %3, %4, %5, xm6
 %endmacro
 
 %macro H_LOAD_COMPUTE_H8_16 6
@@ -975,7 +986,7 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, w
     movu                xm%3, [srcq + srcstrideq * 0  + 16]
     VINSERTI128          m%3, [srcq + srcstrideq * %6 + 16], 1
     shufpd               m%2, m%1, m%3, 0x05
-    H_COMPUTE_16_AVX2     %1, %2, %3, %4, %5, 2
+    H_COMPUTE_H8_16_AVX2  %1, %2, %3, %4, %5
     lea                 srcq, [srcq + srcstrideq]
 %endmacro
 
@@ -983,11 +994,11 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, w
     vperm2i128           m%3,  m%1,  m%2, 0x31
     VINSERTI128          m%1, xm%2, 1
     shufpd               m%2,  m%1,  m%3, 0x05
-%assign %%shift_count 6
 %if %0 == 6
-%assign %%shift_count %6
+    H_COMPUTE_16_AVX2     %1, %2, %3, %4, %5, %6
+%else
+    H_COMPUTE_16_AVX2     %1, %2, %3, %4, %5, 6
 %endif
-    H_COMPUTE_16_AVX2     %1, %2, %3, %4, %5, %%shift_count
 %endmacro
 
 %macro PUSH_MM 1
@@ -1001,9 +1012,9 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 32, dst, src, srcstride, height, mx, my, w
 %endmacro
 
 %macro VVC_PUT_VVC_LUMA_HV_AVX2 1
-cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 16, 0-mmsize*3, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
+cglobal vvc_put_vvc_luma_hv_%1, 10, 13, 16, 0-mmsize*3, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, bitdepth, r3src, _src, x
 %assign mm_stack_offset 0
-    MOVSXDIFNIDN
+    MOVSXDIFNIDN %1
 
     PRE_CAL_INDEX hf_idx, mx, 4
     PRE_CAL_INDEX vf_idx, my, 4
@@ -1011,6 +1022,10 @@ cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 16, 0-mmsize*3, dst, src, srcstride, heig
     vbroadcasti128    m4, [pb_vvc_iter_shuffle_index_w + 0 * 16]
     vbroadcasti128    m5, [pb_vvc_iter_shuffle_index_w + 1 * 16]
 
+    sub        bitdepthq, 8
+    movq             xm6, bitdepthq
+
+    mov            _srcq, srcq
     lea           r3srcq, [srcstrideq * 3   ]
     neg           r3srcq
     lea            _srcq, [srcq + r3srcq - 6]
@@ -1179,13 +1194,15 @@ cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 16, 0-mmsize*3, dst, src, srcstride, heig
 %endmacro
 
 %macro VVC_PUT_VVC_LUMA_H_AVX2 1
-cglobal vvc_put_vvc_luma_h_%1, 9, 10, 12, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src
-    MOVSXDIFNIDN
+cglobal vvc_put_vvc_luma_h_%1, 10, 11, 12, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, bitdepth, r3src
+    MOVSXDIFNIDN %1
     LOAD_FILTER_16 hf_idx, mx, 0, 1, 2, 3
 
     vbroadcasti128       m4, [pb_vvc_iter_shuffle_index_w + 0 * 16]
     vbroadcasti128       m5, [pb_vvc_iter_shuffle_index_w + 1 * 16]
 
+    sub        bitdepthq, 8
+    movq             xm6, bitdepthq
     sub             srcq, 6
 
     cmp           widthq, 4
@@ -1247,14 +1264,17 @@ cglobal vvc_put_vvc_luma_h_%1, 9, 10, 12, dst, src, srcstride, height, mx, my, w
 %endmacro
 
 %macro VVC_PUT_VVC_LUMA_V_AVX2 1
-cglobal vvc_put_vvc_luma_v_%1, 9, 12, 16, 0-mmsize*2, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
+cglobal vvc_put_vvc_luma_v_%1, 10, 13, 16, 0-mmsize*2, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, bitdepth, r3src, _src, x
 %assign mm_stack_offset 0
-    MOVSXDIFNIDN
+    MOVSXDIFNIDN %1
     PRE_CAL_INDEX hf_idx, mx, 4
     PRE_CAL_INDEX vf_idx, my, 4
 
     vbroadcasti128    m4, [pb_vvc_iter_shuffle_index_w + 0 * 16]
     vbroadcasti128    m5, [pb_vvc_iter_shuffle_index_w + 1 * 16]
+
+    sub        bitdepthq, 8
+    movq             xm6, bitdepthq
 
     lea           r3srcq, [srcstrideq * 3]
     neg           r3srcq
@@ -1326,12 +1346,12 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 16, 0-mmsize*2, dst, src, srcstride, heigh
     PUSH_MM 14
 
     LOAD_FILTER         w, vf_idx, 0, 1, 2, 3
-    H_LOAD_COMPUTE_V8_16  7, 11, 10, 14, 15, 2
-    H_LOAD_COMPUTE_V8_16  8, 12, 10, 14, 15, 2
-    H_LOAD_COMPUTE_V8_16  9, 13, 10, 14, 15, 2
+    H_LOAD_COMPUTE_V8_16  7, 11, 10, 14, 15, xm6
+    H_LOAD_COMPUTE_V8_16  8, 12, 10, 14, 15, xm6
+    H_LOAD_COMPUTE_V8_16  9, 13, 10, 14, 15, xm6
     POP_MM 14
     POP_MM 10
-    H_LOAD_COMPUTE_V8_16 10, 14, 11, 12, 15, 2
+    H_LOAD_COMPUTE_V8_16 10, 14, 11, 12, 15, xm6
 
     vpunpcklwd         m0,  m7, m8
     vpunpckhwd         m1,  m7, m8
@@ -1411,8 +1431,8 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 16, 0-mmsize*2, dst, src, srcstride, heigh
     vpunpckhqdq     m10, m11, m13
 
     LOAD_FILTER       w, vf_idx, 0, 1, 2, 3
-    H_LOAD_COMPUTE_V8_16 7,  9, 11, 12, 13, 2
-    H_LOAD_COMPUTE_V8_16 8, 10, 11, 12, 13, 2
+    H_LOAD_COMPUTE_V8_16 7,  9, 11, 12, 13, xm6
+    H_LOAD_COMPUTE_V8_16 8, 10, 11, 12, 13, xm6
 
     vpunpcklwd       m7,  m7, m8
     vextracti128    xm8,  m7, 1
@@ -1470,7 +1490,7 @@ cglobal vvc_put_vvc_luma_v_%1, 9, 12, 16, 0-mmsize*2, dst, src, srcstride, heigh
 %macro VVC_PUT_VVC_LUMA_HV_8_AVX2 1
 cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 16, 0-mmsize*2, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
 %assign mm_stack_offset 0
-    MOVSXDIFNIDN
+    MOVSXDIFNIDN %1
     PRE_CAL_INDEX hf_idx, mx, 3
     PRE_CAL_INDEX vf_idx, my, 4
 
@@ -1653,7 +1673,7 @@ cglobal vvc_put_vvc_luma_hv_%1, 9, 12, 16, 0-mmsize*2, dst, src, srcstride, heig
 
 %macro VVC_PUT_VVC_LUMA_H_8_AVX2 1
 cglobal vvc_put_vvc_luma_h_%1, 9, 10, 10, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src
-    MOVSXDIFNIDN
+    MOVSXDIFNIDN %1
     LOAD_FILTER_%1 hf_idx, mx, 0, 1
 
     vbroadcasti128       m2, [pb_vvc_iter_shuffle_index_b + 0 * 16]
@@ -1738,7 +1758,7 @@ cglobal vvc_put_vvc_luma_h_%1, 9, 10, 10, dst, src, srcstride, height, mx, my, w
 
 %macro VVC_PUT_VVC_LUMA_V_8_AVX2 1
 cglobal vvc_put_vvc_luma_v_%1, 9, 12, 16, dst, src, srcstride, height, mx, my, width, hf_idx, vf_idx, r3src, _src, x
-    MOVSXDIFNIDN
+    MOVSXDIFNIDN %1
     PRE_CAL_INDEX vf_idx, my, 3
     LOAD_FILTER        b, vf_idx, 0, 1
     vbroadcasti128    m2, [pb_vvc_iter_shuffle_index_b + 0 * 16]
