@@ -2447,7 +2447,8 @@ int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)
     return fc->tab.qp[LUMA][x + y * fc->ps.pps->min_cb_width];
 }
 
-void ff_vvc_ep_init_stat_coeff(EntryPoint *ep, int bit_depth, int persistent_rice_adaptation_enabled_flag)
+void ff_vvc_ep_init_stat_coeff(EntryPoint *ep,
+	const int bit_depth, const int persistent_rice_adaptation_enabled_flag)
 {
     for (size_t i = 0; i < FF_ARRAY_ELEMS(ep->stat_coeff); ++i) {
         ep->stat_coeff[i] =

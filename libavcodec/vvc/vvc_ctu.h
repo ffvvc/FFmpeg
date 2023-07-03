@@ -24,6 +24,7 @@
 #define AVCODEC_VVC_CTU_H
 
 #include "libavcodec/cabac.h"
+#include "libavutil/mem_internal.h"
 
 #include "vvcdec.h"
 
@@ -258,10 +259,7 @@ typedef struct CodingUnit {
         TransformUnit *head;
         TransformUnit *tail;
     } tus;
-#if 0
-    TransformUnit tus[MAX_TUS_IN_CU];
-    int num_tus;
-#endif
+
     int8_t qp[4];                                   ///< QpY, Qp′Cb, Qp′Cr, Qp′CbCr
 
     PredictionUnit pu;
