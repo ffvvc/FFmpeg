@@ -647,6 +647,11 @@ static int sps_parse_chroma_qp_table(VVCSPS *sps, GetBitContext *gb, void *log_c
         se(qp_table_start_minus26, -26 - sps->qp_bd_offset, 36);
         ue(num_points_in_qp_table_minus1, 36 - qp_table_start_minus26);
         num_points_in_qp_table = num_points_in_qp_table_minus1 + 1;
+        if (num_points_in_qp_table > VVC_MAX_POINTS_IN_QP_TABLE) {
+            av_log(log_ctx, AV_LOG_ERROR, "num_points_in_qp_table(%d) > %d",
+                num_points_in_qp_table, VVC_MAX_POINTS_IN_QP_TABLE);
+            return AVERROR_INVALIDDATA;
+        }
 
         qp_out[0] = qp_in[0] = qp_table_start_minus26 + 26;
         for (int j = 0; j < num_points_in_qp_table; j++ ) {
