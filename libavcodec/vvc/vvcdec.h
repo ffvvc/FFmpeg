@@ -120,7 +120,6 @@ typedef struct EntryPoint EntryPoint;
 typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
-typedef struct DMVRInfo DMVRInfo;
 typedef struct CTU CTU;
 typedef struct SAOParams SAOParams;
 typedef struct ALFParams ALFParams;
