@@ -1138,7 +1138,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
 {
     VVCContext *s       = avctx->priv_data;
     int ret;
-    TaskCallbacks callbacks = {
+    TaskletCallbacks callbacks = {
         s,
         sizeof(VVCLocalContext),
         ff_vvc_task_priority_higher,
