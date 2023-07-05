@@ -60,14 +60,8 @@ void ff_executor_free(Executor **e);
 /**
  * Add task to executor
  * @param e pointer to executor
- * @param t pointer to task
+ * @param t pointer to task. If NULL, it will wakeup one work thread
  */
 void ff_executor_execute(Executor *e, Tasklet *t);
-
-/**
- * Wakeup all threads
- * @param e pointer to executor
- */
-void ff_executor_wakeup(Executor *e);
 
 #endif //AVCODEC_EXECUTOR_H
