@@ -30,7 +30,7 @@ typedef struct ThreadInfo {
 } ThreadInfo;
 
 struct Executor {
-    TaskCallbacks cb;
+    TaskletCallbacks cb;
     ThreadInfo *threads;
     uint8_t *local_contexts;
     int thread_count;
@@ -59,7 +59,7 @@ static void *executor_worker_task(void *data)
     Executor *e = ti->e;
     void *lc       = e->local_contexts + (ti - e->threads) * e->cb.local_context_size;
     Tasklet **prev;
-    TaskCallbacks *cb = &e->cb;
+    TaskletCallbacks *cb = &e->cb;
 
     pthread_mutex_lock(&e->lock);
     while (1) {
@@ -87,7 +87,7 @@ static void *executor_worker_task(void *data)
     return NULL;
 }
 
-Executor* ff_executor_alloc(const TaskCallbacks *cb, int thread_count)
+Executor* ff_executor_alloc(const TaskletCallbacks *cb, int thread_count)
 {
     Executor *e;
     int i, j, ret;
@@ -168,7 +168,7 @@ void ff_executor_free(Executor **executor)
 
 void ff_executor_execute(Executor *e, Tasklet *t)
 {
-    TaskCallbacks *cb = &e->cb;
+    TaskletCallbacks *cb = &e->cb;
     Tasklet **prev;
 
     pthread_mutex_lock(&e->lock);

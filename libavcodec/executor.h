@@ -28,7 +28,7 @@ struct Tasklet {
     Tasklet *next;
 };
 
-typedef struct TaskCallbacks {
+typedef struct TaskletCallbacks {
     void *user_data;
 
     int local_context_size;
@@ -41,7 +41,7 @@ typedef struct TaskCallbacks {
 
     // run the task
     int (*run)(Tasklet *t, void *local_context, void *user_data);
-} TaskCallbacks;
+} TaskletCallbacks;
 
 /**
  * Alloc executor
@@ -49,7 +49,7 @@ typedef struct TaskCallbacks {
  * @param thread_count worker thread number
  * @return return the executor
  */
-Executor* ff_executor_alloc(const TaskCallbacks *callbacks, int thread_count);
+Executor* ff_executor_alloc(const TaskletCallbacks *callbacks, int thread_count);
 
 /**
  * Free executor
