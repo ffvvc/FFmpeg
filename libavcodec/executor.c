@@ -172,16 +172,11 @@ void ff_executor_execute(Executor *e, Tasklet *t)
     Tasklet **prev;
 
     pthread_mutex_lock(&e->lock);
-    for (prev = &e->tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
-        /* nothing */;
-    add_task(prev, t);
+    if (t) {
+        for (prev = &e->tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
+            /* nothing */;
+        add_task(prev, t);
+    }
     pthread_cond_signal(&e->cond);
-    pthread_mutex_unlock(&e->lock);
-}
-
-void ff_executor_wakeup(Executor *e)
-{
-    pthread_mutex_lock(&e->lock);
-    pthread_cond_broadcast(&e->cond);
     pthread_mutex_unlock(&e->lock);
 }

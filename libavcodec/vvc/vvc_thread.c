@@ -784,8 +784,8 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
                 atomic_uchar mask = 1 << VVC_TASK_TYPE_PARSE;
                 if (!(atomic_load(ft->avails + rs) & mask)) {
                     atomic_store(&ft->ret, AVERROR_INVALIDDATA);
-                    // maybe all thread are waiting, let us wake up them
-                    ff_executor_wakeup(s->executor);
+                    // maybe all thread are waiting, let us wake up one
+                    ff_executor_execute(s->executor, NULL);
                     break;
                 }
             }
