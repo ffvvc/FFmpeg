@@ -24,6 +24,22 @@
 
 #include "executor.h"
 
+#if !HAVE_THREADS
+#define pthread_create(t, a, s, ar)     0
+#define pthread_join(t, r)              do {} while(0)
+
+#define pthread_cond_init(c, a)         0
+#define pthread_cond_broadcast(c)       do {} while(0)
+#define pthread_cond_signal(c)          do {} while(0)
+#define pthread_cond_wait(c, m)         do {} while(0)
+#define pthread_cond_destroy(c)         do {} while(0)
+
+#define pthread_mutex_init(m, a)        0
+#define pthread_mutex_lock(l)           do {} while(0)
+#define pthread_mutex_unlock(l)         do {} while(0)
+#define pthread_mutex_destroy(l)        do {} while(0)
+#endif
+
 typedef struct ThreadInfo {
     Executor *e;
     pthread_t thread;
@@ -76,6 +92,7 @@ static int run_one_task(Executor *e, void *lc)
     return 0;
 }
 
+#if HAVE_THREADS
 static void *executor_worker_task(void *data)
 {
     ThreadInfo *ti = (ThreadInfo*)data;
@@ -94,6 +111,7 @@ static void *executor_worker_task(void *data)
     pthread_mutex_unlock(&e->lock);
     return NULL;
 }
+#endif
 
 Executor* ff_executor_alloc(const TaskletCallbacks *cb, int thread_count)
 {
@@ -187,4 +205,10 @@ void ff_executor_execute(Executor *e, Tasklet *t)
     }
     pthread_cond_signal(&e->cond);
     pthread_mutex_unlock(&e->lock);
+
+#if !HAVE_THREADS
+    // We are running in a single-threaded environment, so we must handle all tasks ourselves
+    while (run_one_task(e, e->local_contexts))
+        /* nothing */;
+#endif
 }
