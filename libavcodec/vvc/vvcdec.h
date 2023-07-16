@@ -24,11 +24,11 @@
 #ifndef AVCODEC_VVCDEC_H
 #define AVCODEC_VVCDEC_H
 
-#include "libavcodec/executor.h"
 #include "libavcodec/h2645_parse.h"
 #include "libavcodec/threadframe.h"
 #include "libavcodec/videodsp.h"
 #include "libavcodec/vvc.h"
+#include "libavutil/executor.h"
 
 #include "vvc_ps.h"
 #include "vvcdsp.h"
@@ -302,7 +302,7 @@ typedef struct VVCContext {
     int apply_defdispwin;
     int nal_length_size;    ///< Number of bytes used for nal length (1, 2 or 4)
 
-    Executor *executor;
+    AVExecutor *executor;
 
     VVCFrameContext *fcs;
     int nb_fcs;

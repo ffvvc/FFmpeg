@@ -18,30 +18,30 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVCODEC_EXECUTOR_H
-#define AVCODEC_EXECUTOR_H
+#ifndef AVUTIL_EXECUTOR_H
+#define AVUTIL_EXECUTOR_H
 
-typedef struct Executor Executor;
-typedef struct Tasklet Tasklet;
+typedef struct AVExecutor AVExecutor;
+typedef struct AVTask AVTask;
 
-struct Tasklet {
-    Tasklet *next;
+struct AVTask {
+    AVTask *next;
 };
 
-typedef struct TaskletCallbacks {
+typedef struct AVTaskCallbacks {
     void *user_data;
 
     int local_context_size;
 
     // return 1 if a's priority > b's priority
-    int (*priority_higher)(const Tasklet *a, const Tasklet *b);
+    int (*priority_higher)(const AVTask *a, const AVTask *b);
 
     // task is ready for run
-    int (*ready)(const Tasklet *t, void *user_data);
+    int (*ready)(const AVTask *t, void *user_data);
 
     // run the task
-    int (*run)(Tasklet *t, void *local_context, void *user_data);
-} TaskletCallbacks;
+    int (*run)(AVTask *t, void *local_context, void *user_data);
+} AVTaskCallbacks;
 
 /**
  * Alloc executor
@@ -49,19 +49,19 @@ typedef struct TaskletCallbacks {
  * @param thread_count worker thread number
  * @return return the executor
  */
-Executor* ff_executor_alloc(const TaskletCallbacks *callbacks, int thread_count);
+AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
 
 /**
  * Free executor
  * @param e  pointer to executor
  */
-void ff_executor_free(Executor **e);
+void avpriv_executor_free(AVExecutor **e);
 
 /**
  * Add task to executor
  * @param e pointer to executor
  * @param t pointer to task. If NULL, it will wakeup one work thread
  */
-void ff_executor_execute(Executor *e, Tasklet *t);
+void avpriv_executor_execute(AVExecutor *e, AVTask *t);
 
-#endif //AVCODEC_EXECUTOR_H
+#endif //AVUTIL_EXECUTOR_H
