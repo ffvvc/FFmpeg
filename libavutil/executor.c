@@ -19,8 +19,8 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "libavutil/avutil.h"
-#include "libavutil/thread.h"
+#include "internal.h"
+#include "thread.h"
 
 #include "executor.h"
 
@@ -41,12 +41,12 @@
 #endif
 
 typedef struct ThreadInfo {
-    Executor *e;
+    AVExecutor *e;
     pthread_t thread;
 } ThreadInfo;
 
-struct Executor {
-    TaskletCallbacks cb;
+struct AVExecutor {
+    AVTaskCallbacks cb;
     ThreadInfo *threads;
     uint8_t *local_contexts;
     int thread_count;
@@ -54,26 +54,26 @@ struct Executor {
     pthread_mutex_t lock;
     pthread_cond_t cond;
     int die;
-    Tasklet *tasks;
+    AVTask *tasks;
 };
 
-static void remove_task(Tasklet **prev, Tasklet *t)
+static void remove_task(AVTask **prev, AVTask *t)
 {
     *prev  = t->next;
     t->next = NULL;
 }
 
-static void add_task(Tasklet **prev, Tasklet *t)
+static void add_task(AVTask **prev, AVTask *t)
 {
     t->next = *prev;
     *prev   = t;
 }
 
-static int run_one_task(Executor *e, void *lc)
+static int run_one_task(AVExecutor *e, void *lc)
 {
-    TaskletCallbacks *cb = &e->cb;
-    Tasklet **prev;
-    Tasklet *t = NULL;
+    AVTaskCallbacks *cb = &e->cb;
+    AVTask *t           = NULL;
+    AVTask **prev;
 
     for (prev = &e->tasks; *prev; prev = &(*prev)->next) {
         if (cb->ready(*prev, cb->user_data)) {
@@ -96,7 +96,7 @@ static int run_one_task(Executor *e, void *lc)
 static void *executor_worker_task(void *data)
 {
     ThreadInfo *ti = (ThreadInfo*)data;
-    Executor *e    = ti->e;
+    AVExecutor *e  = ti->e;
     void *lc       = e->local_contexts + (ti - e->threads) * e->cb.local_context_size;
 
     pthread_mutex_lock(&e->lock);
@@ -113,9 +113,9 @@ static void *executor_worker_task(void *data)
 }
 #endif
 
-Executor* ff_executor_alloc(const TaskletCallbacks *cb, int thread_count)
+AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
 {
-    Executor *e;
+    AVExecutor *e;
     int i, j, ret;
     if (!cb || !cb->user_data || !cb->ready || !cb->run || !cb->priority_higher)
         return NULL;
@@ -168,9 +168,9 @@ free_executor:
     return NULL;
 }
 
-void ff_executor_free(Executor **executor)
+void avpriv_executor_free(AVExecutor **executor)
 {
-    Executor *e;
+    AVExecutor *e;
     if (!executor || !*executor)
         return;
     e = *executor;
@@ -192,10 +192,10 @@ void ff_executor_free(Executor **executor)
     av_freep(executor);
 }
 
-void ff_executor_execute(Executor *e, Tasklet *t)
+void avpriv_executor_execute(AVExecutor *e, AVTask *t)
 {
-    TaskletCallbacks *cb = &e->cb;
-    Tasklet **prev;
+    AVTaskCallbacks *cb = &e->cb;
+    AVTask **prev;
 
     pthread_mutex_lock(&e->lock);
     if (t) {

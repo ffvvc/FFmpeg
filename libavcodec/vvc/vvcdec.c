@@ -1114,7 +1114,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
     int i;
 
     vvc_decode_flush(avctx);
-    ff_executor_free(&s->executor);
+    avpriv_executor_free(&s->executor);
     if (s->fcs) {
         for (i = 0; i < s->nb_fcs; i++)
             frame_context_free(s->fcs + i);
@@ -1130,7 +1130,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
 {
     VVCContext *s       = avctx->priv_data;
     int ret;
-    TaskletCallbacks callbacks = {
+    AVTaskCallbacks callbacks = {
         s,
         sizeof(VVCLocalContext),
         ff_vvc_task_priority_higher,
@@ -1152,7 +1152,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
             goto fail;
     }
 
-    s->executor = ff_executor_alloc(&callbacks, s->nb_fcs);
+    s->executor = avpriv_executor_alloc(&callbacks, s->nb_fcs);
     s->eos = 1;
     GDR_SET_RECOVERED(s);
     memset(&ff_vvc_default_scale_m, 16, sizeof(ff_vvc_default_scale_m));
