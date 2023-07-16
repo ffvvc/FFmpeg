@@ -26,6 +26,13 @@
 
 #include "vvc_refs.h"
 
+#if !HAVE_THREADS
+#define pthread_mutex_init(m, a)        0
+#define pthread_mutex_lock(l)           do {} while(0)
+#define pthread_mutex_unlock(l)         do {} while(0)
+#define pthread_mutex_destroy(l)        do {} while(0)
+#endif
+
 #define VVC_FRAME_FLAG_OUTPUT    (1 << 0)
 #define VVC_FRAME_FLAG_SHORT_REF (1 << 1)
 #define VVC_FRAME_FLAG_LONG_REF  (1 << 2)
