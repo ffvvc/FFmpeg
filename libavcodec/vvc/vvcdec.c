@@ -28,7 +28,6 @@
 #include "libavcodec/vvc.h"
 
 #include "libavutil/cpu.h"
-#include "libavutil/thread.h"
 
 #include "vvcdec.h"
 #include "vvc_ctu.h"
@@ -1126,13 +1125,6 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
     return 0;
 }
 
-static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-
-static void vvc_one_time_init(void)
-{
-    memset(&ff_vvc_default_scale_m, 16, sizeof(ff_vvc_default_scale_m));
-}
-
 #define VVC_MAX_FRMAE_DELAY 16
 static av_cold int vvc_decode_init(AVCodecContext *avctx)
 {
@@ -1163,7 +1155,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
     s->executor = ff_executor_alloc(&callbacks, s->nb_fcs);
     s->eos = 1;
     GDR_SET_RECOVERED(s);
-    pthread_once(&once_control, vvc_one_time_init);
+    memset(&ff_vvc_default_scale_m, 16, sizeof(ff_vvc_default_scale_m));
 
     return 0;
 
