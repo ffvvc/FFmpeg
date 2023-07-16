@@ -57,10 +57,11 @@ struct AVExecutor {
     AVTask *tasks;
 };
 
-static void remove_task(AVTask **prev, AVTask *t)
+static AVTask* remove_task(AVTask **prev, AVTask *t)
 {
     *prev  = t->next;
     t->next = NULL;
+    return t;
 }
 
 static void add_task(AVTask **prev, AVTask *t)
@@ -72,18 +73,12 @@ static void add_task(AVTask **prev, AVTask *t)
 static int run_one_task(AVExecutor *e, void *lc)
 {
     AVTaskCallbacks *cb = &e->cb;
-    AVTask *t           = NULL;
     AVTask **prev;
 
-    for (prev = &e->tasks; *prev; prev = &(*prev)->next) {
-        if (cb->ready(*prev, cb->user_data)) {
-            t = *prev;
-            break;
-        }
-    }
-    if (t) {
-        //found one task
-        remove_task(prev, t);
+    for (prev = &e->tasks; *prev && !cb->ready(*prev, cb->user_data); prev = &(*prev)->next)
+        /* nothing */;
+    if (*prev) {
+        AVTask *t = remove_task(prev, *prev);
         pthread_mutex_unlock(&e->lock);
         cb->run(t, lc, cb->user_data);
         pthread_mutex_lock(&e->lock);
