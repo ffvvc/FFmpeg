@@ -53,32 +53,40 @@ static void add_task(Tasklet **prev, Tasklet *t)
     *prev   = t;
 }
 
+static int run_one_task(Executor *e, void *lc)
+{
+    TaskletCallbacks *cb = &e->cb;
+    Tasklet **prev;
+    Tasklet *t = NULL;
+
+    for (prev = &e->tasks; *prev; prev = &(*prev)->next) {
+        if (cb->ready(*prev, cb->user_data)) {
+            t = *prev;
+            break;
+        }
+    }
+    if (t) {
+        //found one task
+        remove_task(prev, t);
+        pthread_mutex_unlock(&e->lock);
+        cb->run(t, lc, cb->user_data);
+        pthread_mutex_lock(&e->lock);
+        return 1;
+    }
+    return 0;
+}
+
 static void *executor_worker_task(void *data)
 {
     ThreadInfo *ti = (ThreadInfo*)data;
-    Executor *e = ti->e;
+    Executor *e    = ti->e;
     void *lc       = e->local_contexts + (ti - e->threads) * e->cb.local_context_size;
-    Tasklet **prev;
-    TaskletCallbacks *cb = &e->cb;
 
     pthread_mutex_lock(&e->lock);
     while (1) {
-        Tasklet* t = NULL;
         if (e->die) break;
 
-        for (prev = &e->tasks; *prev; prev = &(*prev)->next) {
-            if (cb->ready(*prev, cb->user_data)) {
-                t = *prev;
-                break;
-            }
-        }
-        if (t) {
-            //found one task
-            remove_task(prev, t);
-            pthread_mutex_unlock(&e->lock);
-            cb->run(t, lc, cb->user_data);
-            pthread_mutex_lock(&e->lock);
-        } else {
+        if (!run_one_task(e, lc)) {
             //no task in one loop
             pthread_cond_wait(&e->cond, &e->lock);
         }
