@@ -231,7 +231,7 @@ typedef int (*is_ready_func)(const VVCFrameContext *fc, const VVCTask *t);
 int ff_vvc_task_ready(const Tasklet *_t, void *user_data)
 {
     const VVCTask *t            = (const VVCTask*)_t;
-    const VVCFrameThread *ft    = t->fc->frame_thread;
+    VVCFrameThread *ft          = t->fc->frame_thread;
     int ready;
     is_ready_func is_ready[]    = {
         is_parse_ready,
