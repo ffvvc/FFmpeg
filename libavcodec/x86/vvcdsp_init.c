@@ -241,11 +241,29 @@ PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
     c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bitd##_##opt; \
 } while (0)
 
+#define ITX_FUNC(type, size, opt)                                               \
+void ff_vvc_inv_##type##_##size##_##opt(int *out,      ptrdiff_t out_stride,    \
+                                        const int *in, ptrdiff_t in_stride);
+
+ITX_FUNC(dct2, 2, avx2);
+ITX_FUNC(dct2, 4, avx2);
+ITX_FUNC(dct2, 8, avx2);
+ITX_FUNC(dct2, 16, avx2);
+ITX_FUNC(dct2, 32, avx2);
+
+#define IDCT2_INIT(opt) do {                                                    \
+    c->itx.itx[DCT2][2]         = ff_vvc_inv_dct2_8_##opt;                      \
+    c->itx.itx[DCT2][3]         = ff_vvc_inv_dct2_16_##opt;                     \
+    c->itx.itx[DCT2][4]         = ff_vvc_inv_dct2_32_##opt;                     \
+} while(0);
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
 {
     const int cpu_flags = av_get_cpu_flags();
 
     if (EXTERNAL_AVX2(cpu_flags)) {
+        IDCT2_INIT(avx2);
+
         switch (bit_depth) {
             case 8:
                 ALF_DSP(8);
