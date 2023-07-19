@@ -1107,35 +1107,35 @@ cglobal vvc_inv_dct2_64, 4, 5, 14, out, out_stride, in, in_stride, \
 
     %assign i 0
     %rep 4
-        pextrd          [outq + 0*out_strideq*4], xm%[i], 0
-        pextrd          [outq + 1*out_strideq*4], xm%[i], 1
+        pextrd          [outq + 0*out_strideq*4], xm %+ i, 0
+        pextrd          [outq + 1*out_strideq*4], xm %+ i, 1
         lea             outq, [outq + 2*out_strideq*4]
-        pextrd          [outq + 0*out_strideq*4], xm%[i], 2
-        pextrd          [outq + 1*out_strideq*4], xm%[i], 3
-        vperm2i128      m%[i], m%[i], m%[i], 21o
+        pextrd          [outq + 0*out_strideq*4], xm %+ i, 2
+        pextrd          [outq + 1*out_strideq*4], xm %+ i, 3
+        vperm2i128      m %+ i, m %+ i, m %+ i, 21o
         lea             outq, [outq + 2*out_strideq*4]
-        pextrd          [outq + 0*out_strideq*4], xm%[i], 3
-        pextrd          [outq + 1*out_strideq*4], xm%[i], 2
+        pextrd          [outq + 0*out_strideq*4], xm %+ i, 3
+        pextrd          [outq + 1*out_strideq*4], xm %+ i, 2
         lea             outq, [outq + 2*out_strideq*4]
-        pextrd          [outq + 0*out_strideq*4], xm%[i], 1
-        pextrd          [outq + 1*out_strideq*4], xm%[i], 0
+        pextrd          [outq + 0*out_strideq*4], xm %+ i, 1
+        pextrd          [outq + 1*out_strideq*4], xm %+ i, 0
         lea             outq, [outq + 2*out_strideq*4]
         %assign i i+1
     %endrep
     %rep 4
         %assign upper_half i-4
-        vextracti128    xm%[upper_half], m%[i], 1
-        pextrd          [outq + 0*out_strideq*4], xm%[upper_half], 0
-        pextrd          [outq + 1*out_strideq*4], xm%[upper_half], 1
+        vextracti128    xm %+ upper_half, m %+ i, 1
+        pextrd          [outq + 0*out_strideq*4], xm %+ upper_half, 0
+        pextrd          [outq + 1*out_strideq*4], xm %+ upper_half, 1
         lea             outq, [outq + 2*out_strideq*4]
-        pextrd          [outq + 0*out_strideq*4], xm%[upper_half], 2
-        pextrd          [outq + 1*out_strideq*4], xm%[upper_half], 3
+        pextrd          [outq + 0*out_strideq*4], xm %+ upper_half, 2
+        pextrd          [outq + 1*out_strideq*4], xm %+ upper_half, 3
         lea             outq, [outq + 2*out_strideq*4]
-        pextrd          [outq + 0*out_strideq*4], xm%[i], 3
-        pextrd          [outq + 1*out_strideq*4], xm%[i], 2
+        pextrd          [outq + 0*out_strideq*4], xm %+ i, 3
+        pextrd          [outq + 1*out_strideq*4], xm %+ i, 2
         lea             outq, [outq + 2*out_strideq*4]
-        pextrd          [outq + 0*out_strideq*4], xm%[i], 1
-        pextrd          [outq + 1*out_strideq*4], xm%[i], 0
+        pextrd          [outq + 0*out_strideq*4], xm %+ i, 1
+        pextrd          [outq + 1*out_strideq*4], xm %+ i, 0
         lea             outq, [outq + 2*out_strideq*4]
         %assign i i+1
     %endrep
