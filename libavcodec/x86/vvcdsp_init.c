@@ -250,11 +250,15 @@ ITX_FUNC(dct2, 4, avx2);
 ITX_FUNC(dct2, 8, avx2);
 ITX_FUNC(dct2, 16, avx2);
 ITX_FUNC(dct2, 32, avx2);
+ITX_FUNC(dct2, 64, avx2);
 
 #define IDCT2_INIT(opt) do {                                                    \
+    c->itx.itx[DCT2][0]         = ff_vvc_inv_dct2_2_##opt;                      \
+    c->itx.itx[DCT2][1]         = ff_vvc_inv_dct2_4_##opt;                      \
     c->itx.itx[DCT2][2]         = ff_vvc_inv_dct2_8_##opt;                      \
     c->itx.itx[DCT2][3]         = ff_vvc_inv_dct2_16_##opt;                     \
     c->itx.itx[DCT2][4]         = ff_vvc_inv_dct2_32_##opt;                     \
+    c->itx.itx[DCT2][5]         = ff_vvc_inv_dct2_64_##opt;                     \
 } while(0);
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
