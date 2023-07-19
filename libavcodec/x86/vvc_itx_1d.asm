@@ -470,7 +470,7 @@ INIT_YMM avx2
 
 ; Multiply a 4D vector by a 4x4 matrix.
 %macro MATVEC_MUL_4 5 ; out, in, stride, mat, temp
-    %push
+    %push matvec_mul_4
     %define %$out %1
     %define %$in %2
     %define %$stride %3
@@ -500,7 +500,7 @@ INIT_YMM avx2
 
 ; Multiply an 8D vector by an 8x8 matrix.
 %macro MATVEC_MUL_8 7 ; out[2], in, stride, mat, temp[2]
-    %push
+    %push matvec_mul_8
     %define %$out0 %1
     %define %$out1 %2
     %define %$in %3
@@ -538,7 +538,7 @@ INIT_YMM avx2
 
 ; Multiply a 16D vector by an 16x16 matrix.
 %macro MATVEC_MUL_16 9 ; out[4], in, stride, mat, temp[2]
-    %push
+    %push matvec_mul_16
     %define %$out0 %1
     %define %$out1 %2
     %define %$out2 %3
@@ -587,7 +587,7 @@ INIT_YMM avx2
 
 ; Multiply a 32D vector by a 32x32 matrix.
 %macro MATVEC_MUL_32 13 ; out[8], in, stride, mat, temp[2]
-    %push
+    %push matvec_mul_32
     %define %$out0 %1
     %define %$out1 %2
     %define %$out2 %3
@@ -673,7 +673,7 @@ INIT_YMM avx2
 ;
 ; %4 Index of scratch SIMD register.
 %macro IDCT2_1D_4 4 ; out, in, stride, temp
-    %push
+    %push idct_1d_4
     %define %$out %1
     %define %$in %2
     %define %$stride %3
@@ -717,7 +717,7 @@ INIT_YMM avx2
 ;
 ; %5 Index of scratch SIMD register.
 %macro IDCT2_1D_8 5 ; out[2], in, stride, temp
-    %push
+    %push idct_1d_8
     %define %$out0 %1
     %define %$out1 %2
     %define %$in %3
@@ -765,7 +765,7 @@ INIT_YMM avx2
 ;
 ; %8 Index of scratch SIMD register.
 %macro IDCT2_1D_16 8 ; out[4], in, stride, temp[2]
-    %push
+    %push idct_1d_16
     %define %$out0 %1
     %define %$out1 %2
     %define %$out2 %3
@@ -840,7 +840,7 @@ INIT_YMM avx2
 
 ; %14 Index of scratch SIMD register.
 %macro IDCT2_1D_32 12 ; out[8], in, stride, temp[2]
-    %push
+    %push idct_1d_32
     %define %$out0 %1
     %define %$out1 %2
     %define %$out2 %3
@@ -926,7 +926,7 @@ INIT_YMM avx2
 ;
 ; %16 Index of scratch SIMD register.
 %macro IDCT2_1D_64 16 ; out[8], in, stride, temp[6]
-    %push
+    %push idct_1d_64
     %define %$out0 %1
     %define %$out1 %2
     %define %$out2 %3
