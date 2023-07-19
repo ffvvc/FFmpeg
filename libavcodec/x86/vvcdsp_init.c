@@ -261,12 +261,15 @@ ITX_FUNC(dct2, 64, avx2);
     c->itx.itx[DCT2][5]         = ff_vvc_inv_dct2_64_##opt;                     \
 } while(0);
 
-void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
+void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth,
+    int extended_precision_flag)
 {
     const int cpu_flags = av_get_cpu_flags();
 
     if (EXTERNAL_AVX2(cpu_flags)) {
-        IDCT2_INIT(avx2);
+        if (!extended_precision_flag) {
+            IDCT2_INIT(avx2);
+        }
 
         switch (bit_depth) {
             case 8:

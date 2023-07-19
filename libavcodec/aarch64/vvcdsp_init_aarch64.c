@@ -34,7 +34,7 @@ void ff_vvc_sao_edge_filter_16x16_8_neon(uint8_t *dst, const uint8_t *src, ptrdi
 void ff_vvc_sao_edge_filter_8x8_8_neon(uint8_t *dst, const uint8_t *src, ptrdiff_t stride_dst,
                                         const int16_t *sao_offset_val, int eo, int width, int height);
 
-av_cold void ff_vvc_dsp_init_aarch64(VVCDSPContext *c, const int bit_depth) {
+av_cold void ff_vvc_dsp_init_aarch64(VVCDSPContext *c, const int bit_depth, int extended_precision_flag) {
 	if (!have_neon(av_get_cpu_flags())) return;
 	if (bit_depth == 8) {
         	c->sao.band_filter[0]          =

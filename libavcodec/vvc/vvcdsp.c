@@ -295,7 +295,8 @@ typedef struct IntraEdgeParams {
 #include "vvcdsp_template.c"
 #undef BIT_DEPTH
 
-void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
+void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth,
+    int extended_precision_flag)
 {
 #undef FUNC
 #define FUNC(a, depth) a ## _ ## depth
@@ -321,8 +322,8 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
         break;
     }
 #if ARCH_X86
-    ff_vvc_dsp_init_x86(vvcdsp, bit_depth);
+    ff_vvc_dsp_init_x86(vvcdsp, bit_depth, extended_precision_flag);
 #elif ARCH_AARCH64
-    ff_vvc_dsp_init_aarch64(vvcdsp, bit_depth);
+    ff_vvc_dsp_init_aarch64(vvcdsp, bit_depth, extended_precision_flag);
 #endif
 }

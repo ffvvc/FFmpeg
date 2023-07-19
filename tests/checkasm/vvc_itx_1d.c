@@ -72,7 +72,7 @@ static void check_idct2(VVCDSPContext h, int bit_depth)
 void checkasm_check_vvc_itx_1d(void)
 {
     VVCDSPContext h;
-    ff_vvc_dsp_init(&h, 8);
+    ff_vvc_dsp_init(&h, 8, 0);
     check_idct2(h, 8);
     report("idct2");
 }
