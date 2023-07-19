@@ -1,7 +1,5 @@
 /*
- * VVC video Decoder
- *
- * Copyright (C) 2022 Nuo Mi
+ * Copyright (C) 2023 Nuo Mi
  *
  * This file is part of FFmpeg.
  *
@@ -20,6 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "internal.h"
+#include "mem.h"
 #include "thread.h"
 
 #include "executor.h"
@@ -47,13 +46,15 @@ typedef struct ThreadInfo {
 
 struct AVExecutor {
     AVTaskCallbacks cb;
+    int thread_count;
+
     ThreadInfo *threads;
     uint8_t *local_contexts;
-    int thread_count;
 
     pthread_mutex_t lock;
     pthread_cond_t cond;
     int die;
+
     AVTask *tasks;
 };
 
