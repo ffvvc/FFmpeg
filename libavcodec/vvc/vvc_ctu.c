@@ -865,8 +865,12 @@ static enum IntraPredMode derive_center_luma_intra_pred_mode(const VVCFrameConte
     const int cu_pred_mode        = SAMPLE_CTB(fc->tab.cpm[0], x_center, y_center);
     const int intra_pred_mode_y   = SAMPLE_CTB(fc->tab.ipm, x_center, y_center);
 
-    if (intra_mip_flag)
-        return INTRA_PLANAR;
+    if (intra_mip_flag) {
+        if (cu->tree_type == SINGLE_TREE && sps->chroma_format_idc == CHROMA_FORMAT_444)
+            return -1;
+        else
+            return INTRA_PLANAR;
+    }
     if (cu_pred_mode == MODE_IBC || cu_pred_mode == MODE_PLT)
         return INTRA_DC;
     return intra_pred_mode_y;
@@ -910,17 +914,9 @@ static void derive_chroma_intra_pred_mode(VVCLocalContext *lc,
         };
         const int modes[4] = {INTRA_PLANAR, INTRA_VERT, INTRA_HORZ, INTRA_DC};
         int idx;
-
-        // This workaround is necessary to have 4:4:4 video decode correctly
-        // See VVC ticket https://jvet.hhi.fraunhofer.de/trac/vvc/ticket/1602
-        // and VTM source https://vcgit.hhi.fraunhofer.de/jvet/VVCSoftware_VTM/-/blob/master/source/Lib/CommonLib/UnitTools.cpp#L736
-        if (cu->tree_type == SINGLE_TREE && sps->chroma_format_idc == CHROMA_FORMAT_444 && intra_mip_flag) {
-            idx = 4;
-        } else {
-            for (idx = 0; idx < FF_ARRAY_ELEMS(modes); idx++) {
-                if (modes[idx] == luma_intra_pred_mode)
-                    break;
-            }
+        for (idx = 0; idx < FF_ARRAY_ELEMS(modes); idx++) {
+            if (modes[idx] == luma_intra_pred_mode)
+                break;
         }
 
         cu->intra_pred_mode_c = pred_mode_c[intra_chroma_pred_mode][idx];
