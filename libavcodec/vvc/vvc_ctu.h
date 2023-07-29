@@ -162,6 +162,7 @@ typedef enum PredFlag {
 } PredFlag;
 
 typedef enum IntraPredMode {
+    INTRA_DEFAULT   = -1,
     INTRA_PLANAR    = 0,
     INTRA_DC,
     INTRA_HORZ      = 18,
