@@ -867,9 +867,8 @@ static enum IntraPredMode derive_center_luma_intra_pred_mode(const VVCFrameConte
 
     if (intra_mip_flag) {
         if (cu->tree_type == SINGLE_TREE && sps->chroma_format_idc == CHROMA_FORMAT_444)
-            return INTRA_DEFAULT;
-        else
-            return INTRA_PLANAR;
+            return INTRA_INVALID;
+        return INTRA_PLANAR;
     }
     if (cu_pred_mode == MODE_IBC || cu_pred_mode == MODE_PLT)
         return INTRA_DC;
