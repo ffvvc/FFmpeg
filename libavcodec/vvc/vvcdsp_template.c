@@ -206,7 +206,7 @@ static void FUNC(inv_##type_h##_##type_v##_##width##x##height)(int *dst,        
     for (int x = 0; x < nzw; x++)                                               \
         ff_vvc_inv_##type_v##_##height(temp + x, width, coeff + x, width);      \
                                                                                 \
-    scale_clip(temp, width, width, height, 7, log2_transform_range);            \
+    scale_clip(temp, nzw, width, height, 7, log2_transform_range);              \
                                                                                 \
     for (int y = 0; y < height; y++)                                            \
         ff_vvc_inv_##type_h##_##width(dst + y * width, 1, temp + y * width, 1); \

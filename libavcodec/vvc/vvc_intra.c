@@ -456,12 +456,13 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
             dequant(lc, tu, tb);
             if (!tb->ts) {
                 enum TxType trh, trv;
-                const int nzw = tb->max_scan_x + 1;
+                int nzw;
 
                 if (cu->apply_lfnst_flag[c_idx])
                     ilfnst_transform(lc, tb);
                 derive_transform_type(fc, lc, tb, &trh, &trv);
 
+                nzw = tb->max_scan_x + 1;
                 fc->vvcdsp.itx.itx[trh][trv][tb->log2_tb_width][tb->log2_tb_height](
                         tb->coeffs, tb->coeffs, nzw, sps->log2_transform_range);
             }
