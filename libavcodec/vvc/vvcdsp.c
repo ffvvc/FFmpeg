@@ -254,23 +254,31 @@ static int vvc_sad(const int16_t *src0, const int16_t *src1, int dx, int dy,
     return sad;
 }
 
-#define itx_fn(type, s)                                                                         \
-static void itx_##type##_##s(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step)    \
-{                                                                                               \
-  ff_vvc_inv_##type##_##s(out, out_step, in, in_step);                                          \
+static void scale_clip(int *coeff, const int nzw, const int w, const int h,
+    const int shift, const int log2_transform_range)
+{
+    const int add = 1 << (shift - 1);
+    for (int y = 0; y < h; y++) {
+        int *p = coeff + y * w;
+        for (int x = 0; x < nzw; x++) {
+            *p = av_clip_intp2((*p + add) >> shift, log2_transform_range);
+            p++;
+        }
+        memset(p, 0, sizeof(*p) * (w - nzw));
+    }
 }
 
-#define itx_fn_common(type) \
-    itx_fn(type, 4);        \
-    itx_fn(type, 8);        \
-    itx_fn(type, 16);       \
-    itx_fn(type, 32);       \
-
-itx_fn_common(dct2);
-itx_fn_common(dst7);
-itx_fn_common(dct8);
-itx_fn(dct2, 2);
-itx_fn(dct2, 64);
+static void scale(int *out, const int *in, const int w, const int h, const int shift)
+{
+    const int add = 1 << (shift - 1);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int *o = out + y * w + x;
+            const int *i = in + y * w + x;
+            *o = (*i + add) >> shift;
+        }
+    }
+}
 
 typedef struct IntraEdgeParams {
     uint8_t* top;

@@ -272,32 +272,6 @@ static void predict_intra(VVCLocalContext *lc, const TransformUnit *tu, const in
     }
 }
 
-static void scale_clip(int *coeff, const int nzw, const int w, const int h,
-    const int shift, const int log2_transform_range)
-{
-    const int add = 1 << (shift - 1);
-    for (int y = 0; y < h; y++) {
-        int *p = coeff + y * w;
-        for (int x = 0; x < nzw; x++) {
-            *p = av_clip_intp2((*p + add) >> shift, log2_transform_range);
-            p++;
-        }
-        memset(p, 0, sizeof(*p) * (w - nzw));
-    }
-}
-
-static void scale(int *out, const int *in, const int w, const int h, const int shift)
-{
-    const int add = 1 << (shift - 1);
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int *o = out + y * w + x;
-            const int *i = in + y * w + x;
-            *o = (*i + add) >> shift;
-        }
-    }
-}
-
 // part of 8.7.3 Scaling process for transform coefficients
 static void derive_qp(const VVCLocalContext *lc, const TransformUnit *tu, TransformBlock *tb)
 {
@@ -441,35 +415,6 @@ static void dequant(const VVCLocalContext *lc, const TransformUnit *tu, Transfor
     }
 }
 
-static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int *temp)
-{
-    const VVCSPS *sps   = fc->ps.sps;
-    const int w         = tb->tb_width;
-    const int h         = tb->tb_height;
-    const int nzw       = tb->max_scan_x + 1;
-
-    for (int x = 0; x < nzw; x++)
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w);
-    scale_clip(temp, nzw, w, h, 7, sps->log2_transform_range);
-
-    for (int y = 0; y < h; y++)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1);
-    scale(tb->coeffs, tb->coeffs, w, h, 5 + sps->log2_transform_range - sps->bit_depth);
-}
-
-static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int  *temp)
-{
-    const VVCSPS *sps   = fc->ps.sps;
-    const int w         = tb->tb_width;
-    const int h         = tb->tb_height;
-
-    if (w > 1)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1);
-    else
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1);
-    scale(tb->coeffs, temp, w, h, 6 + sps->log2_transform_range - sps->bit_depth);
-}
-
 static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const CodingUnit *cu)
 {
     const VVCSPS *sps        = lc->fc->ps.sps;
@@ -511,14 +456,14 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
             dequant(lc, tu, tb);
             if (!tb->ts) {
                 enum TxType trh, trv;
+                const int nzw = tb->max_scan_x + 1;
 
                 if (cu->apply_lfnst_flag[c_idx])
                     ilfnst_transform(lc, tb);
                 derive_transform_type(fc, lc, tb, &trh, &trv);
-                if (w > 1 && h > 1)
-                    itx_2d(fc, tb, trh, trv, temp);
-                else
-                    itx_1d(fc, tb, trh, trv, temp);
+
+                fc->vvcdsp.itx.itx[trh][trv][tb->log2_tb_width][tb->log2_tb_height](
+                        tb->coeffs, tb->coeffs, nzw, sps->log2_transform_range);
             }
 
             if (chroma_scale)
