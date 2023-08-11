@@ -178,5 +178,6 @@ extern const int8_t ff_vvc_chroma_filters[3][32][4];
 extern const int8_t ff_vvc_luma_filters[3][16][8];
 extern const int8_t ff_vvc_dmvr_filters[16][2];
 
+void ff_vvc_dsp_init_x86(VVCDSPContext *c, const int bit_depth);
 
 #endif /* AVCODEC_VVCDSP_H */
