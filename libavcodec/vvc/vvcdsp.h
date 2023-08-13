@@ -65,14 +65,6 @@ typedef struct VVCInterDSPContext {
         const int16_t *tmp0, const int16_t *tmp1, int width, int height,
         int denom, int w0, int w1, int o0, int o1);
 
-    void (*put_bi[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
-        uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, const int16_t *src2,
-        int height, intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-    void (*put_bi_w[2 /* luma, chroma */][2 /* int, frac */][2 /* int, frac */])(
-        uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, const int16_t *src2,
-        int height, int denom, int wx0, int wx1, int ox0, int ox1,
-        intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
-
     void (*put_ciip)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
         const uint8_t *inter, ptrdiff_t inter_stride, int inter_weight);
 
