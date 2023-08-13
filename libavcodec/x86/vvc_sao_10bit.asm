@@ -179,9 +179,9 @@ VVC_SAO_BAND_FILTER 12, 128, 8
 ;SAO Edge Filter
 ;******************************************************************************
 
-%define MAX_PB_SIZE  64
+%define MAX_PB_SIZE  128
 %define PADDING_SIZE 64 ; AV_INPUT_BUFFER_PADDING_SIZE
-%define EDGE_SRCSTRIDE 4 * MAX_PB_SIZE + PADDING_SIZE
+%define EDGE_SRCSTRIDE 2 * MAX_PB_SIZE + PADDING_SIZE
 
 %macro PMINUW 4
 %if cpuflag(sse4)
