@@ -301,12 +301,12 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
         int denom, w0, w1, o0, o1;
         fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](lc->tmp, src0, src0_stride,
             block_h, mx0, my0, block_w, hf_idx, vf_idx);
+        fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
+            block_h, mx1, my1, block_w, hf_idx, vf_idx);
         if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, pu->dmvr_flag)) {
-            fc->vvcdsp.inter.put_bi_w[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
-                block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, hf_idx, vf_idx);
+            fc->vvcdsp.inter.w_avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h,
+                denom, w0, w1, o0, o1);
         } else {
-            fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
-                block_h, mx1, my1, block_w, hf_idx, vf_idx);
             fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
         }
     }
@@ -387,14 +387,14 @@ static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
         EMULATED_EDGE_CHROMA(lc->edge_emu_buffer2, &src1, &src1_stride, x_off1, y_off1);
     }
 
-    fc->vvcdsp.inter.put[CHROMA][!!my0][!!mx0](lc->tmp, src0, src0_stride,
-                                                block_h, _mx0, _my0, block_w, hf_idx, vf_idx);
+    fc->vvcdsp.inter.put[CHROMA][!!my0][!!mx0](lc->tmp,  src0, src0_stride,
+        block_h, _mx0, _my0, block_w, hf_idx, vf_idx);
+    fc->vvcdsp.inter.put[CHROMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
+        block_h, _mx1, _my1, block_w, hf_idx, vf_idx);
     if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, c_idx, dmvr_flag)) {
-        fc->vvcdsp.inter.put_bi_w[CHROMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
-            block_h, denom, w0, w1, o0, o1, _mx1, _my1, block_w, hf_idx, vf_idx);
+        fc->vvcdsp.inter.w_avg(dst, dst_stride, lc->tmp, lc->tmp1,
+            block_w, block_h, denom, w0, w1, o0, o1);
     } else {
-        fc->vvcdsp.inter.put[CHROMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
-                                                block_h, _mx1, _my1, block_w, hf_idx, vf_idx);
         fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
     }
 }
@@ -472,12 +472,12 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
         fc->vvcdsp.inter.apply_prof(lc->tmp, prof_tmp, pu->diff_mv_x[L0], pu->diff_mv_y[L0]);
     }
     if (!pu->cb_prof_flag[L1]) {
+        fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
+            block_h, mx1, my1, block_w, 2, 2);
         if (weight_flag) {
-            fc->vvcdsp.inter.put_bi_w[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
-                block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, 2, 2);
+            fc->vvcdsp.inter.w_avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h,
+                denom, w0, w1, o0, o1);
         } else {
-            fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
-                block_h, mx1, my1, block_w, 2, 2);
             fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
         }
     } else {
