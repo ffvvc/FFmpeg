@@ -1020,6 +1020,24 @@ static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     }
 }
 
+static void FUNC(w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+    const int16_t *tmp0, const int16_t *tmp1, const int width, const int height,
+    const int denom, const int w0, const int w1, const int o0, const int o1)
+{
+    pixel *dst                  = (pixel*)_dst;
+    const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
+    const int shift             = denom + FFMAX(3, 15 - BIT_DEPTH);
+    const int offset            = (((o0 + o1) << (BIT_DEPTH - 8)) + 1) << (shift - 1);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++)
+            dst[x] = av_clip_pixel((tmp0[x] * w0 + tmp1[x] * w1 + offset) >> shift);
+        tmp0 += MAX_PB_SIZE;
+        tmp1 += MAX_PB_SIZE;
+        dst  += dst_stride;
+    }
+}
+
 static void FUNC(put_vvc_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const int width, const int height,
     const uint8_t *_inter, const ptrdiff_t _inter_stride, const int intra_weight)
@@ -1466,6 +1484,7 @@ static void FUNC(ff_vvc_inter_dsp_init)(VVCInterDSPContext *const inter)
     FUNCS(CHROMA, chroma);
 
     inter->avg                  = FUNC(avg);
+    inter->w_avg                = FUNC(w_avg);
 
     inter->dmvr[0][0]           = FUNC(dmvr_vvc_luma);
     inter->dmvr[0][1]           = FUNC(dmvr_vvc_luma_h);
