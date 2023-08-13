@@ -71,3 +71,5 @@ NEON-OBJS-$(CONFIG_HEVC_DECODER)        += aarch64/hevcdsp_deblock_neon.o      \
                                            aarch64/hevcdsp_qpel_neon.o         \
                                            aarch64/hevcdsp_epel_neon.o         \
                                            aarch64/hevcdsp_sao_neon.o
+NEON-OBJS-$(CONFIG_VVC_DECODER)		+= aarch64/vvcdsp_init_aarch64.o	\
+					   aarch64/vvcdsp_sao_neon.o
