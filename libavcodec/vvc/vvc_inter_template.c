@@ -1003,6 +1003,23 @@ static void FUNC(put_vvc_chroma_bi_w_hv)(uint8_t *_dst, const ptrdiff_t _dst_str
     }
 }
 
+static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+    const int16_t *tmp0, const int16_t *tmp1, const int width, const int height)
+{
+    pixel *dst                  = (pixel*)_dst;
+    const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
+    const int shift             = FFMAX(3, 15 - BIT_DEPTH);
+    const int offset            = 1 << (shift - 1);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++)
+            dst[x] = av_clip_pixel((tmp0[x] + tmp1[x] + offset) >> shift);
+        tmp0 += MAX_PB_SIZE;
+        tmp1 += MAX_PB_SIZE;
+        dst  += dst_stride;
+    }
+}
+
 static void FUNC(put_vvc_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const int width, const int height,
     const uint8_t *_inter, const ptrdiff_t _inter_stride, const int intra_weight)
@@ -1447,6 +1464,8 @@ static void FUNC(ff_vvc_inter_dsp_init)(VVCInterDSPContext *const inter)
 {
     FUNCS(LUMA, luma);
     FUNCS(CHROMA, chroma);
+
+    inter->avg                  = FUNC(avg);
 
     inter->dmvr[0][0]           = FUNC(dmvr_vvc_luma);
     inter->dmvr[0][1]           = FUNC(dmvr_vvc_luma_h);

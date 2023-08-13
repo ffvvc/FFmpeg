@@ -305,8 +305,9 @@ static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_str
             fc->vvcdsp.inter.put_bi_w[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
                 block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, hf_idx, vf_idx);
         } else {
-            fc->vvcdsp.inter.put_bi[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
+            fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
                 block_h, mx1, my1, block_w, hf_idx, vf_idx);
+            fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
         }
     }
 }
@@ -392,8 +393,9 @@ static void chroma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
         fc->vvcdsp.inter.put_bi_w[CHROMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
             block_h, denom, w0, w1, o0, o1, _mx1, _my1, block_w, hf_idx, vf_idx);
     } else {
-        fc->vvcdsp.inter.put_bi[CHROMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
-            block_h, _mx1, _my1, block_w, hf_idx, vf_idx);
+        fc->vvcdsp.inter.put[CHROMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
+                                                block_h, _mx1, _my1, block_w, hf_idx, vf_idx);
+        fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
     }
 }
 
@@ -474,8 +476,9 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
             fc->vvcdsp.inter.put_bi_w[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
                 block_h, denom, w0, w1, o0, o1, mx1, my1, block_w, 2, 2);
         } else {
-            fc->vvcdsp.inter.put_bi[LUMA][!!my1][!!mx1](dst, dst_stride, src1, src1_stride, lc->tmp,
+            fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
                 block_h, mx1, my1, block_w, 2, 2);
+            fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
         }
     } else {
         fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](prof_tmp, src1, src1_stride, AFFINE_MIN_BLOCK_SIZE, mx1, my1, AFFINE_MIN_BLOCK_SIZE, 2, 2);
