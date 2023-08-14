@@ -514,6 +514,38 @@ static int decode_pps(VVCParamSets *ps,
     return ret;
 }
 
+static int decode_ps(VVCParamSets *ps, const CodedBitstreamH266Context *h266, void *log_ctx)
+{
+    const H266RawPictureHeader *ph = h266->ph;
+    const H266RawPPS *rpps;
+    const H266RawSPS *rsps;
+    AVBufferRef *rsps_buf, *rpps_buf;
+    int ret;
+
+    if (!ph)
+        return AVERROR_INVALIDDATA;
+
+    rpps     = h266->pps[ph->ph_pic_parameter_set_id];
+    rpps_buf = h266->pps_ref[ph->ph_pic_parameter_set_id];
+    if (!rpps || !rpps_buf)
+        return AVERROR_INVALIDDATA;
+
+    rsps     = h266->sps[rpps->pps_seq_parameter_set_id];
+    rsps_buf = h266->sps_ref[rpps->pps_seq_parameter_set_id];
+    if (!rsps || !rsps_buf)
+        return AVERROR_INVALIDDATA;
+
+    ret = decode_sps(ps, rsps, rsps_buf, log_ctx);
+    if (ret < 0)
+        return ret;
+
+    ret = decode_pps(ps, rpps, rpps_buf);
+    if (ret < 0)
+        return ret;
+
+    return 0;
+}
+
 #define WEIGHT_TABLE(x)                                                                                 \
     w->nb_weights[L##x] = r->num_weights_l##x;                                                          \
     for (int i = 0; i < w->nb_weights[L##x]; i++) {                                                     \
@@ -650,28 +682,16 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
     return 0;
 }
 
-static int ph_scaling_list(VVCFrameParamSets *fps, AVBufferRef *sl_buf)
+static int ph_max_num_subblock_merge_cand(const H266RawSPS *sps, const H266RawPictureHeader *ph)
 {
-    int ret;
-
-    if (!sl_buf)
-        return AVERROR_INVALIDDATA;
-
-    ret = av_buffer_replace(&fps->sl_buf, sl_buf);
-    if (ret < 0)
-        return  ret;
-
-    fps->sl = (const VVCScalingList*)sl_buf->data;
-
-    return 0;
+    if (sps->sps_affine_enabled_flag)
+        return 5 - sps->sps_five_minus_max_num_subblock_merge_cand;
+    return sps->sps_sbtmvp_enabled_flag && ph->ph_temporal_mvp_enabled_flag;
 }
 
 static int ph_derive(VVCPH *ph, const H266RawSPS *sps, const H266RawPPS *pps, const int poc_tid0, const int is_clvss)
 {
-    if (sps->sps_affine_enabled_flag)
-        ph->max_num_subblock_merge_cand = 5 - sps->sps_five_minus_max_num_subblock_merge_cand;
-    else
-        ph->max_num_subblock_merge_cand = sps->sps_sbtmvp_enabled_flag && ph->r->ph_temporal_mvp_enabled_flag;
+    ph->max_num_subblock_merge_cand = ph_max_num_subblock_merge_cand(sps, ph->r);
 
     ph->poc = ph_compute_poc(ph->r, sps, poc_tid0, is_clvss);
 
@@ -701,34 +721,18 @@ static int decode_ph(VVCFrameParamSets *fps, const H266RawPictureHeader *rph, AV
     return 0;
 }
 
-static int decode_ps(VVCParamSets *ps, const CodedBitstreamH266Context *h266, void *log_ctx)
+static int decode_scaling_list(VVCFrameParamSets *fps, AVBufferRef *sl_buf)
 {
-    const H266RawPictureHeader *ph = h266->ph;
-    const H266RawPPS *rpps;
-    const H266RawSPS *rsps;
-    AVBufferRef *rsps_buf, *rpps_buf;
     int ret;
 
-    if (!ph)
+    if (!sl_buf)
         return AVERROR_INVALIDDATA;
 
-    rpps     = h266->pps[ph->ph_pic_parameter_set_id];
-    rpps_buf = h266->pps_ref[ph->ph_pic_parameter_set_id];
-    if (!rpps || !rpps_buf)
-        return AVERROR_INVALIDDATA;
-
-    rsps     = h266->sps[rpps->pps_seq_parameter_set_id];
-    rsps_buf = h266->sps_ref[rpps->pps_seq_parameter_set_id];
-    if (!rsps || !rsps_buf)
-        return AVERROR_INVALIDDATA;
-
-    ret = decode_sps(ps, rsps, rsps_buf, log_ctx);
+    ret = av_buffer_replace(&fps->sl_buf, sl_buf);
     if (ret < 0)
-        return ret;
+        return  ret;
 
-    ret = decode_pps(ps, rpps, rpps_buf);
-    if (ret < 0)
-        return ret;
+    fps->sl = (const VVCScalingList*)sl_buf->data;
 
     return 0;
 }
@@ -762,7 +766,7 @@ static int decode_frame_ps(VVCFrameParamSets *fps, const VVCParamSets *ps,
         return ret;
 
     if (ph->ph_explicit_scaling_list_enabled_flag) {
-        ret = ph_scaling_list(fps, ps->scaling_list[ph->ph_scaling_list_aps_id]);
+        ret = decode_scaling_list(fps, ps->scaling_list[ph->ph_scaling_list_aps_id]);
         if (ret < 0)
             return ret;
     }
@@ -1173,6 +1177,7 @@ static void sh_qp_y(VVCSH *sh, const H266RawPPS *pps, const H266RawPictureHeader
 static void sh_inter(VVCSH *sh, const H266RawSPS *sps, const H266RawPPS *pps)
 {
     const H266RawSliceHeader *rsh = sh->r;
+
     if (!pps->pps_wp_info_in_ph_flag &&
         ((pps->pps_weighted_pred_flag && IS_P(rsh)) ||
          (pps->pps_weighted_bipred_flag && IS_B(rsh))))
