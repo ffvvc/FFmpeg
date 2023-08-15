@@ -98,6 +98,9 @@ static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int c
         fc->tab.coeffs = av_malloc(ctu_count * sizeof(*fc->tab.coeffs) * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
         if (!fc->tab.coeffs)
             return AVERROR(ENOMEM);
+        fc->tab.pixels = av_malloc(ctu_count * sizeof(*fc->tab.pixels) * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
+        if (!fc->tab.pixels)
+            return AVERROR(ENOMEM);
         fc->rpl_tab_pool = av_buffer_pool_init(ctu_count * sizeof(RefPicListTab), av_buffer_allocz);
         if (!fc->rpl_tab_pool)
             return AVERROR(ENOMEM);

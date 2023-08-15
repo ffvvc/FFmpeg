@@ -61,31 +61,35 @@ const int itx_log2_max_size[N_TX_TYPE] = {
 
 static void check_itx(VVCDSPContext h, enum TxType trh, enum TxType trv, int bit_depth)
 {
+    // @TODO: test extended precision (log2_transform_range != 15)
     const int log2_transform_range = 15;
-    LOCAL_ALIGNED_32(int, ref_dst, [BUF_SIZE]);
-    LOCAL_ALIGNED_32(int, new_dst, [BUF_SIZE]);
+
+    LOCAL_ALIGNED_32(int16_t, ref_dst, [BUF_SIZE]);
+    LOCAL_ALIGNED_32(int16_t, new_dst, [BUF_SIZE]);
     LOCAL_ALIGNED_32(int, ref_src, [BUF_SIZE]);
     LOCAL_ALIGNED_32(int, new_src, [BUF_SIZE]);
 
     for (int log2_width = itx_log2_min_size[trh]; log2_width <= itx_log2_max_size[trh]; ++log2_width) {
+        const int width = 1 << log2_width;
         for (int log2_height = itx_log2_min_size[trv]; log2_height <= itx_log2_max_size[trv]; ++log2_height) {
-            const int width = 1 << log2_width;
             const int height = 1 << log2_height;
 
-            declare_func_emms(AV_CPU_FLAG_MMX, void, int *dst, const int *src, int nzw, int log2_transform_range);
+            declare_func_emms(AV_CPU_FLAG_MMX, void, int16_t *dst, const int *src,
+                              int nzw, int log2_transform_range);
 
-            randomize_buffers(ref_src, new_src, BUF_SIZE, -(1 << (bit_depth - 1)), 1 << (bit_depth - 1) - 1);
+            randomize_buffers(ref_src, new_src, BUF_SIZE,
+                              -(1 << log2_transform_range),
+                               (1 << log2_transform_range) - 1);
             memset(ref_dst, 0, BUF_SIZE);
             memset(new_dst, 0, BUF_SIZE);
 
-            // @TODO: test extended precision (l2tr != 15)
             // @TODO: test nzw != width
             if (check_func(h.itx.itx[trh][trv][log2_width][log2_height],
                            "inv_%s_%s_%dx%d_%d",
                            itx_str[trh], itx_str[trv], width, height, bit_depth)) {
                 call_ref(ref_dst, ref_src, width, log2_transform_range);
                 call_new(new_dst, new_src, width, log2_transform_range);
-                checkasm_check_int32_t("vvc_itx_1d.asm", 0,
+                checkasm_check_int16_t("vvc_itx_1d.asm", 0,
                                        ref_dst, width * sizeof(*ref_dst),
                                        new_dst, width * sizeof(*new_dst),
                                        width, height, "dst");
