@@ -1021,7 +1021,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
 
     ff_cbs_fragment_free(&s->current_frame);
     vvc_decode_flush(avctx);
-    avpriv_executor_free(&s->executor);
+    av_executor_free(&s->executor);
     if (s->fcs) {
         for (i = 0; i < s->nb_fcs; i++)
             frame_context_free(s->fcs + i);
@@ -1063,7 +1063,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
             goto fail;
     }
 
-    s->executor = avpriv_executor_alloc(&callbacks, s->nb_fcs);
+    s->executor = av_executor_alloc(&callbacks, s->nb_fcs);
     s->eos = 1;
     GDR_SET_RECOVERED(s);
     memset(&ff_vvc_default_scale_m, 16, sizeof(ff_vvc_default_scale_m));

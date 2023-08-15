@@ -49,19 +49,19 @@ typedef struct AVTaskCallbacks {
  * @param thread_count worker thread number
  * @return return the executor
  */
-AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
+AVExecutor* av_executor_alloc(const AVTaskCallbacks *callbacks, int thread_count);
 
 /**
  * Free executor
  * @param e  pointer to executor
  */
-void avpriv_executor_free(AVExecutor **e);
+void av_executor_free(AVExecutor **e);
 
 /**
  * Add task to executor
  * @param e pointer to executor
  * @param t pointer to task. If NULL, it will wakeup one work thread
  */
-void avpriv_executor_execute(AVExecutor *e, AVTask *t);
+void av_executor_execute(AVExecutor *e, AVTask *t);
 
 #endif //AVUTIL_EXECUTOR_H
