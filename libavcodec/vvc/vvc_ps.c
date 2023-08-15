@@ -306,9 +306,16 @@ static void pps_width_height(VVCPPS *pps, const VVCSPS *sps)
     pps->height64       = AV_CEIL_RSHIFT(pps->height, 6);
 }
 
-static void pps_bd(VVCPPS *pps)
+static int pps_bd(VVCPPS *pps)
 {
     const H266RawPPS *r = pps->r;
+
+    pps->col_bd        = av_calloc(r->num_tile_columns  + 1, sizeof(*pps->col_bd));
+    pps->row_bd        = av_calloc(r->num_tile_rows  + 1,    sizeof(*pps->row_bd));
+    pps->ctb_to_col_bd = av_calloc(pps->ctb_width  + 1,      sizeof(*pps->ctb_to_col_bd));
+    pps->ctb_to_row_bd = av_calloc(pps->ctb_height + 1,      sizeof(*pps->ctb_to_col_bd));
+    if (!pps->col_bd || !pps->row_bd || !pps->ctb_to_col_bd || !pps->ctb_to_row_bd)
+        return AVERROR(ENOMEM);
 
     for (int i = 0, j = 0; i < r->num_tile_columns; i++) {
         pps->col_bd[i] = j;
@@ -323,6 +330,7 @@ static void pps_bd(VVCPPS *pps)
         for (int k = pps->row_bd[i]; k < j; k++)
             pps->ctb_to_row_bd[k] = pps->row_bd[i];
     }
+    return 0;
 }
 
 
@@ -433,12 +441,18 @@ static void pps_no_rect_slice(VVCPPS* pps)
     }
 }
 
-static void pps_slice_map(VVCPPS *pps)
+static int pps_slice_map(VVCPPS *pps)
 {
+    pps->ctb_addr_in_slice = av_calloc(pps->ctb_count, sizeof(*pps->ctb_addr_in_slice));
+    if (!pps->ctb_addr_in_slice)
+        return AVERROR(ENOMEM);
+
     if (pps->r->pps_rect_slice_flag)
         pps_rect_slice(pps);
     else
         pps_no_rect_slice(pps);
+
+    return 0;
 }
 
 static void pps_ref_wraparound_offset(VVCPPS *pps, const VVCSPS *sps)
@@ -451,18 +465,35 @@ static void pps_ref_wraparound_offset(VVCPPS *pps, const VVCSPS *sps)
 
 static int pps_derive(VVCPPS *pps, const VVCSPS *sps)
 {
+    int ret;
+
     pps_chroma_qp_offset(pps);
     pps_width_height(pps, sps);
-    pps_bd(pps);
-    pps_slice_map(pps);
+
+    ret = pps_bd(pps);
+    if (ret < 0)
+        return ret;
+
+    ret = pps_slice_map(pps);
+    if (ret < 0)
+        return ret;
+
     pps_ref_wraparound_offset(pps, sps);
+
     return 0;
 }
 
 static void pps_free(uint8_t *data)
 {
     VVCPPS *pps = (VVCPPS *)data;
+
     av_buffer_unref(&pps->rref);
+
+    av_freep(&pps->col_bd);
+    av_freep(&pps->row_bd);
+    av_freep(&pps->ctb_to_col_bd);
+    av_freep(&pps->ctb_to_row_bd);
+    av_freep(&pps->ctb_addr_in_slice);
 }
 
 static AVBufferRef *pps_alloc(const H266RawPPS *rpps, AVBufferRef *rpps_buf, const VVCSPS *sps)

@@ -105,8 +105,8 @@ typedef struct VVCPPS {
     uint16_t width;
     uint16_t height;
 
-    uint16_t slice_start_offset  [VVC_MAX_SLICES];
-    uint16_t num_ctus_in_slice   [VVC_MAX_SLICES];
+    uint16_t slice_start_offset[VVC_MAX_SLICES];
+    uint16_t num_ctus_in_slice [VVC_MAX_SLICES];
 
     uint16_t min_cb_width;
     uint16_t min_cb_height;
@@ -120,11 +120,11 @@ typedef struct VVCPPS {
     uint16_t min_tu_width;
     uint16_t min_tu_height;
 
-    uint32_t ctb_addr_in_slice[MAX_CTU_WIDTH * MAX_CTU_HEIGHT];           ///< CtbAddrInCurrSlice for entire picture
-    uint16_t col_bd[VVC_MAX_TILE_COLUMNS];
-    uint16_t row_bd[VVC_MAX_TILE_ROWS];
-    uint16_t ctb_to_col_bd[MAX_CTU_WIDTH];
-    uint16_t ctb_to_row_bd[MAX_CTU_HEIGHT];
+    uint32_t *ctb_addr_in_slice;            ///< CtbAddrInCurrSlice for entire picture
+    uint16_t *col_bd;
+    uint16_t *row_bd;
+    uint16_t *ctb_to_col_bd;
+    uint16_t *ctb_to_row_bd;
 
     uint16_t width32;                       ///< width  in 32 pixels
     uint16_t height32;                      ///< height in 32 pixels
