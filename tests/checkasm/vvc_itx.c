@@ -89,9 +89,10 @@ static void check_itx(VVCDSPContext h, enum TxType trh, enum TxType trv, int bit
                            itx_str[trh], itx_str[trv], width, height, bit_depth)) {
                 call_ref(ref_dst, ref_src, width, log2_transform_range);
                 call_new(new_dst, new_src, width, log2_transform_range);
-                checkasm_check_int16_t("vvc_itx_1d.asm", 0, ref_dst,
-                                       sizeof(int), new_dst, sizeof(int), width,
-                                       height, "dst");
+                checkasm_check_int16_t("vvc_itx_1d.asm", 0,
+                                       ref_dst, width * sizeof(*ref_dst),
+                                       new_dst, width * sizeof(*new_dst),
+                                       width, height, "dst");
             }
             bench_new(new_dst, new_src, width, 15);
         }
