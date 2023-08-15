@@ -132,7 +132,7 @@ static void executor_free(AVExecutor *e, const int has_lock, const int has_cond)
     av_free(e);
 }
 
-AVExecutor* avpriv_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
+AVExecutor* av_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
 {
     AVExecutor *e;
     int has_lock = 0, has_cond = 0;
@@ -171,7 +171,7 @@ free_executor:
     return NULL;
 }
 
-void avpriv_executor_free(AVExecutor **executor)
+void av_executor_free(AVExecutor **executor)
 {
     if (!executor || !*executor)
         return;
@@ -179,7 +179,7 @@ void avpriv_executor_free(AVExecutor **executor)
     *executor = NULL;
 }
 
-void avpriv_executor_execute(AVExecutor *e, AVTask *t)
+void av_executor_execute(AVExecutor *e, AVTask *t)
 {
     AVTaskCallbacks *cb = &e->cb;
     AVTask **prev;

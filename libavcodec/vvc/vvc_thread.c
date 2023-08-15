@@ -779,7 +779,7 @@ void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t)
 
     pthread_mutex_unlock(&ft->lock);
 
-    avpriv_executor_execute(s->executor, &t->task);
+    av_executor_execute(s->executor, &t->task);
 }
 
 int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
@@ -808,7 +808,7 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
     ff_vvc_report_frame_finished(fc->ref);
 
     // maybe all threads are waiting, let us wake up one
-    avpriv_executor_execute(s->executor, NULL);
+    av_executor_execute(s->executor, NULL);
 
 #ifdef VVC_THREAD_DEBUG
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d done\r\n", (int)fc->decode_order);
