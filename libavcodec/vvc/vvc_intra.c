@@ -466,9 +466,9 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
                 fc->vvcdsp.itx.itx[trh][trv][tb->log2_tb_width][tb->log2_tb_height](
                         tb->pixels, tb->coeffs, nzw, sps->log2_transform_range);
             } else {
-                for (int y = 0; y < h; ++y) {
-                    for (int x = 0; x < w; ++x) {
-                        tb->pixels[y * w + x] = tb->coeffs[y * w + x];
+                for (int x = 0; x < w; ++x) {
+                    for (int y = 0; y < h; ++y) {
+                        tb->pixels[x * h + y] = tb->coeffs[y * w + x];
                     }
                 }
             }
