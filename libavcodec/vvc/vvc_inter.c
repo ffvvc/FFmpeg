@@ -440,57 +440,36 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
 {
     const VVCFrameContext *fc   = lc->fc;
     const PredictionUnit *pu    = &lc->cu->pu;
-    ptrdiff_t src0_stride       = ref0->linesize[0];
-    ptrdiff_t src1_stride       = ref1->linesize[0];
-    uint16_t *prof_tmp          = lc->tmp1 + 1 + MAX_PB_SIZE;
-    const Mv *mv0               = mvf->mv + L0;
-    const Mv *mv1               = mvf->mv + L1;
-    const int mx0               = mv0->x & 0xf;
-    const int my0               = mv0->y & 0xf;
-    const int mx1               = mv1->x & 0xf;
-    const int my1               = mv1->y & 0xf;
-    const int x_off0            = x_off + (mv0->x >> 4);
-    const int y_off0            = y_off + (mv0->y >> 4);
-    const int x_off1            = x_off + (mv1->x >> 4);
-    const int y_off1            = y_off + (mv1->y >> 4);
-
-    const uint8_t *src0  = ref0->data[0] + y_off0 * src0_stride + (int)((unsigned)x_off0 << fc->ps.sps->pixel_shift);
-    const uint8_t *src1  = ref1->data[0] + y_off1 * src1_stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
-
+    const AVFrame *ref[]        = { ref0, ref1 };
+    int16_t *tmp[]              = { lc->tmp, lc->tmp1 };
+    uint16_t *prof_tmp          = lc->tmp2 + 1 + MAX_PB_SIZE;
     int denom, w0, w1, o0, o1;
-    const int weight_flag      = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, 0);
+    const int weight_flag       = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, 0);
 
-    EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src0, &src0_stride, x_off0, y_off0);
-    EMULATED_EDGE_LUMA(lc->edge_emu_buffer2, &src1, &src1_stride, x_off1, y_off1);
+    for (int i = L0; i <= L1; i++) {
+        const Mv *mv            = mvf->mv + i;
+        const int mx            = mv->x & 0xf;
+        const int my            = mv->y & 0xf;
+        const int ox            = x_off + (mv->x >> 4);
+        const int oy            = y_off + (mv->y >> 4);
+        ptrdiff_t src_stride    = ref[i]->linesize[0];
+        const uint8_t *src      = ref[i]->data[0] + oy * src_stride + (int)((unsigned)ox << fc->ps.sps->pixel_shift);
 
-    if (!pu->cb_prof_flag[L0]) {
-        fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](lc->tmp, src0, src0_stride,
-            block_h, mx0, my0, block_w, 2, 2);
-    } else {
-        fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](prof_tmp, src0, src0_stride, AFFINE_MIN_BLOCK_SIZE, mx0, my0, AFFINE_MIN_BLOCK_SIZE, 2, 2);
-        fc->vvcdsp.inter.fetch_samples(prof_tmp, src0, src0_stride, mx0, my0);
-        fc->vvcdsp.inter.apply_prof(lc->tmp, prof_tmp, pu->diff_mv_x[L0], pu->diff_mv_y[L0]);
-    }
-    if (!pu->cb_prof_flag[L1]) {
-        fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
-            block_h, mx1, my1, block_w, 2, 2);
-        if (weight_flag) {
-            fc->vvcdsp.inter.w_avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h,
-                denom, w0, w1, o0, o1);
+        EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src, &src_stride, ox, oy);
+        if (!pu->cb_prof_flag[i]) {
+            fc->vvcdsp.inter.put[LUMA][!!my][!!mx](tmp[i], src, src_stride,
+                block_h, mx, my, block_w, 2, 2);
         } else {
-            fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
-        }
-    } else {
-        fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](prof_tmp, src1, src1_stride, AFFINE_MIN_BLOCK_SIZE, mx1, my1, AFFINE_MIN_BLOCK_SIZE, 2, 2);
-        fc->vvcdsp.inter.fetch_samples(prof_tmp, src1, src1_stride, mx1, my1);
-        if (weight_flag) {
-            fc->vvcdsp.inter.apply_prof_bi_w(dst, dst_stride, lc->tmp, prof_tmp, pu->diff_mv_x[L1], pu->diff_mv_y[L1],
-                denom, w0, w1, o0, o1);
-        } else {
-            fc->vvcdsp.inter.apply_prof_bi(dst, dst_stride,  lc->tmp, prof_tmp, pu->diff_mv_x[L1], pu->diff_mv_y[L1]);
+            fc->vvcdsp.inter.put[LUMA][!!my][!!mx](prof_tmp, src, src_stride, AFFINE_MIN_BLOCK_SIZE, mx, my, AFFINE_MIN_BLOCK_SIZE, 2, 2);
+            fc->vvcdsp.inter.fetch_samples(prof_tmp, src, src_stride, mx, my);
+            fc->vvcdsp.inter.apply_prof(tmp[i], prof_tmp, pu->diff_mv_x[i], pu->diff_mv_y[i]);
         }
     }
 
+    if (weight_flag)
+        fc->vvcdsp.inter.w_avg(dst, dst_stride, tmp[L0], tmp[L1], block_w, block_h,  denom, w0, w1, o0, o1);
+    else
+        fc->vvcdsp.inter.avg(dst, dst_stride, tmp[L0], tmp[L1], block_w, block_h);
 }
 
 static int pred_get_refs(const VVCLocalContext *lc, VVCFrame *ref[2],  const MvField *mv)

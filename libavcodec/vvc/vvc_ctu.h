@@ -318,6 +318,7 @@ struct VVCLocalContext {
     DECLARE_ALIGNED(32, uint8_t, edge_emu_buffer2)[(MAX_PB_SIZE + 7) * EDGE_EMU_BUFFER_STRIDE * 2];
     DECLARE_ALIGNED(32, int16_t, tmp)[MAX_PB_SIZE * MAX_PB_SIZE];
     DECLARE_ALIGNED(32, int16_t, tmp1)[MAX_PB_SIZE * MAX_PB_SIZE];
+    DECLARE_ALIGNED(32, int16_t, tmp2)[MAX_PB_SIZE * MAX_PB_SIZE];
     DECLARE_ALIGNED(32, uint8_t, ciip_tmp1)[MAX_PB_SIZE * MAX_PB_SIZE * 2];
     DECLARE_ALIGNED(32, uint8_t, ciip_tmp2)[MAX_PB_SIZE * MAX_PB_SIZE * 2];
     DECLARE_ALIGNED(32, uint8_t, sao_buffer)[(MAX_CTU_SIZE + 2 * SAO_PADDING_SIZE) * EDGE_EMU_BUFFER_STRIDE * 2];
