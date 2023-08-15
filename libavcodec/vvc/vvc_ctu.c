@@ -268,6 +268,8 @@ static TransformBlock* add_tb(TransformUnit *tu, VVCLocalContext *lc,
     tb->ts = 0;
     tb->coeffs = lc->coeffs;
     lc->coeffs += tb_width * tb_height;
+    tb->pixels = lc->pixels;
+    lc->pixels += tb_width * tb_height;
     return tb;
 }
 
@@ -2382,6 +2384,7 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     }
 
     lc->coeffs = fc->tab.coeffs + rs * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
+    lc->pixels = fc->tab.pixels + rs * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
     lc->cu     = NULL;
 
     ff_vvc_cabac_init(lc, ctu_idx, rx, ry);

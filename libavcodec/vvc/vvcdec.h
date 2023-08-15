@@ -252,6 +252,7 @@ struct VVCFrameContext {
         uint8_t *alf_pixel_buffer_v[VVC_MAX_SAMPLE_ARRAYS][2];
 
         int     *coeffs;
+        int16_t *pixels;
         CTU     *ctus;
 
         //used in arrays_init only

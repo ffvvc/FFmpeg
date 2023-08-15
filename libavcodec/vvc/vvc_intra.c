@@ -176,11 +176,11 @@ static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
     uint8_t *dst = &fc->frame->data[c_idx][(tb->y0 >> vs) * stride +
                                           ((tb->x0 >> hs) << fc->ps.sps->pixel_shift)];
     if (chroma_scale) {
-        fc->vvcdsp.itx.pred_residual_joint(tb->coeffs, tb->tb_width, tb->tb_height, c_sign, shift);
-        fc->vvcdsp.intra.lmcs_scale_chroma(lc, tb->coeffs, tb->coeffs, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
-        fc->vvcdsp.itx.add_residual(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride);
+        fc->vvcdsp.itx.pred_residual_joint(tb->pixels, tb->tb_width, tb->tb_height, c_sign, shift);
+        fc->vvcdsp.intra.lmcs_scale_chroma(lc, tb->pixels, tb->pixels, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
+        fc->vvcdsp.itx.add_residual(dst, tb->pixels, tb->tb_width, tb->tb_height, stride);
     } else {
-        fc->vvcdsp.itx.add_residual_joint(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride, c_sign, shift);
+        fc->vvcdsp.itx.add_residual_joint(dst, tb->pixels, tb->tb_width, tb->tb_height, stride, c_sign, shift);
     }
 }
 
@@ -435,7 +435,7 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
     const VVCSH *sh             = &lc->sc->sh;
     const CodingUnit *cu        = lc->cu;
     const int ps                = fc->ps.sps->pixel_shift;
-    DECLARE_ALIGNED(32, int, temp)[MAX_TB_SIZE * MAX_TB_SIZE];
+    DECLARE_ALIGNED(32, int16_t, temp)[MAX_TB_SIZE * MAX_TB_SIZE];
 
     for (int i = 0; i < tu->nb_tbs; i++) {
         TransformBlock *tb  = &tu->tbs[i];
@@ -464,12 +464,18 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
 
                 nzw = tb->max_scan_x + 1;
                 fc->vvcdsp.itx.itx[trh][trv][tb->log2_tb_width][tb->log2_tb_height](
-                        tb->coeffs, tb->coeffs, nzw, sps->log2_transform_range);
+                        tb->pixels, tb->coeffs, nzw, sps->log2_transform_range);
+            } else {
+                for (int y = 0; y < h; ++y) {
+                    for (int x = 0; x < w; ++x) {
+                        tb->pixels[y * w + x] = tb->coeffs[y * w + x];
+                    }
+                }
             }
 
             if (chroma_scale)
-                fc->vvcdsp.intra.lmcs_scale_chroma(lc, temp, tb->coeffs, w, h, cu->x0, cu->y0);
-            fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->coeffs, w, h, stride);
+                fc->vvcdsp.intra.lmcs_scale_chroma(lc, temp, tb->pixels, w, h, cu->x0, cu->y0);
+            fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->pixels, w, h, stride);
 
             if (tu->joint_cbcr_residual_flag && tb->c_idx)
                 add_residual_for_joint_coding_chroma(lc, tu, tb, chroma_scale);

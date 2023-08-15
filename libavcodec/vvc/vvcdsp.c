@@ -268,12 +268,12 @@ static void scale_clip(int *coeff, const int nzw, const int w, const int h,
     }
 }
 
-static void scale(int *out, const int *in, const int w, const int h, const int shift)
+static void scale(int16_t *out, const int *in, const int w, const int h, const int shift)
 {
     const int add = 1 << (shift - 1);
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-            int *o = out + y * w + x;
+            int16_t *o = out + y * w + x;
             const int *i = in + y * w + x;
             *o = (*i + add) >> shift;
         }
