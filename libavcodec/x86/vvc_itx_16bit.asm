@@ -185,7 +185,6 @@ ALIGN function_align
     paddd               m%2, m%6
     psrad               m%1, 7
     psrad               m%2, 7
-    ; @TODO: this should depend on sps_extended_precision_flag
     vpbroadcastd        m%3, [coeff_min_15]
     vpbroadcastd        m%4, [coeff_max_15]
     pmaxsd              m%1, m%3
@@ -209,7 +208,6 @@ ALIGN function_align
     psubd               m%5, m%1, m%5
     paddd               m%1, m%2, m%3
     psubd               m%2, m%3
-    ; @TODO: this should depend on l2tr
     REPX     {paddd x, m%6}, m%4, m%1, m%5, m%2
     REPX     {psrad x, 10 }, m%4, m%1, m%5, m%2
     packssdw            m%1, m%4
