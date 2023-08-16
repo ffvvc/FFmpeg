@@ -241,6 +241,44 @@ PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
     c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bitd##_##opt; \
 } while (0)
 
+#define ITX_COMMON_SIZES(TYPE_H, type_h, TYPE_V, type_v, bitd, opt)             \
+    ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 4, bitd, opt);                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 8, bitd, opt); */                 \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 16, bitd, opt); */                \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 4, bitd, opt); */                 \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 8, bitd, opt); */                 \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 16, bitd, opt); */                \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 32, bitd, opt); */                \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 4, bitd, opt); */                \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 8, bitd, opt); */                \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 16, bitd, opt); */               \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 32, bitd, opt); */               \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 8, bitd, opt); */                \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 16, bitd, opt); */               \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 32, bitd, opt); */
+
+#define ITX_SIZES(bitd, opt)                                                    \
+    ITX_COMMON_SIZES(DCT2, dct2, DCT2, dct2, bitd, opt);                        \
+    /* ITX(DCT2, dct2, DCT2, dct2, 16, 64, bitd, opt); */                       \
+    /* ITX(DCT2, dct2, DCT2, dct2, 32, 64, bitd, opt); */                       \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 16, bitd, opt); */                       \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 32, bitd, opt); */                       \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 64, bitd, opt); */
+
+#define ITX(TYPE_H, type_h, TYPE_V, type_v, width, height, bitd, opt) \
+void ff_vvc_inv_##type_h##_##type_v##_##width##x##height##_##bitd##_##opt( \
+    int16_t *dst, const int *coeff, int nzw, int log2_transform_range);
+/* ITX_SIZES(8, avx2) */
+ITX_SIZES(10, avx2)
+
+#undef ITX
+#define ITX(TYPE_H, type_h, TYPE_V, type_v, width, height, bitd, opt) \
+    c->itx.itx[TYPE_H][TYPE_V][TX_SIZE_##width][TX_SIZE_##height] = ff_vvc_inv_##type_h##_##type_v##_##width##x##height##_##bitd##_##opt;
+
+#define ITX_INIT(bitd, opt) do { \
+    ITX_SIZES(bitd, opt)         \
+} while (0)
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
 {
     const int cpu_flags = av_get_cpu_flags();
@@ -250,12 +288,14 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
             case 8:
                 ALF_DSP(8);
                 PUT_VVC_LUMA_INIT(8, avx2);
+                /* ITX_INIT(8, avx2); */
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
                 break;
             case 10:
                 ALF_DSP(10);
                 PUT_VVC_LUMA_INIT(10, avx2);
+                ITX_INIT(10, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
                 break;
             case 12:
