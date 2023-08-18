@@ -37,14 +37,10 @@ idct4_shuf:   db  0,  1,  4,  5, 12, 13,  8,  9,  2,  3,  6,  7, 14, 15, 10, 11
 vvc_pd_%1_%2: dd %1, %1, %2, %2
 %define vvc_pd_%1 (vvc_pd_%1_%2 + 4*0)
 %define vvc_pd_%2 (vvc_pd_%1_%2 + 4*2)
-%if %3
-dd -%2, -%2
-%define vvc_pd_%2_m%2 vvc_pd_%2
-%endif
 %endmacro
 
-COEF_PAIR 64, 36, 1
-COEF_PAIR 64, 83, 1
+COEF_PAIR 64, 36
+COEF_PAIR 64, 83
 
 coeff_min_15: times 2 dw  -0x8000
 coeff_max_15: times 2 dw   0x7fff
