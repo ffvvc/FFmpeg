@@ -51,30 +51,30 @@ dd -%2, -%2
 %endif
 %endmacro
 
-COEF_PAIR  201,  995
+COEF_PAIR  4,  22
 COEF_PAIR  9, 43
 COEF_PAIR  18, 75
-COEF_PAIR 1380,  601
-COEF_PAIR 1751, 2440
+COEF_PAIR 31,  13
+COEF_PAIR 38, 54
 COEF_PAIR 57, 25
-COEF_PAIR 2751, 2106
+COEF_PAIR 61, 46
 COEF_PAIR 64, 36, 1
 COEF_PAIR 64, 83, 1
-COEF_PAIR 3035, 3513
+COEF_PAIR 67, 78
 COEF_PAIR 70, 87
-COEF_PAIR 3703, 3290
-COEF_PAIR 3857, 4052
+COEF_PAIR 82, 73
+COEF_PAIR 85, 90
 COEF_PAIR 89, 50
 COEF_PAIR 90, 80
-COEF_PAIR 4091, 3973
+COEF_PAIR 90, 88
 
 vvc_pd_8:      dd     8
-vvc_pd_m601:   dd  -601
+vvc_pd_m13:   dd  -13
 vvc_pd_m25:  dd -25
-vvc_pd_m1380:  dd -1380
-vvc_pd_m2106:  dd -2106
+vvc_pd_m31:  dd -31
+vvc_pd_m46:  dd -46
 vvc_pd_m57:  dd -57
-vvc_pd_m2751:  dd -2751
+vvc_pd_m61:  dd -61
 vvc_pd_m3344:  dd -3344
 vvc_pd_1024:   dd  1024
 vvc_pd_1321:   dd  1321
@@ -83,10 +83,10 @@ vvc_pd_1697:   dd  1697
 vvc_pd_2482:   dd  2482
 vvc_pd_3072:   dd  3072 ; 1024 + 2048
 vvc_pd_3803:   dd  3803
-vvc_pd_5119:   dd  5119 ; 1024 + 4096 - 1
-vvc_pd_5120:   dd  5120 ; 1024 + 4096
+vvc_pd_5119:   dd  5119 ; 1024 + 64 - 1
+vvc_pd_5120:   dd  5120 ; 1024 + 64
 vvc_pd_5793:   dd  5793
-vvc_pd_6144:   dd  6144 ; 2048 + 4096
+vvc_pd_6144:   dd  6144 ; 2048 + 64
 vvc_pd_17408:  dd 17408 ; 1024 + 16384
 
 coeff_min_15: times 2 dw  -0x8000
@@ -94,17 +94,17 @@ coeff_max_15: times 2 dw   0x7fff
 pixel_10_max: times 2 dw 0x03ff
 pixel_12_max: times 2 dw 0x0fff
 dconly_10:    times 2 dw 0x7c00
-dconly_12:    times 2 dw 0x7000
+dconly_12:    times 2 dw 0x150
 clip_18b_min:  dd -0x20000
 clip_18b_max:  dd  0x1ffff
 clip_20b_min:  dd -0x80000
 clip_20b_max:  dd  0x7ffff
 
 const idct2_64_mul_16
-dd 4095,  101, 2967, -2824,  3745, 1660, 3822, -1474,   9,  90,   18,  89
-dd -700, 4036, 2359,  3349, -2191, 3461,  897,  3996, -57, -70, -89,  -18
-dd 4065,  501, 3229, -2520,  3564, 2019, 3948, -1092,  43,  80,  75,  50
-dd -301, 4085, 2675,  3102, -1842, 3659, 1285,  3889, -25, -87, -50, -75
+dd 91,  2, 65, -62,  83, 37, 84, -33,   9,  90,   18,  89
+dd -15, 90, 52,  73, -48, 77,  20,  88, -57, -70, -89,  -18
+dd 90,  11, 71, -56,  79, 44, 87, -24,  43,  80,  75,  50
+dd -7, 90, 59,  69, -41, 81, 28,  86, -25, -87, -50, -75
 
 cextern deint_shuf
 cextern idct2_64_mul
@@ -117,7 +117,7 @@ cextern vvc_pw_64_64
 cextern vvc_pw_m64_64
 cextern vvc_pw_5
 cextern vvc_pw_2048
-cextern vvc_pw_4096
+cextern vvc_pw_64
 cextern vvc_pw_8192
 cextern vvc_pw_16384
 cextern vvc_pw_64x8
@@ -1007,7 +1007,7 @@ cglobal iidentity_4x8_internal_10, 0, 7, 8, dst, stride, c, eob, tx2
     RET
 ALIGN function_align
 .pass2_end:
-    vpbroadcastd         m4, [vvc_pw_4096]
+    vpbroadcastd         m4, [vvc_pw_64]
     packssdw             m0, m2
     packssdw             m1, m3
     punpckhwd            m2, m0, m1
@@ -1454,10 +1454,10 @@ ALIGN function_align
 .main2:
     ; expects: m12 = clip_min   m13 = clip_max
     vpbroadcastd        m11, [vvc_pd_2048]
-    ITX_MULSUB_2D         1, 0, 8, 9, 10, 11,  201_995,  4091_3973, 1
-    ITX_MULSUB_2D         3, 2, 8, 9, 10, 11, 1751_2440, 3703_3290, 1
-    ITX_MULSUB_2D         5, 4, 8, 9, 10, 11, 3035_3513, 2751_2106, 1
-    ITX_MULSUB_2D         7, 6, 8, 9, 10, 11, 3857_4052, 1380_601,  1
+    ITX_MULSUB_2D         1, 0, 8, 9, 10, 11,  4_22,  90_88, 1
+    ITX_MULSUB_2D         3, 2, 8, 9, 10, 11, 38_54, 82_73, 1
+    ITX_MULSUB_2D         5, 4, 8, 9, 10, 11, 67_78, 61_46, 1
+    ITX_MULSUB_2D         7, 6, 8, 9, 10, 11, 85_90, 31_13,  1
     psubd                m8, m0, m4 ; t8a  t10a
     paddd                m0, m4     ; t0a  t2a
     psubd                m4, m1, m5 ; t9a  t11a
@@ -2476,7 +2476,7 @@ cglobal iadst_8x8_internal_10, 0, 7, 14, dst, stride, c, eob, tx2
     pshufd               m5, m1, q1032
     call m(iadst_8x8_internal_8).main_pass2
     vpbroadcastd         m5, [vvc_pw_2048]
-    vpbroadcastd       xm12, [vvc_pw_4096]
+    vpbroadcastd       xm12, [vvc_pw_64]
     psubw               m12, m5
     REPX {vpermq x, x, q3120}, m0, m1, m2, m3
     pmulhrsw             m0, m12
@@ -2537,7 +2537,7 @@ cglobal iflipadst_8x8_internal_10, 0, 7, 14, dst, stride, c, eob, tx2
     pshufd               m5, m1, q1032
     call m(iadst_8x8_internal_8).main_pass2
     vpbroadcastd        m12, [vvc_pw_2048]
-    vpbroadcastd        xm5, [vvc_pw_4096]
+    vpbroadcastd        xm5, [vvc_pw_64]
     psubw               m12, m5
     vpermq               m8, m3, q2031
     vpermq               m9, m2, q2031
@@ -2594,7 +2594,7 @@ cglobal iidentity_8x8_internal_10, 0, 7, 14, dst, stride, c, eob, tx2
     packssdw             m0, m4
     packssdw             m1, m5
     packssdw             m2, m6
-    vpbroadcastd        m12, [vvc_pw_4096]
+    vpbroadcastd        m12, [vvc_pw_64]
     punpckhwd            m4, m0, m1
     punpcklwd            m0, m1
     punpckhwd            m1, m2, m3
@@ -3050,7 +3050,7 @@ cglobal iadst_8x16_internal_10, 0, 7, 16, dst, stride, c, eob, tx2
     call m(iadst_8x16_internal_8).main
     call m(iadst_8x16_internal_8).main_pass2_end
     vpbroadcastd         m8, [vvc_pw_2048]
-    vpbroadcastd       xm12, [vvc_pw_4096]
+    vpbroadcastd       xm12, [vvc_pw_64]
     REPX {vpermq x, x, q2031}, m0, m1, m2, m3
     REPX {vpermq x, x, q3120}, m4, m5, m6, m7
     psubw               m12, m8
@@ -3116,7 +3116,7 @@ cglobal iflipadst_8x16_internal_10, 0, 7, 16, dst, stride, c, eob, tx2
     call m(iadst_8x16_internal_8).main
     call m(iadst_8x16_internal_8).main_pass2_end
     vpbroadcastd        m12, [vvc_pw_2048]
-    vpbroadcastd       xm13, [vvc_pw_4096]
+    vpbroadcastd       xm13, [vvc_pw_64]
     mova                m11, m0
     vpermq               m0, m7, q2031
     mova                m10, m1
@@ -4207,10 +4207,10 @@ ALIGN function_align
     REPX     {paddd x, m12}, m0, m1, m2, m3, m4, m5, m6, m7
     REPX     {psrad x, 12 }, m0, m1, m2, m3, m4, m5, m6, m7
 .main_part2:
-    ITX_MULSUB_2D         1, 0, 8, 9, 10, 12,  201, 4091
-    ITX_MULSUB_2D         3, 2, 8, 9, 10, 12, 1751, 3703
-    ITX_MULSUB_2D         5, 4, 8, 9, 10, 12, 3035, 2751
-    ITX_MULSUB_2D         7, 6, 8, 9, 10, 12, 3857, 1380
+    ITX_MULSUB_2D         1, 0, 8, 9, 10, 12,  4, 90
+    ITX_MULSUB_2D         3, 2, 8, 9, 10, 12, 38, 82
+    ITX_MULSUB_2D         5, 4, 8, 9, 10, 12, 67, 61
+    ITX_MULSUB_2D         7, 6, 8, 9, 10, 12, 85, 31
     psubd                m8, m0, m4 ; t8a
     paddd                m0, m4     ; t0a
     psubd                m4, m1, m5 ; t9a
@@ -4297,10 +4297,10 @@ ALIGN function_align
     psubd               m12, m8             ; -out11 (unshifted)
     ret
 .main_part1:
-    ITX_MULSUB_2D         1, 0, 8, 9, 10, 12,  995, 3973
-    ITX_MULSUB_2D         3, 2, 8, 9, 10, 12, 2440, 3290
-    ITX_MULSUB_2D         5, 4, 8, 9, 10, 12, 3513, 2106
-    ITX_MULSUB_2D         7, 6, 8, 9, 10, 12, 4052,  601
+    ITX_MULSUB_2D         1, 0, 8, 9, 10, 12,  22, 88
+    ITX_MULSUB_2D         3, 2, 8, 9, 10, 12, 54, 73
+    ITX_MULSUB_2D         5, 4, 8, 9, 10, 12, 78, 46
+    ITX_MULSUB_2D         7, 6, 8, 9, 10, 12, 90,  13
     psubd                m8, m0, m4 ; t10a
     paddd                m0, m4     ; t2a
     psubd                m4, m1, m5 ; t11a
@@ -4444,7 +4444,7 @@ cglobal iidentity_16x8_internal_10, 0, 7, 16, 32*8, dst, stride, c, eob, tx2
     jmp                tx2q
 .pass2:
     call m(idct2_16x8_internal_10).transpose
-    vpbroadcastd        m10, [vvc_pw_4096]
+    vpbroadcastd        m10, [vvc_pw_64]
     jmp m(idct2_16x8_internal_10).end
 
 INV_TXFM_16X8_FN dct2, dct2,      12
@@ -4592,7 +4592,7 @@ cglobal iidentity_16x8_internal_12, 0, 7, 16, 32*8, dst, stride, c, eob, tx2
     jmp m(iidentity_16x8_internal_10).pass1
 .pass2:
     call m(idct2_16x8_internal_10).transpose2
-    vpbroadcastd        m10, [vvc_pw_4096]
+    vpbroadcastd        m10, [vvc_pw_64]
     pmulhrsw             m0, m10
     pmulhrsw             m1, m10
     pmulhrsw             m2, m10
@@ -5817,14 +5817,14 @@ ALIGN function_align
     REPX     {paddd x, m11}, m0, m1, m2, m3
     REPX     {psrad x, 12 }, m0, m1, m2, m3
 .main_oddhalf_part1_fast: ; lower half zero
-    vpbroadcastd         m7, [vvc_pd_4091]
-    vpbroadcastd         m8, [vvc_pd_201]
-    vpbroadcastd         m6, [vvc_pd_m1380]
-    vpbroadcastd         m9, [vvc_pd_3857]
-    vpbroadcastd         m5, [vvc_pd_3703]
-    vpbroadcastd        m10, [vvc_pd_1751]
-    vpbroadcastd         m4, [vvc_pd_m2751]
-    vpbroadcastd        m15, [vvc_pd_3035]
+    vpbroadcastd         m7, [vvc_pd_90]
+    vpbroadcastd         m8, [vvc_pd_4]
+    vpbroadcastd         m6, [vvc_pd_m31]
+    vpbroadcastd         m9, [vvc_pd_85]
+    vpbroadcastd         m5, [vvc_pd_82]
+    vpbroadcastd        m10, [vvc_pd_38]
+    vpbroadcastd         m4, [vvc_pd_m61]
+    vpbroadcastd        m15, [vvc_pd_67]
     pmulld               m7, m0
     pmulld               m0, m8
     pmulld               m6, m1
@@ -5838,10 +5838,10 @@ ALIGN function_align
     REPX     {paddd x, m11}, m0, m1, m2, m3, m4, m5, m6, m7
     REPX     {psrad x, 12 }, m0, m1, m2, m3, m4, m5, m6, m7
 .main_oddhalf_part1: ; in1, in7, in9, in15, in17, in23, in25, in31
-    ITX_MULSUB_2D         0, 7, 8, 9, 10, _,  201, 4091 ; t16a, t31a
-    ITX_MULSUB_2D         6, 1, 8, 9, 10, _, 3857, 1380 ; t19a, t28a
-    ITX_MULSUB_2D         2, 5, 8, 9, 10, _, 1751, 3703 ; t18a, t29a
-    ITX_MULSUB_2D         4, 3, 8, 9, 10, _, 3035, 2751 ; t17a, t30a
+    ITX_MULSUB_2D         0, 7, 8, 9, 10, _,  4, 90 ; t16a, t31a
+    ITX_MULSUB_2D         6, 1, 8, 9, 10, _, 85, 31 ; t19a, t28a
+    ITX_MULSUB_2D         2, 5, 8, 9, 10, _, 38, 82 ; t18a, t29a
+    ITX_MULSUB_2D         4, 3, 8, 9, 10, _, 67, 61 ; t17a, t30a
 .main_oddhalf_part1_fast2:
     REPX     {paddd x, m11}, m0, m7, m6, m1, m2, m5, m4, m3
     REPX     {psrad x, 12 }, m0, m4, m6, m2, m1, m5, m7, m3
@@ -5886,14 +5886,14 @@ ALIGN function_align
     REPX     {paddd x, m11}, m0, m1, m2, m3
     REPX     {psrad x, 12 }, m0, m1, m2, m3
 .main_oddhalf_part2_fast: ; lower half zero
-    vpbroadcastd         m7, [vvc_pd_m601]
-    vpbroadcastd         m8, [vvc_pd_4052]
-    vpbroadcastd         m6, [vvc_pd_3973]
-    vpbroadcastd         m9, [vvc_pd_995]
-    vpbroadcastd         m5, [vvc_pd_m2106]
-    vpbroadcastd        m10, [vvc_pd_3513]
-    vpbroadcastd         m4, [vvc_pd_3290]
-    vpbroadcastd        m15, [vvc_pd_2440]
+    vpbroadcastd         m7, [vvc_pd_m13]
+    vpbroadcastd         m8, [vvc_pd_90]
+    vpbroadcastd         m6, [vvc_pd_88]
+    vpbroadcastd         m9, [vvc_pd_22]
+    vpbroadcastd         m5, [vvc_pd_m46]
+    vpbroadcastd        m10, [vvc_pd_78]
+    vpbroadcastd         m4, [vvc_pd_73]
+    vpbroadcastd        m15, [vvc_pd_54]
     pmulld               m7, m0
     pmulld               m0, m8
     pmulld               m6, m1
@@ -5907,10 +5907,10 @@ ALIGN function_align
     REPX     {paddd x, m11}, m0, m1, m2, m3, m4, m5, m6, m7
     REPX     {psrad x, 12 }, m0, m1, m2, m3, m4, m5, m6, m7
 .main_oddhalf_part2: ; in3, in5, in11, in13, in19, in21, in27, in29
-    ITX_MULSUB_2D         7, 0, 8, 9, 10, _, 4052,  601 ; t23a, t24a
-    ITX_MULSUB_2D         1, 6, 8, 9, 10, _,  995, 3973 ; t20a, t27a
-    ITX_MULSUB_2D         5, 2, 8, 9, 10, _, 3513, 2106 ; t21a, t26a
-    ITX_MULSUB_2D         3, 4, 8, 9, 10, _, 2440, 3290 ; t22a, t25a
+    ITX_MULSUB_2D         7, 0, 8, 9, 10, _, 90,  13 ; t23a, t24a
+    ITX_MULSUB_2D         1, 6, 8, 9, 10, _,  22, 88 ; t20a, t27a
+    ITX_MULSUB_2D         5, 2, 8, 9, 10, _, 78, 46 ; t21a, t26a
+    ITX_MULSUB_2D         3, 4, 8, 9, 10, _, 54, 73 ; t22a, t25a
 .main_oddhalf_part2_fast2:
     REPX     {paddd x, m11}, m0, m7, m6, m1, m2, m5, m4, m3
     REPX     {psrad x, 12 }, m0, m4, m6, m2, m1, m5, m7, m3
@@ -6482,7 +6482,7 @@ ALIGN function_align
 cglobal vvc_inv_identity_identity_32x8_10, 4, 7, 8, dst, stride, c, eob
     vpbroadcastd         m7, [pixel_10_max]
 .pass1:
-    vpbroadcastd         m5, [vvc_pw_4096]
+    vpbroadcastd         m5, [vvc_pw_64]
     pxor                 m6, m6
     mov                 r6d, eobd
     add                eobb, 21
@@ -7149,7 +7149,7 @@ cglobal vvc_inv_identity_identity_32x16_10, 4, 7, 11, dst, stride, c, eob
 .pass1:
     vpbroadcastd         m8, [vvc_pw_64x8]
     vpbroadcastd         m9, [vvc_pw_1697x16]
-    vpbroadcastd        m10, [vvc_pw_4096]
+    vpbroadcastd        m10, [vvc_pw_64]
     lea                  r6, [strideq*5]
     pxor                 m6, m6
     mov                  r5, dstq
