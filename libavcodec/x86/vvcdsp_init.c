@@ -196,6 +196,18 @@ SAO_EDGE_FILTER_FUNCS(12, avx2)
     c->sao.edge_filter[8]       = ff_vvc_sao_edge_filter_128_##bitd##_##opt;    \
 } while (0)
 
+#define LOOP_FILTER_FUNCS(bitd, opt)                                                                \
+void ff_vvc_h_loop_filter_chroma_##bitd##_##opt(uint8_t *pix, ptrdiff_t stride,                     \
+                                    int beta, int32_t tc, uint8_t no_p, uint8_t no_q, int shift,    \
+                                    int max_len_p, int max_len_q);                                  \
+void ff_vvc_v_loop_filter_chroma_##bitd##_##opt(uint8_t *pix, ptrdiff_t stride,                     \
+                                    int beta, int32_t tc, uint8_t no_p, uint8_t no_q, int shift,    \
+                                    int max_len_p, int max_len_q);                                  \
+
+LOOP_FILTER_FUNCS(8, avx2)
+LOOP_FILTER_FUNCS(10, avx2)
+LOOP_FILTER_FUNCS(12, avx2)
+
 #define PUT_VVC_LUMA_8_FUNC(dir, opt)                                                                         \
     void ff_vvc_put_vvc_luma_##dir##_8_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,  \
     const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
@@ -252,15 +264,21 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
                 PUT_VVC_LUMA_INIT(8, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
+                c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_8_avx2;
+                c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_8_avx2;
                 break;
             case 10:
                 ALF_DSP(10);
                 PUT_VVC_LUMA_INIT(10, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
+                c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_10_avx2;
+                c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_10_avx2;
                 break;
             case 12:
                 ALF_DSP(12);
                 PUT_VVC_LUMA_INIT(12, avx2);
+                c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_12_avx2;
+                c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_12_avx2;
                 break;
             default:
                 break;
