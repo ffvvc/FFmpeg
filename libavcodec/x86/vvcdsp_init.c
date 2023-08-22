@@ -208,6 +208,19 @@ LOOP_FILTER_FUNCS(8, avx2)
 LOOP_FILTER_FUNCS(10, avx2)
 LOOP_FILTER_FUNCS(12, avx2)
 
+#define LOOP_LUMA_FUNCS(bitd, opt)                                                                  \
+void ff_vvc_h_loop_filter_luma_##bitd##_##opt(uint8_t *pix, ptrdiff_t stride, int beta,             \ 
+                                                int32_t tc, uint8_t no_p, uint8_t no_q,             \
+                                                uint8_t max_len_p, uint8_t max_len_q,               \
+                                                int hor_ctu_edge);                                  \
+void ff_vvc_v_loop_filter_luma_##bitd##_##opt(uint8_t *pix, ptrdiff_t stride, int beta,             \ 
+                                                int32_t tc, uint8_t no_p, uint8_t no_q,             \
+                                                uint8_t max_len_p, uint8_t max_len_q,               \
+                                                int hor_ctu_edge);                                  \
+
+LOOP_LUMA_FUNCS(8, avx2)
+LOOP_LUMA_FUNCS(10, avx2)
+
 #define PUT_VVC_LUMA_8_FUNC(dir, opt)                                                                         \
     void ff_vvc_put_vvc_luma_##dir##_8_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,  \
     const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
@@ -264,6 +277,8 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
                 PUT_VVC_LUMA_INIT(8, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
+                c->lf.filter_luma[0] = ff_vvc_h_loop_filter_luma_8_avx2;
+                c->lf.filter_luma[1] = ff_vvc_v_loop_filter_luma_8_avx2;
                 c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_8_avx2;
                 c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_8_avx2;
                 break;
@@ -273,6 +288,8 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
                 c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_10_avx2;
                 c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_10_avx2;
+                c->lf.filter_luma[0] = ff_vvc_h_loop_filter_luma_10_avx2;
+                c->lf.filter_luma[1] = ff_vvc_v_loop_filter_luma_10_avx2;
                 break;
             case 12:
                 ALF_DSP(12);

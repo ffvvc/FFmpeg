@@ -130,6 +130,8 @@ typedef struct VVCLFDSPContext {
         uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
     void (*filter_chroma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
+    void (*filter_luma_c[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
+        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
     void (*filter_chroma_c[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
         uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
 } VVCLFDSPContext;

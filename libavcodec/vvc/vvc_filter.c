@@ -918,8 +918,13 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
                     max_filter_length(fc, x, y, c_idx, 1, 0, bs, &max_len_p, &max_len_q);
 
                     if (!c_idx) {
-                        fc->vvcdsp.lf.filter_luma[1](src,
-                            fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
+                        if ((no_p || no_q) || (max_len_p == 3 || max_len_q == 3)) {
+                            fc->vvcdsp.lf.filter_luma_c[1](src,
+                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
+                        } else {
+                            fc->vvcdsp.lf.filter_luma[1](src,
+                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
+                        }
                     } else {
                         if (vs || (no_p || no_q) || (max_len_p == 3 || max_len_q == 3) || (!max_len_p || !max_len_q)) {
                             fc->vvcdsp.lf.filter_chroma_c[1](src,
@@ -992,8 +997,14 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
                     max_filter_length(fc, x, y, c_idx, 0, horizontal_ctu_edge, bs, &max_len_p, &max_len_q);
 
                     if (!c_idx) {
-                        fc->vvcdsp.lf.filter_luma[0](src, fc->frame->linesize[c_idx],
-                            beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
+                        if ((no_p || no_q) || ((max_len_p > 3 && !horizontal_ctu_edge) || max_len_q > 3)) {
+                            fc->vvcdsp.lf.filter_luma_c[0](src, fc->frame->linesize[c_idx],
+                                beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
+                        } else {
+                            fc->vvcdsp.lf.filter_luma[0](src, fc->frame->linesize[c_idx],
+                                beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
+                        }
+
                     } else {
                         if (hs || (no_p || no_q) || (!max_len_p || !max_len_q) || (max_len_p == 3 || max_len_q == 3)) {
                             fc->vvcdsp.lf.filter_chroma_c[0](src, fc->frame->linesize[c_idx], beta,
