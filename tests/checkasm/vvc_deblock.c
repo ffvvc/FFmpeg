@@ -71,7 +71,7 @@ static void check_deblock_chroma(VVCDSPContext *h, int bit_depth)
 
     declare_func_emms(AV_CPU_FLAG_MMX, void, uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
                         int shift,uint8_t no_p, uint8_t no_q, int max_len_p, int max_len_q);
-    if (check_func(h->lf.filter_chroma[0], "vvc_h_loop_filter_chroma%d weak", bit_depth)) {
+    if (check_func(h->lf.filter_chroma[0], "vvc_h_loop_filter_chroma_%d", bit_depth)) {
         for (int i = 0; i < 4; i++) {
             randomize_buffers(buf0, buf1, BUF_SIZE);
             // Largest betatable value is 88, see vvc_filter.c
@@ -86,7 +86,7 @@ static void check_deblock_chroma(VVCDSPContext *h, int bit_depth)
         bench_new(buf1 + BUF_OFFSET, BUF_STRIDE, beta, tc, no_p, no_q, shift, max_len_p, max_len_q);
     }
 
-    if (check_func(h->lf.filter_chroma[1], "vvc_v_loop_filter_chroma%d", bit_depth)) {
+    if (check_func(h->lf.filter_chroma[1], "vvc_v_loop_filter_chroma_%d", bit_depth)) {
         int diff = 0;
         max_len_p = 2;
         max_len_q = 2;
@@ -99,11 +99,7 @@ static void check_deblock_chroma(VVCDSPContext *h, int bit_depth)
             call_ref(buf0 + BUF_OFFSET, BUF_STRIDE, beta, tc, shift, no_p, no_q, max_len_p, max_len_q);
             call_new(buf1 + BUF_OFFSET, BUF_STRIDE, beta, tc, shift, no_p, no_q, max_len_p, max_len_q);
             if (diff = (memcmp(buf0, buf1, BUF_SIZE))) {
-                {
-                    printf("diff: %d\n", diff);
-                    fail();
-                }
-                
+                fail();
             }
                 
         }
