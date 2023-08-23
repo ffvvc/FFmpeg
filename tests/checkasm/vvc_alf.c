@@ -167,12 +167,12 @@ void checkasm_check_vvc_alf(void)
     int bit_depth;
     VVCDSPContext h;
     for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
-        ff_vvc_dsp_init(&h, bit_depth, 0);
+        ff_vvc_dsp_init(&h, bit_depth);
         check_alf_filter(&h, bit_depth);
     }
     report("alf_filter");
     for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
-        ff_vvc_dsp_init(&h, bit_depth, 0);
+        ff_vvc_dsp_init(&h, bit_depth);
         check_alf_classify(&h, bit_depth);
     }
     report("alf_classify");
