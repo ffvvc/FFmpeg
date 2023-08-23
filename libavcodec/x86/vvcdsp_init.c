@@ -241,7 +241,115 @@ PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
     c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bitd##_##opt; \
 } while (0)
 
+#define ITX_COMMON_SIZES(TYPE_H, type_h, TYPE_V, type_v, bitd, opt)                   \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 4, bitd, opt) */                        \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 8, bitd, opt) */                        \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 16, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 32, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 4, bitd, opt) */                        \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 8, bitd, opt) */                        \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 16, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 8, 32, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 4, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 8, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 16, bitd, opt) */                      \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 16, 32, bitd, opt) */                      \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 4, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 8, bitd, opt) */                       \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 16, bitd, opt) */                      \
+    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 32, 32, bitd, opt) */
+
+#define ITX_ALL_VARIANTS(bitd, opt)                                                   \
+    ITX_COMMON_SIZES(DCT2, dct2, DCT2, dct2, bitd, opt)                               \
+    /* ITX_COMMON_SIZES(DCT2, dct2, DST7, dst7, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DCT2, dct2, DCT8, dct8, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DST7, dst7, DCT2, dct2, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DST7, dst7, DST7, dst7, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DST7, dst7, DCT8, dct8, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DCT8, dct8, DCT2, dct2, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DCT8, dct8, DST7, dst7, bitd, opt) */                         \
+    /* ITX_COMMON_SIZES(DCT8, dct8, DCT8, dct8, bitd, opt) */                         \
+    /* ITX(DCT2, dct2, DCT2, dct2, 1, 2, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 1, 64, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 1, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 2, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 4, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 8, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 16, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 32, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 2, 64, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 4, 2, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 4, 64, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 8, 2, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT2, dct2, 8, 64, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 16, 2, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 16, 64, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DCT2, dct2, 32, 2, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 32, 64, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 1, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 2, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 4, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 8, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 16, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 32, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DCT2, dct2, 64, 64, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DST7, dst7, 2, 1, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DST7, dst7, 2, 4, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DST7, dst7, 2, 8, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DST7, dst7, 2, 16, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DST7, dst7, 2, 32, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DST7, dst7, 64, 1, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DST7, dst7, 64, 4, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DST7, dst7, 64, 8, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DST7, dst7, 64, 16, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DST7, dst7, 64, 32, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DCT8, dct8, 2, 1, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT8, dct8, 2, 4, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT8, dct8, 2, 8, bitd, opt) */                                \
+    /* ITX(DCT2, dct2, DCT8, dct8, 2, 16, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT8, dct8, 2, 32, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT8, dct8, 64, 1, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT8, dct8, 64, 4, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT8, dct8, 64, 8, bitd, opt) */                               \
+    /* ITX(DCT2, dct2, DCT8, dct8, 64, 16, bitd, opt) */                              \
+    /* ITX(DCT2, dct2, DCT8, dct8, 64, 32, bitd, opt) */                              \
+    /* ITX(DST7, dst7, DCT2, dct2, 1, 2, bitd, opt) */                                \
+    /* ITX(DST7, dst7, DCT2, dct2, 4, 2, bitd, opt) */                                \
+    /* ITX(DST7, dst7, DCT2, dct2, 8, 2, bitd, opt) */                                \
+    /* ITX(DST7, dst7, DCT2, dct2, 16, 2, bitd, opt) */                               \
+    /* ITX(DST7, dst7, DCT2, dct2, 32, 2, bitd, opt) */                               \
+    /* ITX(DST7, dst7, DCT2, dct2, 1, 64, bitd, opt) */                               \
+    /* ITX(DST7, dst7, DCT2, dct2, 4, 64, bitd, opt) */                               \
+    /* ITX(DST7, dst7, DCT2, dct2, 8, 64, bitd, opt) */                               \
+    /* ITX(DST7, dst7, DCT2, dct2, 16, 64, bitd, opt) */                              \
+    /* ITX(DST7, dst7, DCT2, dct2, 32, 64, bitd, opt) */                              \
+    /* ITX(DCT8, dct8, DCT2, dct2, 1, 2, bitd, opt) */                                \
+    /* ITX(DCT8, dct8, DCT2, dct2, 4, 2, bitd, opt) */                                \
+    /* ITX(DCT8, dct8, DCT2, dct2, 8, 2, bitd, opt) */                                \
+    /* ITX(DCT8, dct8, DCT2, dct2, 16, 2, bitd, opt) */                               \
+    /* ITX(DCT8, dct8, DCT2, dct2, 32, 2, bitd, opt) */                               \
+    /* ITX(DCT8, dct8, DCT2, dct2, 1, 64, bitd, opt) */                               \
+    /* ITX(DCT8, dct8, DCT2, dct2, 4, 64, bitd, opt) */                               \
+    /* ITX(DCT8, dct8, DCT2, dct2, 8, 64, bitd, opt) */                               \
+    /* ITX(DCT8, dct8, DCT2, dct2, 16, 64, bitd, opt) */                              \
+    /* ITX(DCT8, dct8, DCT2, dct2, 32, 64, bitd, opt) */ 
+
+#define ITX_NAME(type_h, type_v, width, height, bitd, opt)                      \
+    ff_vvc_inv_##type_h##_##type_v##_##width##x##height##_##bitd##_##opt
+
+#define ITX(TYPE_H, type_h, TYPE_V, type_v, width, height, bitd, opt)           \
+void ITX_NAME(type_h, type_v, width, height, bitd, opt)(                        \
+    int16_t *dst, const int *coeffs, int nzw, int log2_transform_range);
+
+ITX_ALL_VARIANTS(8, avx2);
+ITX_ALL_VARIANTS(10, avx2);
+
+#undef ITX
+#define ITX(TYPE_H, type_h, TYPE_V, type_v, width, height, bitd, opt)           \
+    c->itx.itx[TYPE_H][TYPE_V][TX_SIZE_##width][TX_SIZE_##height] = ITX_NAME(type_h, type_v, width, height, bitd, opt);
+
 #define ITX_INIT(bitd, opt) do {                                                \
+    ITX_ALL_VARIANTS(bitd, opt)                                                 \
 } while (0);
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
