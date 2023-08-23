@@ -242,7 +242,7 @@ PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
 } while (0)
 
 #define ITX_COMMON_SIZES(TYPE_H, type_h, TYPE_V, type_v, bitd, opt)                   \
-    /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 4, bitd, opt) */                        \
+    ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 4, bitd, opt)                        \
     /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 8, bitd, opt) */                        \
     /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 16, bitd, opt) */                       \
     /* ITX(TYPE_H, type_h, TYPE_V, type_v, 4, 32, bitd, opt) */                       \

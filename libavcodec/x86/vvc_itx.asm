@@ -357,18 +357,22 @@ cglobal vvc_inv_dct2_dct2_%1x%1_dc_%2, 1, 2, 1, coeff, tmp
     movhps %2, [r0 + %6 + %7]
 %endmacro
 
-; void ff_vvc_inv_dct2_dct2_4x4__{8,10}_<opt>(int16_t *coeffs, int col_limit)
+; void ff_vvc_inv_dct2_dct2_4x4__{8,10}_<opt>(int16_t *dst, const int *coeffs, int nzw, int log2_transform_range)
 ; %1 = bitdepth
 %macro IDCT_4x4 1
-cglobal vvc_inv_dct2_dct2_4x4_%1, 1, 1, 5, coeffs
+cglobal vvc_inv_dct2_dct2_4x4_%1, 2, 2, 5, dst, coeffs
     mova m0, [coeffsq]
-    mova m1, [coeffsq + 16]
+    mova m2, [coeffsq + 16]
+    mova m1, [coeffsq + 32]
+    mova m3, [coeffsq + 48]
+    packssdw m0, m2
+    packssdw m1, m3
 
     TR_4x4 7, 1, 1
     TR_4x4 20 - %1, 1, 1
 
-    mova [coeffsq],      m0
-    mova [coeffsq + 16], m1
+    mova [dstq],      m0
+    mova [dstq + 16], m1
     RET
 %endmacro
 
@@ -844,7 +848,5 @@ IDCT_4x4 %1
 
 INIT_IDCT_DC 8
 INIT_IDCT_DC 10
-INIT_IDCT 8, sse2
-INIT_IDCT 8, avx
-INIT_IDCT 10, sse2
-INIT_IDCT 10, avx
+INIT_IDCT 8, avx2
+INIT_IDCT 10, avx2
