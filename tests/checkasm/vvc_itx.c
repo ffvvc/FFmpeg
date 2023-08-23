@@ -35,7 +35,7 @@
         int k;                                                                  \
         for (k = 0; k < size; ++k) {                                            \
             uint32_t r = rnd();                                                 \
-            int32_t a = min + r / (max / (max - min + 1) + 1);                  \
+            int32_t a = min + r / (UINT32_MAX / (max - min + 1) + 1);           \
             AV_WN32A(buf0 + k, a);                                              \
             AV_WN32A(buf1 + k, a);                                              \
         }                                                                       \
