@@ -594,7 +594,7 @@ static void FUNC(put_vvc_chroma_uni_w_hv)(uint8_t *_dst, ptrdiff_t _dst_stride,
 }
 
 static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *tmp0, const int16_t *tmp1, const int width, const int height)
+    const int16_t *src0, const int16_t *src1, const int width, const int height)
 {
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
@@ -603,15 +603,15 @@ static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
-            dst[x] = av_clip_pixel((tmp0[x] + tmp1[x] + offset) >> shift);
-        tmp0 += MAX_PB_SIZE;
-        tmp1 += MAX_PB_SIZE;
+            dst[x] = av_clip_pixel((src0[x] + src1[x] + offset) >> shift);
+        src0 += MAX_PB_SIZE;
+        src1 += MAX_PB_SIZE;
         dst  += dst_stride;
     }
 }
 
 static void FUNC(w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *tmp0, const int16_t *tmp1, const int width, const int height,
+    const int16_t *src0, const int16_t *src1, const int width, const int height,
     const int denom, const int w0, const int w1, const int o0, const int o1)
 {
     pixel *dst                  = (pixel*)_dst;
@@ -621,9 +621,9 @@ static void FUNC(w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
-            dst[x] = av_clip_pixel((tmp0[x] * w0 + tmp1[x] * w1 + offset) >> shift);
-        tmp0 += MAX_PB_SIZE;
-        tmp1 += MAX_PB_SIZE;
+            dst[x] = av_clip_pixel((src0[x] * w0 + src1[x] * w1 + offset) >> shift);
+        src0 += MAX_PB_SIZE;
+        src1 += MAX_PB_SIZE;
         dst  += dst_stride;
     }
 }
@@ -648,7 +648,7 @@ static void FUNC(put_vvc_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 
 static void FUNC(put_vvc_gpm)(uint8_t *_dst, ptrdiff_t dst_stride,
     const int width, const int height,
-    const int16_t *tmp, const int16_t *tmp1, const ptrdiff_t tmp_stride,
+    const int16_t *src0, const int16_t *src1,
     const uint8_t *weights, const int step_x, const int step_y)
 {
     const int shift  = FFMAX(5, 17 - BIT_DEPTH);
@@ -659,11 +659,11 @@ static void FUNC(put_vvc_gpm)(uint8_t *_dst, ptrdiff_t dst_stride,
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             const uint8_t w = weights[x * step_x];
-            dst[x] = av_clip_pixel((tmp[x] * w + tmp1[x] * (8 - w) + offset) >> shift);
+            dst[x] = av_clip_pixel((src0[x] * w + src1[x] * (8 - w) + offset) >> shift);
         }
         dst     += dst_stride;
-        tmp     += tmp_stride;
-        tmp1    += tmp_stride;
+        src0    += MAX_PB_SIZE;
+        src1    += MAX_PB_SIZE;
         weights += step_y;
     }
 }
@@ -893,27 +893,25 @@ static void FUNC(apply_bdof)(uint8_t *_dst, const ptrdiff_t _dst_stride, int16_t
 
 //8.5.3.2.2 Luma sample bilinear interpolation process
 static void FUNC(dmvr_vvc_luma)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
-                                const int height, const intptr_t mx, const intptr_t my, const int width)
+    const int height, const intptr_t mx, const intptr_t my, const int width)
 {
     const pixel *src            = (const pixel *)_src;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
 #if BIT_DEPTH > 10
     const int shift4            = BIT_DEPTH - 10;
     const int offset4           = 1 << (shift4 - 1);
+    #define DMVR_SHIFT(s)       (((s) + offset4) >> shift4)
+#else
+    #define DMVR_SHIFT(s)       ((s) << (10 - BIT_DEPTH))
 #endif
 
     for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-#if BIT_DEPTH > 10
-            dst[x] = (src[x] + offset4) >> shift4;
-#else
-            dst[x] = src[x] << (10 - BIT_DEPTH);
-#endif
-        }
+        for (int x = 0; x < width; x++)
+            dst[x] = DMVR_SHIFT(src[x]);
         src += src_stride;
         dst += MAX_PB_SIZE;
     }
-
+#undef DMVR_SHIFT
 }
 
 //8.5.3.2.2 Luma sample bilinear interpolation process

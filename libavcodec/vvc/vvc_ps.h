@@ -47,9 +47,6 @@
 #define LMCS_MAX_BIN_SIZE   16
 #define LADF_MAX_INTERVAL   5
 
-#define MAX_CTU_WIDTH       (VVC_MAX_WIDTH  / (1 << 5) + 1)
-#define MAX_CTU_HEIGHT      (VVC_MAX_HEIGHT / (1 << 5) + 1)
-
 enum {
     CHROMA_FORMAT_MONO,
     CHROMA_FORMAT_420,
@@ -86,7 +83,7 @@ typedef struct VVCSPS {
     uint32_t    ladf_interval_lower_bound[LADF_MAX_INTERVAL];       ///< SpsLadfIntervalLowerBound[]
     uint8_t     log2_parallel_merge_level;                          ///< sps_log2_parallel_merge_level_minus2 + 2;
     uint8_t     log2_transform_range;                               ///< Log2TransformRange
-    int         chroma_qp_table[3][VVC_MAX_POINTS_IN_QP_TABLE];
+    int         chroma_qp_table[3][VVC_MAX_POINTS_IN_QP_TABLE];     ///< ChromaQpTable
 } VVCSPS;
 
 typedef struct DBParams {
@@ -151,15 +148,23 @@ typedef struct VVCPH {
     const H266RawPictureHeader *r;
 
     //derived values
-    unsigned int max_num_subblock_merge_cand;   ///< MaxNumSubblockMergeCand
-    int     poc;                                ///< PicOrderCntVal
-
+    uint32_t max_num_subblock_merge_cand;           ///< MaxNumSubblockMergeCand
+    int      poc;                                   ///< PicOrderCntVal
     PredWeightTable pwt;
 } VVCPH;
 
 #define VVC_MAX_ALF_COUNT        8
 #define VVC_MAX_LMCS_COUNT       4
 #define VVC_MAX_SL_COUNT         8
+
+typedef struct VVCParamSets {
+    AVBufferRef *vps_list[VVC_MAX_VPS_COUNT];
+    AVBufferRef *sps_list[VVC_MAX_SPS_COUNT];
+    AVBufferRef *pps_list[VVC_MAX_PPS_COUNT];
+    AVBufferRef *alf_list[VVC_MAX_ALF_COUNT];
+    AVBufferRef *lmcs_list[VVC_MAX_LMCS_COUNT];
+    AVBufferRef *scaling_list[VVC_MAX_SL_COUNT];
+} VVCParamSets;
 
 #define ALF_NUM_FILTERS_LUMA    25
 #define ALF_NUM_FILTERS_CHROMA   8
@@ -168,12 +173,6 @@ typedef struct VVCPH {
 #define ALF_NUM_COEFF_LUMA      12
 #define ALF_NUM_COEFF_CHROMA     6
 #define ALF_NUM_COEFF_CC         7
-
-enum {
-    APS_ALF,
-    APS_LMCS,
-    APS_SCALING,
-};
 
 typedef struct VVCALF {
     AVBufferRef *rref;
@@ -189,6 +188,25 @@ typedef struct VVCALF {
     int16_t cc_coeff[2][ALF_NUM_FILTERS_CC][ALF_NUM_COEFF_CC];
 } VVCALF;
 
+enum {
+  SL_START_2x2    = 0,
+  SL_START_4x4    = 2,
+  SL_START_8x8    = 8,
+  SL_START_16x16  = 14,
+  SL_START_32x32  = 20,
+  SL_START_64x64  = 26,
+  SL_MAX_ID       = 28,
+};
+
+#define SL_MAX_MATRIX_SIZE 8
+
+typedef struct VVCScalingList {
+    AVBufferRef *rref;
+
+    uint8_t scaling_matrix_rec[SL_MAX_ID][SL_MAX_MATRIX_SIZE * SL_MAX_MATRIX_SIZE];  ///< ScalingMatrixRec
+    uint8_t scaling_matrix_dc_rec[SL_MAX_ID - SL_START_16x16];                       ///< ScalingMatrixDcRec[refId − 14]
+} VVCScalingList;
+
 typedef struct VVCLMCS {
     int      min_bin_idx;
     int      max_bin_idx;
@@ -200,34 +218,6 @@ typedef struct VVCLMCS {
     int      pivot[LMCS_MAX_BIN_SIZE + 1];
     int      chroma_scale_coeff[LMCS_MAX_BIN_SIZE];
 } VVCLMCS;
-
-#define SL_MAX_ID          28
-#define SL_MAX_MATRIX_SIZE 8
-
-enum {
-  SL_START_2x2    = 0,
-  SL_START_4x4    = 2,
-  SL_START_8x8    = 8,
-  SL_START_16x16  = 14,
-  SL_START_32x32  = 20,
-  SL_START_64x64  = 26,
-};
-
-typedef struct VVCScalingList {
-    AVBufferRef *rref;
-
-    uint8_t scaling_matrix_rec[SL_MAX_ID][SL_MAX_MATRIX_SIZE * SL_MAX_MATRIX_SIZE];  ///< ScalingMatrixRec
-    uint8_t scaling_matrix_dc_rec[SL_MAX_ID - SL_START_16x16];                       ///< ScalingMatrixDcRec[refId − 14]
-} VVCScalingList;
-
-typedef struct VVCParamSets {
-    AVBufferRef *vps_list[VVC_MAX_VPS_COUNT];
-    AVBufferRef *sps_list[VVC_MAX_SPS_COUNT];
-    AVBufferRef *pps_list[VVC_MAX_PPS_COUNT];
-    AVBufferRef *alf_list[VVC_MAX_ALF_COUNT];
-    AVBufferRef *lmcs_list[VVC_MAX_LMCS_COUNT];
-    AVBufferRef *scaling_list[VVC_MAX_SL_COUNT];
-} VVCParamSets;
 
 typedef struct VVCFrameParamSets {
     AVBufferRef            *sps_buf;
@@ -248,7 +238,7 @@ typedef struct VVCSH {
 
     // derived values
     // ctu address
-    int             num_ctus_in_curr_slice;                 ///< NumCtusInCurrSlice
+    uint32_t        num_ctus_in_curr_slice;                 ///< NumCtusInCurrSlice
     const uint32_t* ctb_addr_in_curr_slice;                 ///< CtbAddrInCurrSlice
 
     // inter

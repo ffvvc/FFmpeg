@@ -682,7 +682,7 @@ static VkResult vulkan_setup_profile(AVCodecContext *avctx,
     VkVideoProfileListInfoKHR *profile_list = &prof->profile_list;
 
     VkVideoDecodeH264ProfileInfoKHR *h264_profile = &prof->h264_profile;
-    VkVideoDecodeH264ProfileInfoKHR *h265_profile = &prof->h265_profile;
+    VkVideoDecodeH265ProfileInfoKHR *h265_profile = &prof->h265_profile;
     VkVideoDecodeAV1ProfileInfoMESA *av1_profile  = &prof->av1_profile;
 
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(avctx->sw_pix_fmt);
@@ -863,6 +863,9 @@ static int vulkan_decode_get_profile(AVCodecContext *avctx, AVBufferRef *frames_
            caps->maxDpbSlots);
     av_log(avctx, AV_LOG_VERBOSE, "    Maximum active references: %u\n",
            caps->maxActiveReferencePictures);
+    av_log(avctx, AV_LOG_VERBOSE, "    Codec header name: '%s' (driver), '%s' (compiled)\n",
+           caps->stdHeaderVersion.extensionName,
+           dec_ext[avctx->codec_id]->extensionName);
     av_log(avctx, AV_LOG_VERBOSE, "    Codec header version: %i.%i.%i (driver), %i.%i.%i (compiled)\n",
            CODEC_VER(caps->stdHeaderVersion.specVersion),
            CODEC_VER(dec_ext[avctx->codec_id]->specVersion));

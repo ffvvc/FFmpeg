@@ -509,7 +509,6 @@ static void pred_gpm_blk(VVCLocalContext *lc)
     const int c_end = fc->ps.sps->r->sps_chroma_format_idc ? 3 : 1;
 
     int16_t *tmp[2] = {lc->tmp, lc->tmp1};
-    const ptrdiff_t tmp_stride = MAX_PB_SIZE;
 
     for (int c_idx = 0; c_idx < c_end; c_idx++) {
         const int hs     = fc->ps.sps->hshift[c_idx];
@@ -544,7 +543,7 @@ static void pred_gpm_blk(VVCLocalContext *lc)
             else
                 luma_mc(lc, tmp[i], ref->frame, mv->mv + lx, x, y, width, height);
         }
-        fc->vvcdsp.inter.put_gpm(dst, dst_stride, width, height, tmp[0], tmp[1], tmp_stride, weights, step_x, step_y);
+        fc->vvcdsp.inter.put_gpm(dst, dst_stride, width, height, tmp[0], tmp[1], weights, step_x, step_y);
     }
     return;
 }

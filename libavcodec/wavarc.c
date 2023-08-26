@@ -218,6 +218,10 @@ static int decode_1dif(AVCodecContext *avctx,
             continue;
         case 6:
             s->shift = get_urice(gb, 2);
+            if ((unsigned)s->shift > 31) {
+                s->shift = 0;
+                return AVERROR_INVALIDDATA;
+            }
             continue;
         case 5:
             if (avctx->sample_fmt == AV_SAMPLE_FMT_U8P) {
@@ -307,13 +311,17 @@ static int decode_2slp(AVCodecContext *avctx,
             return AVERROR_EOF;
         case 8:
             s->nb_samples = get_urice(gb, 8);
-            if (s->nb_samples > 570) {
+            if (s->nb_samples > 570U) {
                 s->nb_samples = 570;
                 return AVERROR_INVALIDDATA;
             }
             continue;
         case 7:
             s->shift = get_urice(gb, 2);
+            if ((unsigned)s->shift > 31) {
+                s->shift = 0;
+                return AVERROR_INVALIDDATA;
+            }
             continue;
         case 6:
             if (avctx->sample_fmt == AV_SAMPLE_FMT_U8P) {
@@ -579,13 +587,17 @@ static int decode_5elp(AVCodecContext *avctx,
             return AVERROR_EOF;
         case 11:
             s->nb_samples = get_urice(gb, 8);
-            if (s->nb_samples > 570) {
+            if (s->nb_samples > 570U) {
                 s->nb_samples = 570;
                 return AVERROR_INVALIDDATA;
             }
             continue;
         case 10:
             s->shift = get_urice(gb, 2);
+            if ((unsigned)s->shift > 31) {
+                s->shift = 0;
+                return AVERROR_INVALIDDATA;
+            }
             continue;
         case 9:
             if (avctx->sample_fmt == AV_SAMPLE_FMT_U8P) {
