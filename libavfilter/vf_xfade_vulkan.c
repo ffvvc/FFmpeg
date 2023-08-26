@@ -77,6 +77,14 @@ enum XFadeTransitions {
     SLIDEUP,
     SLIDELEFT,
     SLIDERIGHT,
+    CIRCLEOPEN,
+    CIRCLECLOSE,
+    DISSOLVE,
+    PIXELIZE,
+    WIPETL,
+    WIPETR,
+    WIPEBL,
+    WIPEBR,
     NB_TRANSITIONS,
 };
 
@@ -179,16 +187,135 @@ static const char transition_slideright[] = {
     C(0, }                                                                     )
 };
 
+#define SHADER_CIRCLE_COMMON                                                     \
+    C(0, void circle(int idx, ivec2 pos, float progress, bool open)            ) \
+    C(0, {                                                                     ) \
+    C(1,     const ivec2 half_size = imageSize(output_images[idx]) / 2;        ) \
+    C(1,     const float z = dot(half_size, half_size);                        ) \
+    C(1,     float p = ((open ? (1.0 - progress) : progress) - 0.5) * 3.0;     ) \
+    C(1,     ivec2 dsize = pos - half_size;                                    ) \
+    C(1,     float sm = dot(dsize, dsize) / z + p;                             ) \
+    C(1,     vec4 a = texture(a_images[idx], pos);                             ) \
+    C(1,     vec4 b = texture(b_images[idx], pos);                             ) \
+    C(1,     imageStore(output_images[idx], pos, \
+                        mix(open ? b : a, open ? a : b, \
+                            smoothstep(0.f, 1.f, sm)));                        ) \
+    C(0, }                                                                     )
+
+static const char transition_circleopen[] = {
+    SHADER_CIRCLE_COMMON
+    C(0, void transition(int idx, ivec2 pos, float progress)                   )
+    C(0, {                                                                     )
+    C(1,     circle(idx, pos, progress, true);                                 )
+    C(0, }                                                                     )
+};
+
+static const char transition_circleclose[] = {
+    SHADER_CIRCLE_COMMON
+    C(0, void transition(int idx, ivec2 pos, float progress)                   )
+    C(0, {                                                                     )
+    C(1,     circle(idx, pos, progress, false);                                )
+    C(0, }                                                                     )
+};
+
+#define SHADER_FRAND_FUNC                                                        \
+    C(0, float frand(vec2 v)                                                   ) \
+    C(0, {                                                                     ) \
+    C(1,     return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.545);     ) \
+    C(0, }                                                                     )
+
+static const char transition_dissolve[] = {
+    SHADER_FRAND_FUNC
+    C(0, void transition(int idx, ivec2 pos, float progress)                   )
+    C(0, {                                                                     )
+    C(1,     float sm = frand(pos) * 2.0 + (1.0 - progress) * 2.0 - 1.5;       )
+    C(1,     vec4 a = texture(a_images[idx], pos);                             )
+    C(1,     vec4 b = texture(b_images[idx], pos);                             )
+    C(1,     imageStore(output_images[idx], pos, sm >= 0.5 ? a : b);           )
+    C(0, }                                                                     )
+};
+
+static const char transition_pixelize[] = {
+    C(0, void transition(int idx, ivec2 pos, float progress)                                  )
+    C(0, {                                                                                    )
+    C(1,     ivec2 size = imageSize(output_images[idx]);                                      )
+    C(1,     float d = min(progress, 1.0 - progress);                                         )
+    C(1,     float dist = ceil(d * 50.0) / 50.0;                                              )
+    C(1,     float sq = 2.0 * dist * min(size.x, size.y) / 20.0;                              )
+    C(1,     float sx = dist > 0.0 ? min((floor(pos.x / sq) + 0.5) * sq, size.x - 1) : pos.x; )
+    C(1,     float sy = dist > 0.0 ? min((floor(pos.y / sq) + 0.5) * sq, size.y - 1) : pos.y; )
+    C(1,     vec4 a = texture(a_images[idx], vec2(sx, sy));                                   )
+    C(1,     vec4 b = texture(b_images[idx], vec2(sx, sy));                                   )
+    C(1,     imageStore(output_images[idx], pos, mix(a, b, progress));                        )
+    C(0, }                                                                                    )
+};
+
+static const char transition_wipetl[] = {
+    C(0, void transition(int idx, ivec2 pos, float progress)                                  )
+    C(0, {                                                                                    )
+    C(1,     ivec2 size = imageSize(output_images[idx]);                                      )
+    C(1,     float zw = size.x * (1.0 - progress);                                            )
+    C(1,     float zh = size.y * (1.0 - progress);                                            )
+    C(1,     vec4 a = texture(a_images[idx], pos);                                            )
+    C(1,     vec4 b = texture(b_images[idx], pos);                                            )
+    C(1,     imageStore(output_images[idx], pos, (pos.y <= zh && pos.x <= zw) ? a : b);       )
+    C(0, }                                                                                    )
+};
+
+static const char transition_wipetr[] = {
+    C(0, void transition(int idx, ivec2 pos, float progress)                                  )
+    C(0, {                                                                                    )
+    C(1,     ivec2 size = imageSize(output_images[idx]);                                      )
+    C(1,     float zw = size.x * (progress);                                                  )
+    C(1,     float zh = size.y * (1.0 - progress);                                            )
+    C(1,     vec4 a = texture(a_images[idx], pos);                                            )
+    C(1,     vec4 b = texture(b_images[idx], pos);                                            )
+    C(1,     imageStore(output_images[idx], pos, (pos.y <= zh && pos.x > zw) ? a : b);        )
+    C(0, }                                                                                    )
+};
+
+static const char transition_wipebl[] = {
+    C(0, void transition(int idx, ivec2 pos, float progress)                                  )
+    C(0, {                                                                                    )
+    C(1,     ivec2 size = imageSize(output_images[idx]);                                      )
+    C(1,     float zw = size.x * (1.0 - progress);                                            )
+    C(1,     float zh = size.y * (progress);                                                  )
+    C(1,     vec4 a = texture(a_images[idx], pos);                                            )
+    C(1,     vec4 b = texture(b_images[idx], pos);                                            )
+    C(1,     imageStore(output_images[idx], pos, (pos.y > zh && pos.x <= zw) ? a : b);        )
+    C(0, }                                                                                    )
+};
+
+static const char transition_wipebr[] = {
+    C(0, void transition(int idx, ivec2 pos, float progress)                                  )
+    C(0, {                                                                                    )
+    C(1,     ivec2 size = imageSize(output_images[idx]);                                      )
+    C(1,     float zw = size.x * (progress);                                                  )
+    C(1,     float zh = size.y * (progress);                                                  )
+    C(1,     vec4 a = texture(a_images[idx], pos);                                            )
+    C(1,     vec4 b = texture(b_images[idx], pos);                                            )
+    C(1,     imageStore(output_images[idx], pos, (pos.y > zh && pos.x > zw) ? a : b);         )
+    C(0, }                                                                                    )
+};
+
 static const char* transitions_map[NB_TRANSITIONS] = {
-    [FADE]      = transition_fade,
-    [WIPELEFT]  = transition_wipeleft,
-    [WIPERIGHT] = transition_wiperight,
-    [WIPEUP]    = transition_wipeup,
-    [WIPEDOWN]  = transition_wipedown,
-    [SLIDEDOWN] = transition_slidedown,
-    [SLIDEUP]   = transition_slideup,
-    [SLIDELEFT] = transition_slideleft,
-    [SLIDERIGHT]= transition_slideright,
+    [FADE]          = transition_fade,
+    [WIPELEFT]      = transition_wipeleft,
+    [WIPERIGHT]     = transition_wiperight,
+    [WIPEUP]        = transition_wipeup,
+    [WIPEDOWN]      = transition_wipedown,
+    [SLIDEDOWN]     = transition_slidedown,
+    [SLIDEUP]       = transition_slideup,
+    [SLIDELEFT]     = transition_slideleft,
+    [SLIDERIGHT]    = transition_slideright,
+    [CIRCLEOPEN]    = transition_circleopen,
+    [CIRCLECLOSE]   = transition_circleclose,
+    [DISSOLVE]      = transition_dissolve,
+    [PIXELIZE]      = transition_pixelize,
+    [WIPETL]        = transition_wipetl,
+    [WIPETR]        = transition_wipetr,
+    [WIPEBL]        = transition_wipebl,
+    [WIPEBR]        = transition_wipebr,
 };
 
 static av_cold int init_vulkan(AVFilterContext *avctx)
@@ -530,15 +657,23 @@ static AVFrame *get_video_buffer(AVFilterLink *inlink, int w, int h)
 
 static const AVOption xfade_vulkan_options[] = {
     { "transition", "set cross fade transition", OFFSET(transition), AV_OPT_TYPE_INT, {.i64=FADE}, 0, NB_TRANSITIONS-1, FLAGS, "transition" },
-        { "fade",      "fade transition", 0, AV_OPT_TYPE_CONST, {.i64=FADE}, 0, 0, FLAGS, "transition" },
-        { "wipeleft",  "wipe left transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPELEFT}, 0, 0, FLAGS, "transition" },
+        { "fade", "fade transition", 0, AV_OPT_TYPE_CONST, {.i64=FADE}, 0, 0, FLAGS, "transition" },
+        { "wipeleft", "wipe left transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPELEFT}, 0, 0, FLAGS, "transition" },
         { "wiperight", "wipe right transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPERIGHT}, 0, 0, FLAGS, "transition" },
-        { "wipeup",    "wipe up transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPEUP}, 0, 0, FLAGS, "transition" },
-        { "wipedown",  "wipe down transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPEDOWN}, 0, 0, FLAGS, "transition" },
+        { "wipeup", "wipe up transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPEUP}, 0, 0, FLAGS, "transition" },
+        { "wipedown", "wipe down transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPEDOWN}, 0, 0, FLAGS, "transition" },
         { "slidedown", "slide down transition", 0, AV_OPT_TYPE_CONST, {.i64=SLIDEDOWN}, 0, 0, FLAGS, "transition" },
-        { "slideup",   "slide up transition", 0, AV_OPT_TYPE_CONST, {.i64=SLIDEUP}, 0, 0, FLAGS, "transition" },
+        { "slideup", "slide up transition", 0, AV_OPT_TYPE_CONST, {.i64=SLIDEUP}, 0, 0, FLAGS, "transition" },
         { "slideleft", "slide left transition", 0, AV_OPT_TYPE_CONST, {.i64=SLIDELEFT}, 0, 0, FLAGS, "transition" },
-        { "slideright","slide right transition", 0, AV_OPT_TYPE_CONST, {.i64=SLIDERIGHT}, 0, 0, FLAGS, "transition" },
+        { "slideright", "slide right transition", 0, AV_OPT_TYPE_CONST, {.i64=SLIDERIGHT}, 0, 0, FLAGS, "transition" },
+        { "circleopen", "circleopen transition", 0, AV_OPT_TYPE_CONST, {.i64=CIRCLEOPEN}, 0, 0, FLAGS, "transition" },
+        { "circleclose", "circleclose transition", 0, AV_OPT_TYPE_CONST, {.i64=CIRCLECLOSE}, 0, 0, FLAGS, "transition" },
+        { "dissolve", "dissolve transition", 0, AV_OPT_TYPE_CONST, {.i64=DISSOLVE}, 0, 0, FLAGS, "transition" },
+        { "pixelize", "pixelize transition", 0, AV_OPT_TYPE_CONST, {.i64=PIXELIZE}, 0, 0, FLAGS, "transition" },
+        { "wipetl", "wipe top left transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPETL}, 0, 0, FLAGS, "transition" },
+        { "wipetr", "wipe top right transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPETR}, 0, 0, FLAGS, "transition" },
+        { "wipebl", "wipe bottom left transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPEBL}, 0, 0, FLAGS, "transition" },
+        { "wipebr", "wipe bottom right transition", 0, AV_OPT_TYPE_CONST, {.i64=WIPEBR}, 0, 0, FLAGS, "transition" },
     { "duration", "set cross fade duration", OFFSET(duration), AV_OPT_TYPE_DURATION, {.i64=1000000}, 0, 60000000, FLAGS },
     { "offset",   "set cross fade start relative to first input stream", OFFSET(offset), AV_OPT_TYPE_DURATION, {.i64=0}, INT64_MIN, INT64_MAX, FLAGS },
     { NULL }

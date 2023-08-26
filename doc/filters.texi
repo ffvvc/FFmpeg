@@ -1459,6 +1459,14 @@ select logistic sigmoid
 select sine cardinal function
 @item isinc
 select inverted sine cardinal function
+@item quat
+select quartic
+@item quatr
+select quartic root
+@item qsin2
+select squared quarter of sine wave
+@item hsin2
+select squared half of sine wave
 @item nofade
 no fade applied
 @end table
@@ -2836,6 +2844,13 @@ Default value is 8.
 
 This filter supports the all above options as @ref{commands}.
 
+@section apsnr
+Measure Audio Peak Signal-to-Noise Ratio.
+
+This filter takes two audio streams for input, and outputs first
+audio stream.
+Results are in dB per channel at end of either input.
+
 @section apsyclip
 Apply Psychoacoustic clipper to input audio stream.
 
@@ -3133,6 +3148,13 @@ audio, the data is treated as if all the planes were concatenated.
 @item plane_checksums
 A list of Adler-32 checksums for each data plane.
 @end table
+
+@section asisdr
+Measure Audio Scaled-Invariant Signal-to-Distortion Ratio.
+
+This filter takes two audio streams for input, and outputs first
+audio stream.
+Results are in dB per channel at end of either input.
 
 @section asoftclip
 Apply audio soft clipping.
