@@ -24,24 +24,24 @@
 #include "executor.h"
 
 #if !HAVE_THREADS
-#define pthread_create(t, a, s, ar)     0
-#define pthread_join(t, r)              do {} while(0)
 
-#define pthread_cond_init(c, a)         0
-#define pthread_cond_broadcast(c)       do {} while(0)
-#define pthread_cond_signal(c)          do {} while(0)
-#define pthread_cond_wait(c, m)         do {} while(0)
-#define pthread_cond_destroy(c)         do {} while(0)
+#define executor_thread_t    char
 
-#define pthread_mutex_init(m, a)        0
-#define pthread_mutex_lock(l)           do {} while(0)
-#define pthread_mutex_unlock(l)         do {} while(0)
-#define pthread_mutex_destroy(l)        do {} while(0)
-#endif
+#define executor_thread_create(t, a, s, ar)      0
+#define executor_thread_join(t, r)               do {} while(0)
+
+#else
+
+#define executor_thread_t    pthread_t
+
+#define executor_thread_create(t, a, s, ar)      pthread_create(t, a, s, ar)
+#define executor_thread_join(t, r)               pthread_join(t, r)
+
+#endif //!HAVE_THREADS
 
 typedef struct ThreadInfo {
     AVExecutor *e;
-    pthread_t thread;
+    executor_thread_t thread;
 } ThreadInfo;
 
 struct AVExecutor {
@@ -51,8 +51,8 @@ struct AVExecutor {
     ThreadInfo *threads;
     uint8_t *local_contexts;
 
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
+    AVMutex lock;
+    AVCond cond;
     int die;
 
     AVTask *tasks;
@@ -80,9 +80,9 @@ static int run_one_task(AVExecutor *e, void *lc)
         /* nothing */;
     if (*prev) {
         AVTask *t = remove_task(prev, *prev);
-        pthread_mutex_unlock(&e->lock);
+        ff_mutex_unlock(&e->lock);
         cb->run(t, lc, cb->user_data);
-        pthread_mutex_lock(&e->lock);
+        ff_mutex_lock(&e->lock);
         return 1;
     }
     return 0;
@@ -95,16 +95,16 @@ static void *executor_worker_task(void *data)
     AVExecutor *e  = ti->e;
     void *lc       = e->local_contexts + (ti - e->threads) * e->cb.local_context_size;
 
-    pthread_mutex_lock(&e->lock);
+    ff_mutex_lock(&e->lock);
     while (1) {
         if (e->die) break;
 
         if (!run_one_task(e, lc)) {
             //no task in one loop
-            pthread_cond_wait(&e->cond, &e->lock);
+            ff_cond_wait(&e->cond, &e->lock);
         }
     }
-    pthread_mutex_unlock(&e->lock);
+    ff_mutex_unlock(&e->lock);
     return NULL;
 }
 #endif
@@ -113,18 +113,18 @@ static void executor_free(AVExecutor *e, const int has_lock, const int has_cond)
 {
     if (e->thread_count) {
         //signal die
-        pthread_mutex_lock(&e->lock);
+        ff_mutex_lock(&e->lock);
         e->die = 1;
-        pthread_cond_broadcast(&e->cond);
-        pthread_mutex_unlock(&e->lock);
+        ff_cond_broadcast(&e->cond);
+        ff_mutex_unlock(&e->lock);
 
         for (int i = 0; i < e->thread_count; i++)
-            pthread_join(e->threads[i].thread, NULL);
+            executor_thread_join(e->threads[i].thread, NULL);
     }
     if (has_cond)
-        pthread_cond_destroy(&e->cond);
+        ff_cond_destroy(&e->cond);
     if (has_lock)
-        pthread_mutex_destroy(&e->lock);
+        ff_mutex_destroy(&e->lock);
 
     av_free(e->threads);
     av_free(e->local_contexts);
@@ -139,7 +139,7 @@ AVExecutor* av_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
     if (!cb || !cb->user_data || !cb->ready || !cb->run || !cb->priority_higher)
         return NULL;
 
-    e = av_calloc(1, sizeof(*e));
+    e = av_mallocz(sizeof(*e));
     if (!e)
         return NULL;
     e->cb = *cb;
@@ -152,8 +152,8 @@ AVExecutor* av_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
     if (!e->threads)
         goto free_executor;
 
-    has_lock = !pthread_mutex_init(&e->lock, NULL);
-    has_cond = !pthread_cond_init(&e->cond, NULL);
+    has_lock = !ff_mutex_init(&e->lock, NULL);
+    has_cond = !ff_cond_init(&e->cond, NULL);
 
     if (!has_lock || !has_cond)
         goto free_executor;
@@ -161,7 +161,7 @@ AVExecutor* av_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
     for (/* nothing */; e->thread_count < thread_count; e->thread_count++) {
         ThreadInfo *ti = e->threads + e->thread_count;
         ti->e = e;
-        if (pthread_create(&ti->thread, NULL, executor_worker_task, ti))
+        if (executor_thread_create(&ti->thread, NULL, executor_worker_task, ti))
             goto free_executor;
     }
     return e;
@@ -184,14 +184,14 @@ void av_executor_execute(AVExecutor *e, AVTask *t)
     AVTaskCallbacks *cb = &e->cb;
     AVTask **prev;
 
-    pthread_mutex_lock(&e->lock);
+    ff_mutex_lock(&e->lock);
     if (t) {
         for (prev = &e->tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
             /* nothing */;
         add_task(prev, t);
     }
-    pthread_cond_signal(&e->cond);
-    pthread_mutex_unlock(&e->lock);
+    ff_cond_signal(&e->cond);
+    ff_mutex_unlock(&e->lock);
 
 #if !HAVE_THREADS
     // We are running in a single-threaded environment, so we must handle all tasks ourselves

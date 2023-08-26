@@ -26,6 +26,7 @@
 #include "vvc_ps.h"
 #include "vvcdec.h"
 
+
 typedef void (*free_fn)(uint8_t *data);
 
 static void ps_free(void *opaque, uint8_t *data)
@@ -877,6 +878,12 @@ void ff_vvc_ps_uninit(VVCParamSets *ps)
     for (i = 0; i < FF_ARRAY_ELEMS(ps->pps_list); i++)
         av_buffer_unref(&ps->pps_list[i]);
 }
+
+enum {
+    APS_ALF,
+    APS_LMCS,
+    APS_SCALING,
+};
 
 static void alf_coeff(int16_t *coeff,
     const uint8_t *abs, const uint8_t *sign, const int size)
