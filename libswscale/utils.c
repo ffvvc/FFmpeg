@@ -34,6 +34,7 @@
 #endif
 #endif
 #if HAVE_VIRTUALALLOC
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
 
