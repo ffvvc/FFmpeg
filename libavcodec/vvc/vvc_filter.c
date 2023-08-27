@@ -877,8 +877,10 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
     const int c_end     = sps->r->sps_chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
     uint8_t *src;
     int x, y, qp;
-    uint8_t no_p = 0;
-    uint8_t no_q = 0;
+
+    //not use this yet, may needed by plt.
+    const uint8_t no_p[4] = { 0 };
+    const uint8_t no_q[4] = { 0 } ;
 
     int ctb_log2_size_y = fc->ps.sps->ctb_log2_size_y;
     int x_end, y_end;
@@ -917,25 +919,20 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
 
                         beta[i] = betatable[av_clip(qp + beta_offset, 0, MAX_QP)];
 
-                        tc[i] = TC_CALC(qp, bs[i]);
-
                         max_filter_length(fc, x, y + dy, c_idx, 1, 0, bs[i], &max_len_p[i], &max_len_q[i]);
                         all_zero_bs = 0;
                     }
+                    tc[i] = bs[i] ? TC_CALC(qp, bs[i]) : 0;
                 }
+
                 if (!all_zero_bs) {
-                    for (int i = 0; i < DEBLOCK_STEP >> (2 - vs); i++) {
-                        if (bs[i]) {
-                            const int dy = i << 2;
-                            src = &fc->frame->data[c_idx][((y + dy) >> vs) * fc->frame->linesize[c_idx] + ((x >> hs) << fc->ps.sps->pixel_shift)];
-                            if (!c_idx) {
-                                fc->vvcdsp.lf.filter_luma[1](src,
-                                    fc->frame->linesize[c_idx], beta[i], tc[i], no_p, no_q, max_len_p[i], max_len_q[i], 0);
-                            } else {
-                                fc->vvcdsp.lf.filter_chroma[1](src,
-                                    fc->frame->linesize[c_idx], beta[i], tc[i], no_p, no_q, vs, max_len_p[i], max_len_q[i]);
-                            }
-                        }
+                    src = &fc->frame->data[c_idx][(y >> vs) * fc->frame->linesize[c_idx] + ((x >> hs) << fc->ps.sps->pixel_shift)];
+                    if (!c_idx) {
+                        fc->vvcdsp.lf.filter_luma[1](src, fc->frame->linesize[c_idx],
+                            beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
+                    } else {
+                        fc->vvcdsp.lf.filter_chroma[1](src, fc->frame->linesize[c_idx],
+                            beta, tc, no_p, no_q, max_len_p, max_len_q, vs);
                     }
                 }
             }
@@ -950,8 +947,10 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
     const int c_end     = fc->ps.sps->r->sps_chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
     uint8_t* src;
     int x, y, qp;
-    uint8_t no_p = 0;
-    uint8_t no_q = 0;
+
+    //not use this yet, may needed by plt.
+    const uint8_t no_p[4] = { 0 };
+    const uint8_t no_q[4] = { 0 } ;
 
     int ctb_log2_size_y = fc->ps.sps->ctb_log2_size_y;
     int x_end, x_end2, y_end;
@@ -986,35 +985,30 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
 
                 for (int i = 0; i < DEBLOCK_STEP >> (2 - hs); i++) {
                     const int dx = i << 2;
+                    const DBParams *params = fc->tab.deblock + ctb - (x + dx < x0);
+                    const int beta_offset = params->beta_offset[c_idx];
+                    const int tc_offset = params->tc_offset[c_idx];
+
                     bs[i] = (x + dx < x_end2 ) ? TAB_BS(fc->tab.horizontal_bs[c_idx], x + dx, y) : 0;
                     if (bs[i]) {
-                        const DBParams  *params = fc->tab.deblock + ctb - (x + dx < x0);
-                        const int tc_offset     = params->tc_offset[c_idx];
-                        const int beta_offset   = params->beta_offset[c_idx];
-
                         src = &fc->frame->data[c_idx][(y >> vs) * fc->frame->linesize[c_idx] + (((x + dx)>> hs) << fc->ps.sps->pixel_shift)];
                         qp = get_qp(fc, src, x + dx, y, c_idx, 0);
 
                         beta[i] = betatable[av_clip(qp + beta_offset, 0, MAX_QP)];
-                        tc[i] = TC_CALC(qp, bs[i]);
 
                         max_filter_length(fc, x + dx, y, c_idx, 0, horizontal_ctu_edge, bs[i], &max_len_p[i], &max_len_q[i]);
                         all_zero_bs = 0;
                     }
+                    tc[i] = bs[i] ? TC_CALC(qp, bs[i]) : 0;
                 }
                 if (!all_zero_bs) {
-                    for (int i = 0; i < DEBLOCK_STEP >> (2 - hs); i++) {
-                        const int dx = i << 2;
-                        src = &fc->frame->data[c_idx][(y >> vs) * fc->frame->linesize[c_idx] + (((x + dx)>> hs) << fc->ps.sps->pixel_shift)];
-                        if (bs[i]) {
-                            if (!c_idx) {
-                                fc->vvcdsp.lf.filter_luma[0](src, fc->frame->linesize[c_idx],
-                                    beta[i], tc[i], no_p, no_q, max_len_p[i], max_len_q[i], horizontal_ctu_edge);
-                            } else {
-                                fc->vvcdsp.lf.filter_chroma[0](src, fc->frame->linesize[c_idx],
-                                    beta[i], tc[i], no_p, no_q, hs, max_len_p[i], max_len_q[i]);
-                            }
-                        }
+                    src = &fc->frame->data[c_idx][(y >> vs) * fc->frame->linesize[c_idx] + ((x >> hs) << fc->ps.sps->pixel_shift)];
+                    if (!c_idx) {
+                        fc->vvcdsp.lf.filter_luma[0](src, fc->frame->linesize[c_idx],
+                            beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
+                    } else {
+                        fc->vvcdsp.lf.filter_chroma[0](src, fc->frame->linesize[c_idx],
+                            beta, tc, no_p, no_q, max_len_p, max_len_q, hs);
                     }
                 }
             }
