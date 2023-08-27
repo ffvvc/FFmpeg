@@ -351,10 +351,10 @@ cglobal vvc_inv_dct2_dct2_%1x%1_dc_%2, 1, 2, 1, coeff, tmp
 ; %3, %4, %5, %6 - vertical offsets
 ; %7 - horizontal offset
 %macro LOAD_BLOCK 7
-    movq   %1, [r0 + %3 + %7]
-    movhps %1, [r0 + %5 + %7]
-    movq   %2, [r0 + %4 + %7]
-    movhps %2, [r0 + %6 + %7]
+    movq   %1, [dstq + %3 + %7]
+    movhps %1, [dstq + %5 + %7]
+    movq   %2, [dstq + %4 + %7]
+    movhps %2, [dstq + %6 + %7]
 %endmacro
 
 ; void ff_vvc_inv_dct2_dct2_4x4__{8,10}_<opt>(int16_t *dst, const int *coeffs, int nzw, int log2_transform_range)
@@ -385,8 +385,8 @@ cglobal vvc_inv_dct2_dct2_4x4_%1, 2, 2, 5, dst, coeffs
     psrad    %5, %4
     psrad    %3, %4
     packssdw %5, %3
-    movq     [coeffsq + %1], %5
-    movhps   [coeffsq + %2], %5
+    movq     [dstq + %1], %5
+    movhps   [dstq + %2], %5
 %endmacro
 
 ; %1 - horizontal offset
@@ -446,10 +446,10 @@ cglobal vvc_inv_dct2_dct2_4x4_%1, 2, 2, 5, dst, coeffs
 %endmacro
 
 %macro STORE_PACKED 7
-    movq   [r0 + %3 + %7], %1
-    movhps [r0 + %4 + %7], %1
-    movq   [r0 + %5 + %7], %2
-    movhps [r0 + %6 + %7], %2
+    movq   [dstq + %3 + %7], %1
+    movhps [dstq + %4 + %7], %1
+    movq   [dstq + %5 + %7], %2
+    movhps [dstq + %6 + %7], %2
 %endmacro
 
 ; transpose 4x4 block packed
@@ -491,8 +491,20 @@ cglobal vvc_inv_dct2_dct2_4x4_%1, 2, 2, 5, dst, coeffs
     STORE_PACKED m4, m5, %2, %2 + %3, %2 + 2 * %3, %2 + 3 * %3, %1
 %endmacro
 
+%macro LOAD_COEFFS 1 ; count
+    xor r2q, r2q
+.loop:
+    mova m0, [coeffsq + r2q * 4]
+    mova m1, [coeffsq + r2q * 4 + 16]
+    packssdw m0, m1
+    mova [dstq + r2q * 2], m0
+    add r2q, 8
+    cmp r2q, %1
+    jle .loop
+%endmacro
+
 %macro TRANSPOSE_8x8 0
-cglobal vvc_inv_dct2_dct2_transpose_8x8, 0, 0, 0
+cglobal vvc_inv_dct2_dct2_transpose_8x8, 0, 2, 0, dst, coeffs
     ; M1 M2 ^T = M1^t M3^t
     ; M3 M4      M2^t M4^t
 
@@ -511,7 +523,9 @@ cglobal vvc_inv_dct2_dct2_transpose_8x8, 0, 0, 0
 ; void ff_vvc_inv_dct2_dct2_8x8_{8,10}_<opt>(int16_t *coeffs, int col_limit)
 ; %1 = bitdepth
 %macro IDCT_8x8 1
-cglobal vvc_inv_dct2_dct2_8x8_%1, 1, 1, 8, coeffs
+cglobal vvc_inv_dct2_dct2_8x8_%1, 2, 2, 8, dst, coeffs
+    LOAD_COEFFS 64
+
     TR_8x4 0, 7, 32, 1, 16, 8, 1
     TR_8x4 8, 7, 32, 1, 16, 8, 1
 
@@ -594,7 +608,7 @@ cglobal vvc_inv_dct2_dct2_8x8_%1, 1, 1, 8, coeffs
 %endmacro
 
 %macro TRANSPOSE_16x16 0
-cglobal vvc_inv_dct2_dct2_transpose_16x16, 0, 0, 0
+cglobal vvc_inv_dct2_dct2_transpose_16x16, 0, 2, 0, dst, coeffs
 ; M1  M2  M3  M4 ^T      m1 m5 m9  m13   M_i^T = m_i
 ; M5  M6  M7  M8    -->  m2 m6 m10 m14
 ; M9  M10 M11 M12        m3 m7 m11 m15
@@ -633,20 +647,21 @@ cglobal vvc_inv_dct2_dct2_transpose_16x16, 0, 0, 0
 ; void ff_vvc_inv_dct2_dct2_16x16_{8,10}_<opt>(int16_t *coeffs, int col_limit)
 ; %1 = bitdepth
 %macro IDCT_16x16 1
-cglobal vvc_inv_dct2_dct2_16x16_%1, 1, 2, 16, coeffs
-    mov r1d, 3
+cglobal vvc_inv_dct2_dct2_16x16_%1, 2, 3, 16, dst, coeffs
+    LOAD_COEFFS 256
+    mov r2d, 3
 .loop16:
-    TR_16x4 8 * r1, 7, [pd_64], 64, 2, 32, 8, 16, 1, 0
-    dec r1d
+    TR_16x4 8 * r2, 7, [pd_64], 64, 2, 32, 8, 16, 1, 0
+    dec r2d
     jge .loop16
 
     call vvc_inv_dct2_dct2_transpose_16x16_ %+ cpuname
 
     DEFINE_BIAS %1
-    mov r1d, 3
+    mov r2d, 3
 .loop16_2:
-    TR_16x4 8 * r1, shift, [arr_add], 64, 2, 32, 8, 16, 1, 1
-    dec r1d
+    TR_16x4 8 * r2, shift, [arr_add], 64, 2, 32, 8, 16, 1, 1
+    dec r2d
     jge .loop16_2
 
     TAIL_CALL vvc_inv_dct2_dct2_transpose_16x16_ %+ cpuname, 1
@@ -707,7 +722,7 @@ cglobal vvc_inv_dct2_dct2_16x16_%1, 1, 2, 16, coeffs
 %endif
 
     lea r2, [trans_coeff32 + 15 * 128]
-    lea r3, [coeffsq + %1]
+    lea r3, [dstq + %1]
     lea r4, [r3 + 16 * 64]
     mov r5d, 15 * 16
 %%loop:
@@ -719,7 +734,7 @@ cglobal vvc_inv_dct2_dct2_16x16_%1, 1, 2, 16, coeffs
 %endmacro
 
 %macro TRANSPOSE_32x32 0
-cglobal vvc_inv_dct2_dct2_transpose_32x32, 0, 0, 0
+cglobal vvc_inv_dct2_dct2_transpose_32x32, 0, 5, 0, dst, coeffs
     ; M0  M1 ... M7
     ; M8         M15
     ;
@@ -728,56 +743,56 @@ cglobal vvc_inv_dct2_dct2_transpose_32x32, 0, 0, 0
     ; M56        M63
 
     TRANSPOSE_BLOCK 0, 0, 64 ; M1
-    mov r1d, 7
-    mov r2d, 7 * 256
+    mov r2d, 7
+    mov r3d, 7 * 256
 .loop_transpose:
-    SWAP_BLOCKS 0, r2, 64, 0, r1 * 8
-    sub r2d, 256
-    dec r1d
+    SWAP_BLOCKS 0, r3, 64, 0, r2 * 8
+    sub r3d, 256
+    dec r2d
     jg .loop_transpose
 
     TRANSPOSE_BLOCK 8, 256, 64 ; M9
-    mov r1d, 6
-    mov r2d, 512
-    mov r3d, 16
+    mov r2d, 6
+    mov r3d, 512
+    mov r4d, 16
 .loop_transpose2:
-    SWAP_BLOCKS 8, r2, 64, 256, r3
-    add r3d, 8
-    add r2d, 256
-    dec r1d
+    SWAP_BLOCKS 8, r3, 64, 256, r4
+    add r4d, 8
+    add r3d, 256
+    dec r2d
     jg .loop_transpose2
 
     TRANSPOSE_BLOCK 2 * 8, 2 * 256, 64 ; M9
-    mov r1d, 5
-    mov r2d, 768
-    mov r3d, 24
+    mov r2d, 5
+    mov r3d, 768
+    mov r4d, 24
 .loop_transpose3:
-    SWAP_BLOCKS 2 * 8, r2, 64, 2 * 256, r3
-    add r3d, 8
-    add r2d, 256
-    dec r1d
+    SWAP_BLOCKS 2 * 8, r3, 64, 2 * 256, r4
+    add r4d, 8
+    add r3d, 256
+    dec r2d
     jg .loop_transpose3
 
     TRANSPOSE_BLOCK 3 * 8, 3 * 256, 64 ; M27
-    mov r1d, 4
-    mov r2d, 1024
-    mov r3d, 32
+    mov r2d, 4
+    mov r3d, 1024
+    mov r4d, 32
 .loop_transpose4:
-    SWAP_BLOCKS 3 * 8, r2, 64, 3 * 256, r3
-    add r3d, 8
-    add r2d, 256
-    dec r1d
+    SWAP_BLOCKS 3 * 8, r3, 64, 3 * 256, r4
+    add r4d, 8
+    add r3d, 256
+    dec r2d
     jg .loop_transpose4
 
     TRANSPOSE_BLOCK 4 * 8, 4 * 256, 64 ; M36
-    mov r1d, 3
-    mov r2d, 1280
-    mov r3d, 40
+    mov r2d, 3
+    mov r3d, 1280
+    mov r4d, 40
 .loop_transpose5:
-    SWAP_BLOCKS 4 * 8, r2, 64, 4 * 256, r3
-    add r3d, 8
-    add r2d, 256
-    dec r1d
+    SWAP_BLOCKS 4 * 8, r3, 64, 4 * 256, r4
+    add r4d, 8
+    add r3d, 256
+    dec r2d
     jg .loop_transpose5
 
     TRANSPOSE_BLOCK 5 * 8, 5 * 256, 64 ; M45
@@ -795,19 +810,20 @@ cglobal vvc_inv_dct2_dct2_transpose_32x32, 0, 0, 0
 ; void ff_vvc_inv_dct2_dct2_32x32_{8,10}_<opt>(int16_t *coeffs, int col_limit)
 ; %1 = bitdepth
 %macro IDCT_32x32 1
-cglobal vvc_inv_dct2_dct2_32x32_%1, 1, 6, 16, 256, coeffs
-    mov r1d, 7
+cglobal vvc_inv_dct2_dct2_32x32_%1, 2, 7, 16, 256, dst, coeffs
+    LOAD_COEFFS 1024
+    mov r2d, 7
 .loop32:
-    TR_32x4 8 * r1, %1, 1
-    dec r1d
+    TR_32x4 8 * r2, %1, 1
+    dec r2d
     jge .loop32
 
     call vvc_inv_dct2_dct2_transpose_32x32_ %+ cpuname
 
-    mov r1d, 7
+    mov r2d, 7
 .loop32_2:
-    TR_32x4 8 * r1, %1, 0
-    dec r1d
+    TR_32x4 8 * r2, %1, 0
+    dec r2d
     jge .loop32_2
 
     TAIL_CALL vvc_inv_dct2_dct2_transpose_32x32_ %+ cpuname, 1
