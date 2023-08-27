@@ -878,6 +878,72 @@ static void FUNC(vvc_loop_filter_luma)(uint8_t* _pix, ptrdiff_t _xstride, ptrdif
     }
 }
 
+static void FUNC(loop_filter_chroma_strong)(pixel *pix, const ptrdiff_t xstride, const ptrdiff_t ystride,
+    const int size, const int32_t tc, const uint8_t no_p, const uint8_t no_q)
+{
+    for (int d = 0; d < size; d++) {
+        const int p3 = P3;
+        const int p2 = P2;
+        const int p1 = P1;
+        const int p0 = P0;
+        const int q0 = Q0;
+        const int q1 = Q1;
+        const int q2 = Q2;
+        const int q3 = Q3;
+        if (!no_p) {
+            P0 = av_clip((p3 + p2 + p1 + 2 * p0 + q0 + q1 + q2 + 4) >> 3, p0 - tc, p0 + tc);
+            P1 = av_clip((2 * p3 + p2 + 2 * p1 + p0 + q0 + q1 + 4) >> 3, p1 - tc, p1 + tc);
+            P2 = av_clip((3 * p3 + 2 * p2 + p1 + p0 + q0 + 4) >> 3, p2 - tc, p2 + tc );
+        }
+        if (!no_q) {
+            Q0 = av_clip((p2 + p1 + p0 + 2 * q0 + q1 + q2 + q3 + 4) >> 3, q0 - tc, q0 + tc);
+            Q1 = av_clip((p1 + p0 + q0 + 2 * q1 + q2 + 2 * q3 + 4) >> 3, q1 - tc, q1 + tc);
+            Q2 = av_clip((p0 + q0 + q1 + 2 * q2 + 3 * q3 + 4) >> 3, q2 - tc, q2 + tc);
+        }
+        pix += ystride;
+    }
+}
+
+static void FUNC(loop_filter_chroma_strong_one_side)(pixel *pix, const ptrdiff_t xstride, const ptrdiff_t ystride,
+    const int size, const int32_t tc, const uint8_t no_p, const uint8_t no_q)
+{
+    for (int d = 0; d < size; d++) {
+        const int p1 = P1;
+        const int p0 = P0;
+        const int q0 = Q0;
+        const int q1 = Q1;
+        const int q2 = Q2;
+        const int q3 = Q3;
+        if (!no_p) {
+            P0 = av_clip((3 * p1 + 2 * p0 + q0 + q1 + q2 + 4) >> 3, p0 - tc, p0 + tc);
+        }
+        if (!no_q) {
+            Q0 = av_clip((2 * p1 + p0 + 2 * q0 + q1 + q2 + q3 + 4) >> 3, q0 - tc, q0 + tc);
+            Q1 = av_clip((p1 + p0 + q0 + 2 * q1 + q2 + 2 * q3 + 4) >> 3, q1 - tc, q1 + tc);
+            Q2 = av_clip((p0 + q0 + q1 + 2 * q2 + 3 * q3 + 4) >> 3, q2 - tc, q2 + tc);
+        }
+        pix += ystride;
+    }
+}
+
+static void FUNC(loop_filter_chroma_weak)(pixel *pix, const ptrdiff_t xstride, const ptrdiff_t ystride,
+    const int size, const int32_t tc, const uint8_t no_p, const uint8_t no_q)
+{
+    for (int d = 0; d < size; d++) {
+        int delta0;
+        const int p1 = P1;
+        const int p0 = P0;
+        const int q0 = Q0;
+        const int q1 = Q1;
+        delta0 = av_clip((((q0 - p0) * 4) + p1 - q1 + 4) >> 3, -tc, tc);
+        if (!no_p)
+            P0 = av_clip_pixel(p0 + delta0);
+        if (!no_q)
+            Q0 = av_clip_pixel(q0 - delta0);
+        pix += ystride;
+    }
+}
+
 static void FUNC(vvc_loop_filter_chroma)(uint8_t *_pix, const ptrdiff_t  _xstride, const ptrdiff_t _ystride,
     const int32_t *_beta, const int32_t *_tc, const uint8_t *_no_p, const uint8_t *_no_q,
     const uint8_t *_max_len_p, const uint8_t *_max_len_q, const int shift)
@@ -885,7 +951,7 @@ static void FUNC(vvc_loop_filter_chroma)(uint8_t *_pix, const ptrdiff_t  _xstrid
     const ptrdiff_t xstride = _xstride / sizeof(pixel);
     const ptrdiff_t ystride = _ystride / sizeof(pixel);
     const int size          = shift ? 2 : 4;
-    const int end           = 8 / size;
+    const int end           = 8 / size;         // 8 samples a loop
 
     for (int i = 0; i < end; i++) {
         pixel *pix          = (pixel *)_pix + i * size * ystride;
@@ -941,63 +1007,12 @@ static void FUNC(vvc_loop_filter_chroma)(uint8_t *_pix, const ptrdiff_t  _xstrid
             }
         }
 
-        if (max_len_p == 3 && max_len_q == 3) {
-            //strong
-            for (int d = 0; d < size; d++) {
-                const int p3 = P3;
-                const int p2 = P2;
-                const int p1 = P1;
-                const int p0 = P0;
-                const int q0 = Q0;
-                const int q1 = Q1;
-                const int q2 = Q2;
-                const int q3 = Q3;
-                if (!no_p) {
-                    P0 = av_clip((p3 + p2 + p1 + 2 * p0 + q0 + q1 + q2 + 4) >> 3, p0 - tc, p0 + tc);
-                    P1 = av_clip((2 * p3 + p2 + 2 * p1 + p0 + q0 + q1 + 4) >> 3, p1 - tc, p1 + tc);
-                    P2 = av_clip((3 * p3 + 2 * p2 + p1 + p0 + q0 + 4) >> 3, p2 - tc, p2 + tc );
-                }
-                if (!no_q) {
-                    Q0 = av_clip((p2 + p1 + p0 + 2 * q0 + q1 + q2 + q3 + 4) >> 3, q0 - tc, q0 + tc);
-                    Q1 = av_clip((p1 + p0 + q0 + 2 * q1 + q2 + 2 * q3 + 4) >> 3, q1 - tc, q1 + tc);
-                    Q2 = av_clip((p0 + q0 + q1 + 2 * q2 + 3 * q3 + 4) >> 3, q2 - tc, q2 + tc);
-                }
-                pix += ystride;
-            }
-        } else if (max_len_q == 3) {
-            for (int d = 0; d < size; d++) {
-                const int p1 = P1;
-                const int p0 = P0;
-                const int q0 = Q0;
-                const int q1 = Q1;
-                const int q2 = Q2;
-                const int q3 = Q3;
-                if (!no_p) {
-                    P0 = av_clip((3 * p1 + 2 * p0 + q0 + q1 + q2 + 4) >> 3, p0 - tc, p0 + tc);
-                }
-                if (!no_q) {
-                    Q0 = av_clip((2 * p1 + p0 + 2 * q0 + q1 + q2 + q3 + 4) >> 3, q0 - tc, q0 + tc);
-                    Q1 = av_clip((p1 + p0 + q0 + 2 * q1 + q2 + 2 * q3 + 4) >> 3, q1 - tc, q1 + tc);
-                    Q2 = av_clip((p0 + q0 + q1 + 2 * q2 + 3 * q3 + 4) >> 3, q2 - tc, q2 + tc);
-                }
-                pix += ystride;
-            }
-        } else {
-            //weak
-            for (int d = 0; d < size; d++) {
-                int delta0;
-                const int p1 = P1;
-                const int p0 = P0;
-                const int q0 = Q0;
-                const int q1 = Q1;
-                delta0 = av_clip((((q0 - p0) * 4) + p1 - q1 + 4) >> 3, -tc, tc);
-                if (!no_p)
-                    P0 = av_clip_pixel(p0 + delta0);
-                if (!no_q)
-                    Q0 = av_clip_pixel(q0 - delta0);
-                pix += ystride;
-            }
-        }
+        if (max_len_p == 3 && max_len_q == 3)
+            FUNC(loop_filter_chroma_strong)(pix, xstride, ystride, size, tc, no_p, no_q);
+        else if (max_len_q == 3)
+            FUNC(loop_filter_chroma_strong_one_side)(pix, xstride, ystride, size, tc, no_p, no_q);
+        else
+            FUNC(loop_filter_chroma_weak)(pix, xstride, ystride, size, tc, no_p, no_q);
     }
 }
 
