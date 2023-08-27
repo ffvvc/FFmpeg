@@ -93,8 +93,8 @@ static void check_itx(VVCDSPContext h, enum TxType trh, enum TxType trv, int bit
                                        ref_dst, width * sizeof(*ref_dst),
                                        new_dst, width * sizeof(*new_dst),
                                        width, height, "dst");
+                bench_new(new_dst, new_src, width, 15);
             }
-            bench_new(new_dst, new_src, width, 15);
         }
     }
 }
