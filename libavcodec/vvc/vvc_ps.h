@@ -61,11 +61,11 @@ typedef struct VVCSPS {
     //derived values
     uint16_t    width;
     uint16_t    height;
-    int         hshift[VVC_MAX_SAMPLE_ARRAYS];
-    int         vshift[VVC_MAX_SAMPLE_ARRAYS];
+    uint8_t     hshift[VVC_MAX_SAMPLE_ARRAYS];
+    uint8_t     vshift[VVC_MAX_SAMPLE_ARRAYS];
     uint32_t    max_pic_order_cnt_lsb;                             ///< MaxPicOrderCntLsb
 
-    int         pixel_shift;
+    uint8_t     pixel_shift;
     enum AVPixelFormat pix_fmt;
 
     uint8_t     bit_depth;                                          ///< BitDepth
@@ -83,12 +83,12 @@ typedef struct VVCSPS {
     uint32_t    ladf_interval_lower_bound[LADF_MAX_INTERVAL];       ///< SpsLadfIntervalLowerBound[]
     uint8_t     log2_parallel_merge_level;                          ///< sps_log2_parallel_merge_level_minus2 + 2;
     uint8_t     log2_transform_range;                               ///< Log2TransformRange
-    int         chroma_qp_table[3][VVC_MAX_POINTS_IN_QP_TABLE];     ///< ChromaQpTable
+    int8_t      chroma_qp_table[3][VVC_MAX_POINTS_IN_QP_TABLE];     ///< ChromaQpTable
 } VVCSPS;
 
 typedef struct DBParams {
-    int beta_offset[VVC_MAX_SAMPLE_ARRAYS];
-    int tc_offset[VVC_MAX_SAMPLE_ARRAYS];
+    int8_t beta_offset[VVC_MAX_SAMPLE_ARRAYS];
+    int8_t tc_offset[VVC_MAX_SAMPLE_ARRAYS];
 } DBParams;
 
 typedef struct VVCPPS {
@@ -110,7 +110,7 @@ typedef struct VVCPPS {
 
     uint16_t ctb_width;
     uint16_t ctb_height;
-    int      ctb_count;
+    uint32_t ctb_count;
 
     uint16_t min_pu_width;
     uint16_t min_pu_height;
@@ -134,13 +134,13 @@ typedef struct VVCPPS {
 
 #define MAX_WEIGHTS 15
 typedef struct PredWeightTable {
-    int log2_denom[2];                                          ///< luma_log2_weight_denom, ChromaLog2WeightDenom
+    uint8_t log2_denom[2];                                      ///< luma_log2_weight_denom, ChromaLog2WeightDenom
 
-    int nb_weights[2];                                          ///< num_l0_weights, num_l1_weights
-    int weight_flag[2][2][MAX_WEIGHTS];                         ///< luma_weight_l0_flag, chroma_weight_l0_flag,
+    uint8_t nb_weights[2];                                      ///< num_l0_weights, num_l1_weights
+    uint8_t weight_flag[2][2][MAX_WEIGHTS];                     ///< luma_weight_l0_flag, chroma_weight_l0_flag,
                                                                 ///< luma_weight_l1_flag, chroma_weight_l1_flag,
-    int weight[2][VVC_MAX_SAMPLE_ARRAYS][MAX_WEIGHTS];          ///< LumaWeightL0, LumaWeightL1, ChromaWeightL0, ChromaWeightL1
-    int offset[2][VVC_MAX_SAMPLE_ARRAYS][MAX_WEIGHTS];          ///< luma_offset_l0, luma_offset_l1, ChromaOffsetL0, ChromaOffsetL1
+    int16_t weight[2][VVC_MAX_SAMPLE_ARRAYS][MAX_WEIGHTS];      ///< LumaWeightL0, LumaWeightL1, ChromaWeightL0, ChromaWeightL1
+    int16_t offset[2][VVC_MAX_SAMPLE_ARRAYS][MAX_WEIGHTS];      ///< luma_offset_l0, luma_offset_l1, ChromaOffsetL0, ChromaOffsetL1
 } PredWeightTable;
 
 typedef struct VVCPH {
@@ -149,7 +149,7 @@ typedef struct VVCPH {
 
     //derived values
     uint32_t max_num_subblock_merge_cand;           ///< MaxNumSubblockMergeCand
-    int      poc;                                   ///< PicOrderCntVal
+    int32_t  poc;                                   ///< PicOrderCntVal
     PredWeightTable pwt;
 } VVCPH;
 
@@ -208,15 +208,15 @@ typedef struct VVCScalingList {
 } VVCScalingList;
 
 typedef struct VVCLMCS {
-    int      min_bin_idx;
-    int      max_bin_idx;
+    uint8_t  min_bin_idx;
+    uint8_t  max_bin_idx;
 
     //*2 for high depth
     uint8_t  fwd_lut[LMCS_MAX_LUT_SIZE * 2];
     uint8_t  inv_lut[LMCS_MAX_LUT_SIZE * 2];
 
-    int      pivot[LMCS_MAX_BIN_SIZE + 1];
-    int      chroma_scale_coeff[LMCS_MAX_BIN_SIZE];
+    uint16_t pivot[LMCS_MAX_BIN_SIZE + 1];
+    uint16_t chroma_scale_coeff[LMCS_MAX_BIN_SIZE];
 } VVCLMCS;
 
 typedef struct VVCFrameParamSets {
