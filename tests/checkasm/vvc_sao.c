@@ -150,14 +150,14 @@ void checkasm_check_vvc_sao(void)
     for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
         VVCDSPContext h;
 
-        ff_vvc_dsp_init(&h, bit_depth);
+        ff_vvc_dsp_init(&h, bit_depth, 0);
         check_sao_band(h, bit_depth);
     }
     report("sao_band");
 
     for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
         VVCDSPContext h;
-        ff_vvc_dsp_init(&h, bit_depth);
+        ff_vvc_dsp_init(&h, bit_depth, 0);
         check_sao_edge(h, bit_depth);
     }
     report("sao_edge");
