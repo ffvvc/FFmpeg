@@ -921,8 +921,13 @@ void ff_vvc_deblock_vertical(const VVCLocalContext *lc, int x0, int y0)
                         fc->vvcdsp.lf.filter_luma[1](src,
                             fc->frame->linesize[c_idx], beta, tc, no_p, no_q, max_len_p, max_len_q, 0);
                     } else {
-                        fc->vvcdsp.lf.filter_chroma[1](src,
-                            fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);
+                        if (vs || (no_p || no_q) || (max_len_p == 3 || max_len_q == 3) || (!max_len_p || !max_len_q)) {
+                            fc->vvcdsp.lf.filter_chroma_c[1](src,
+                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);
+                        } else {
+                            fc->vvcdsp.lf.filter_chroma_c[1](src,
+                                fc->frame->linesize[c_idx], beta, tc, no_p, no_q, vs, max_len_p, max_len_q);
+                        }
                     }
                 }
             }
@@ -990,8 +995,14 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
                         fc->vvcdsp.lf.filter_luma[0](src, fc->frame->linesize[c_idx],
                             beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
                     } else {
-                        fc->vvcdsp.lf.filter_chroma[0](src, fc->frame->linesize[c_idx], beta,
-                            tc, no_p, no_q, hs, max_len_p, max_len_q);
+                        if (hs || (no_p || no_q) || (!max_len_p || !max_len_q) || (max_len_p == 3 || max_len_q == 3)) {
+                            fc->vvcdsp.lf.filter_chroma_c[0](src, fc->frame->linesize[c_idx], beta,
+                                tc, no_p, no_q, hs, max_len_p, max_len_q);
+                        } else {
+                            fc->vvcdsp.lf.filter_chroma[0](src, fc->frame->linesize[c_idx], beta,
+                                tc, no_p, no_q, hs, max_len_p, max_len_q);
+                        }
+
                     }
                 }
             }

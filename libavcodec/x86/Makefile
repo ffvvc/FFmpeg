@@ -206,5 +206,6 @@ X86ASM-OBJS-$(CONFIG_VP9_DECODER)      += x86/vp9intrapred.o            \
 X86ASM-OBJS-$(CONFIG_VVC_DECODER)      += x86/vvc_alf.o                 \
                                           x86/vvc_sao.o                 \
                                           x86/vvc_sao_10bit.o           \
-                                          x86/vvc_mc.o
+                                          x86/vvc_mc.o                  \
+                                          x86/vvc_deblock.o
 X86ASM-OBJS-$(CONFIG_WEBP_DECODER)     += x86/vp8dsp.o
