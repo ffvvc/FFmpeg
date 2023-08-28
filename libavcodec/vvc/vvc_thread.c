@@ -31,18 +31,6 @@
 #include "vvc_intra.h"
 #include "vvc_refs.h"
 
-#if !HAVE_THREADS
-#define pthread_cond_init(c, a)         0
-#define pthread_cond_broadcast(c)       do {} while(0)
-#define pthread_cond_wait(c, m)         do {} while(0)
-#define pthread_cond_destroy(c)         do {} while(0)
-
-#define pthread_mutex_init(m, a)        0
-#define pthread_mutex_lock(l)           do {} while(0)
-#define pthread_mutex_unlock(l)         do {} while(0)
-#define pthread_mutex_destroy(l)        do {} while(0)
-#endif
-
 typedef struct VVCRowThread {
     VVCTask reconstruct_task;
     VVCTask deblock_v_task;
@@ -74,8 +62,8 @@ struct VVCFrameThread {
     int nb_parse_tasks;
     int row_progress[VVC_PROGRESS_LAST];
 
-    pthread_mutex_t lock;
-    pthread_cond_t  cond;
+    AVMutex lock;
+    AVCond  cond;
 };
 
 static int get_avail(const VVCFrameThread *ft, const int rx, const int ry, const VVCTaskType type)
@@ -341,7 +329,7 @@ static void report_frame_progress(VVCFrameContext *fc, VVCTask *t)
 
     if (atomic_fetch_add(&ft->rows[t->ry].progress[idx], 1) == ft->ctu_width - 1) {
         int y;
-        pthread_mutex_lock(&ft->lock);
+        ff_mutex_lock(&ft->lock);
         y = old = ft->row_progress[idx];
         while (y < ft->ctu_height && atomic_load(&ft->rows[y].progress[idx]) == ft->ctu_width)
             y++;
@@ -350,7 +338,7 @@ static void report_frame_progress(VVCFrameContext *fc, VVCTask *t)
             ft->row_progress[idx] = y;
             ff_vvc_report_progress(fc->ref, idx, progress);
         }
-        pthread_mutex_unlock(&ft->lock);
+        ff_mutex_unlock(&ft->lock);
     }
 }
 
@@ -569,7 +557,7 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static void finished_one_task(VVCFrameThread *ft, const VVCTaskType type)
 {
     int parse_done = 0;
-    pthread_mutex_lock(&ft->lock);
+    ff_mutex_lock(&ft->lock);
 
     av_assert0(ft->nb_scheduled_tasks);
     ft->nb_scheduled_tasks--;
@@ -581,9 +569,9 @@ static void finished_one_task(VVCFrameThread *ft, const VVCTaskType type)
             parse_done = 1;
     }
     if (parse_done || !ft->nb_scheduled_tasks)
-        pthread_cond_broadcast(&ft->cond);
+        ff_cond_broadcast(&ft->cond);
 
-    pthread_mutex_unlock(&ft->lock);
+    ff_mutex_unlock(&ft->lock);
 }
 
 
@@ -655,8 +643,8 @@ void ff_vvc_frame_thread_free(VVCFrameContext *fc)
     if (!ft)
         return;
 
-    pthread_mutex_destroy(&ft->lock);
-    pthread_cond_destroy(&ft->cond);
+    ff_mutex_destroy(&ft->lock);
+    ff_cond_destroy(&ft->cond);
     av_freep(&ft->avails);
     av_freep(&ft->cols);
     av_freep(&ft->rows);
@@ -722,11 +710,11 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
             t->fc = fc;
         }
 
-        if ((ret = pthread_cond_init(&ft->cond, NULL)))
+        if ((ret = ff_cond_init(&ft->cond, NULL)))
             goto fail;
 
-        if ((ret = pthread_mutex_init(&ft->lock, NULL))) {
-            pthread_cond_destroy(&ft->cond);
+        if ((ret = ff_mutex_init(&ft->lock, NULL))) {
+            ff_cond_destroy(&ft->cond);
             goto fail;
         }
     }
@@ -771,13 +759,13 @@ void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t)
     VVCFrameContext *fc = t->fc;
     VVCFrameThread *ft  = fc->frame_thread;
 
-    pthread_mutex_lock(&ft->lock);
+    ff_mutex_lock(&ft->lock);
 
     ft->nb_scheduled_tasks++;
     if (t->type == VVC_TASK_TYPE_PARSE)
         ft->nb_parse_tasks++;
 
-    pthread_mutex_unlock(&ft->lock);
+    ff_mutex_unlock(&ft->lock);
 
     av_executor_execute(s->executor, &t->task);
 }
@@ -787,7 +775,7 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
     VVCFrameThread *ft = fc->frame_thread;
     int check_missed_slices = 1;
 
-    pthread_mutex_lock(&ft->lock);
+    ff_mutex_lock(&ft->lock);
 
     while (ft->nb_scheduled_tasks) {
         if (check_missed_slices && !ft->nb_parse_tasks) {
@@ -801,10 +789,10 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
             }
             check_missed_slices = 0;
         }
-        pthread_cond_wait(&ft->cond, &ft->lock);
+        ff_cond_wait(&ft->cond, &ft->lock);
     }
 
-    pthread_mutex_unlock(&ft->lock);
+    ff_mutex_unlock(&ft->lock);
     ff_vvc_report_frame_finished(fc->ref);
 
     // maybe all threads are waiting, let us wake up one
