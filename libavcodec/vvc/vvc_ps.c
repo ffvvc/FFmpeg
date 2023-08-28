@@ -116,7 +116,7 @@ static int sps_chroma_qp_table(VVCSPS *sps)
 
     for (int i = 0; i < num_qp_tables; i++) {
         int num_points_in_qp_table;
-        int qp_in[VVC_MAX_POINTS_IN_QP_TABLE], qp_out[VVC_MAX_POINTS_IN_QP_TABLE];
+        int8_t qp_in[VVC_MAX_POINTS_IN_QP_TABLE], qp_out[VVC_MAX_POINTS_IN_QP_TABLE];
         unsigned int delta_qp_in[VVC_MAX_POINTS_IN_QP_TABLE];
         int off = sps->qp_bd_offset;
 
@@ -630,8 +630,8 @@ static int ph_compute_poc(const H266RawPictureHeader *ph, const H266RawSPS *sps,
     return poc_msb + poc_lsb;
 }
 
-static av_always_inline int lmcs_derive_lut_sample(int sample,
-    int *pivot1, int *pivot2, int *scale_coeff, const int idx, const int max)
+static av_always_inline uint16_t lmcs_derive_lut_sample(uint16_t sample,
+    uint16_t *pivot1, uint16_t *pivot2, uint16_t *scale_coeff, const int idx, const int max)
 {
     const int lut_sample =
         pivot1[idx] + ((scale_coeff[idx] * (sample - pivot2[idx]) + (1<< 10)) >> 11);
@@ -648,9 +648,9 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
     const int shift     = av_log2(org_cw);
     const int off       = 1 << (shift - 1);
     int cw[LMCS_MAX_BIN_SIZE];
-    int input_pivot[LMCS_MAX_BIN_SIZE];
-    int scale_coeff[LMCS_MAX_BIN_SIZE];
-    int inv_scale_coeff[LMCS_MAX_BIN_SIZE];
+    uint16_t input_pivot[LMCS_MAX_BIN_SIZE];
+    uint16_t scale_coeff[LMCS_MAX_BIN_SIZE];
+    uint16_t inv_scale_coeff[LMCS_MAX_BIN_SIZE];
     int i, delta_crs;
     if (bit_depth > LMCS_MAX_BIT_DEPTH)
         return AVERROR_PATCHWELCOME;
@@ -684,9 +684,9 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
     }
 
     //derive lmcs_fwd_lut
-    for (int sample = 0; sample < max; sample++) {
+    for (uint16_t sample = 0; sample < max; sample++) {
         const int idx_y = sample / org_cw;
-        const int fwd_sample = lmcs_derive_lut_sample(sample, lmcs->pivot,
+        const uint16_t fwd_sample = lmcs_derive_lut_sample(sample, lmcs->pivot,
             input_pivot, scale_coeff, idx_y, max);
         if (bit_depth > 8)
             ((uint16_t *)lmcs->fwd_lut)[sample] = fwd_sample;
@@ -697,8 +697,8 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
 
     //derive lmcs_inv_lut
     i = lmcs->min_bin_idx;
-    for (int sample = 0; sample < max; sample++) {
-        int inv_sample;
+    for (uint16_t sample = 0; sample < max; sample++) {
+        uint16_t inv_sample;
         while (sample >= lmcs->pivot[i + 1] && i <= lmcs->max_bin_idx)
             i++;
 
