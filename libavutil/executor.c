@@ -25,14 +25,14 @@
 
 #if !HAVE_THREADS
 
-#define executor_thread_t    char
+#define ExecutorThread  char
 
 #define executor_thread_create(t, a, s, ar)      0
 #define executor_thread_join(t, r)               do {} while(0)
 
 #else
 
-#define executor_thread_t    pthread_t
+#define ExecutorThread  pthread_t
 
 #define executor_thread_create(t, a, s, ar)      pthread_create(t, a, s, ar)
 #define executor_thread_join(t, r)               pthread_join(t, r)
@@ -41,7 +41,7 @@
 
 typedef struct ThreadInfo {
     AVExecutor *e;
-    executor_thread_t thread;
+    ExecutorThread thread;
 } ThreadInfo;
 
 struct AVExecutor {
