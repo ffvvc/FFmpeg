@@ -721,15 +721,15 @@ cglobal vvc_inv_dct2_dct2_16x16_%1, 2, 3, 16, dst, coeffs
     LOAD_BIAS %2, m14
 %endif
 
-    lea r2, [trans_coeff32 + 15 * 128]
-    lea r3, [dstq + %1]
-    lea r4, [r3 + 16 * 64]
-    mov r5d, 15 * 16
+    lea r3, [trans_coeff32 + 15 * 128]
+    lea r4, [dstq + %1]
+    lea r5, [r4 + 16 * 64]
+    mov r6d, 15 * 16
 %%loop:
-    E32_O32 r2, r3 + r5 * 4, r4, shift, r5
-    sub r2, 128
-    add r4, 64
-    sub r5d, 16
+    E32_O32 r3, r4 + r6 * 4, r5, shift, r6
+    sub r3, 128
+    add r5, 64
+    sub r6d, 16
     jge %%loop
 %endmacro
 
