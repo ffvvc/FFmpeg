@@ -54,10 +54,10 @@ extern const int8_t ff_vvc_inter_luma_filters[VVC_INTER_FILTER_TYPES][VVC_INTER_
 extern const int8_t ff_vvc_inter_chroma_filters[VVC_INTER_FILTER_TYPES][VVC_INTER_CHROMA_FACTS][VVC_INTER_CHROMA_TAPS];
 extern const int8_t ff_vvc_inter_luma_dmvr_filters[VVC_INTER_LUMA_DMVR_FACTS][VVC_INTER_LUMA_DMVR_TAPS];
 
-#define NUM_INTRA_LUMA_TAPS 4
-#define NUM_INTRA_LUMA_FACTS 32
-extern const int8_t ff_vvc_filter_c[NUM_INTRA_LUMA_FACTS][NUM_INTRA_LUMA_TAPS];
-extern const int8_t ff_vvc_filter_g[NUM_INTRA_LUMA_FACTS][NUM_INTRA_LUMA_TAPS];
+#define VVC_INTRA_LUMA_TYPES         2
+#define VVC_INTRA_LUMA_FACTS        32
+#define VVC_INTRA_LUMA_TAPS          4
+extern const int8_t ff_vvc_intra_luma_filter[VVC_INTRA_LUMA_TYPES][VVC_INTRA_LUMA_FACTS][VVC_INTRA_LUMA_TAPS];
 
 #define VVC_GPM_NUM_PARTITION  64
 #define VVC_GPM_NUM_ANGLES     32
