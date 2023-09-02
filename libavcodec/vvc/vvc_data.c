@@ -2018,7 +2018,7 @@ const uint8_t ff_vvc_gpm_angle_to_mirror[VVC_GPM_NUM_ANGLES] = {
 };
 
 #define INV -1
-const uint8_t ff_vvc_gpm_angle_to_weights_idx[32] = {
+const uint8_t ff_vvc_gpm_angle_to_weights_idx[VVC_GPM_NUM_ANGLES] = {
       0, INV, 1, 2, 3, 4, INV, INV, 5, INV, INV, 4, 3, 2, 1, INV,
       0, INV, 1, 2, 3, 4, INV, INV, 5, INV, INV, 4, 3, 2, 1, INV,
 };

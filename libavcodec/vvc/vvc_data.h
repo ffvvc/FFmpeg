@@ -59,9 +59,9 @@ extern const int8_t ff_vvc_inter_luma_dmvr_filters[VVC_INTER_LUMA_DMVR_FACTS][VV
 #define VVC_INTRA_LUMA_TAPS          4
 extern const int8_t ff_vvc_intra_luma_filter[VVC_INTRA_LUMA_TYPES][VVC_INTRA_LUMA_FACTS][VVC_INTRA_LUMA_TAPS];
 
-#define VVC_GPM_NUM_PARTITION  64
-#define VVC_GPM_NUM_ANGLES     32
-#define VVC_GPM_WEIGHT_SIZE    112
+#define VVC_GPM_NUM_PARTITION       64
+#define VVC_GPM_NUM_ANGLES          32
+#define VVC_GPM_WEIGHT_SIZE        112
 extern const uint8_t ff_vvc_gpm_angle_idx[VVC_GPM_NUM_PARTITION];
 extern const uint8_t ff_vvc_gpm_distance_idx[VVC_GPM_NUM_PARTITION];
 extern const  int8_t ff_vvc_gpm_distance_lut[VVC_GPM_NUM_ANGLES];
