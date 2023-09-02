@@ -887,6 +887,9 @@ static void FUNC(pred_h)(uint8_t *_src, const uint8_t *_left, const int w, const
     }
 }
 
+#define INTRA_LUMA_FILTER(p)    CLIP((p[0] * f[0] + p[1] * f[1] + p[2] * f[2] + p[3] * f[3] + 32) >> 6)
+#define INTRA_CHROMA_FILTER(p)  (((32 - fact) * p[1] + fact * p[2] + 16) >> 5)
+
 //8.4.5.2.13 Specification of INTRA_ANGULAR2..INTRA_ANGULAR66 intra prediction modes
 static void FUNC(pred_angular_v)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
     const int w, const int h, const ptrdiff_t stride, const int c_idx, const int mode,
@@ -912,23 +915,19 @@ static void FUNC(pred_angular_v)(uint8_t *_src, const uint8_t *_top, const uint8
         if (!fact && (!is_luma || !filter_flag)) {
             for (int x = 0; x < w; x++) {
                 const pixel *p = top + x + idx + 1;
-                const pixel pred = p[0];
-                POS(x, y) = pred;
+                POS(x, y) = *p;
             }
         } else {
             if (!c_idx) {
-                const int8_t* f = filter_flag ? ff_vvc_filter_g[fact] : ff_vvc_filter_c[fact];
+                const int8_t *f = ff_vvc_intra_luma_filter[filter_flag][fact];
                 for (int x = 0; x < w; x++) {
                     const pixel *p = top + x + idx;
-                    const int pred = (p[0] * f[0] + p[1] * f[1] +
-                                        p[2] * f[2] + p[3] * f[3] + 32) >> 6;
-                    POS(x, y) = av_clip_pixel(pred);
+                    POS(x, y) = INTRA_LUMA_FILTER(p);
                 }
             } else {
                 for (int x = 0; x < w; x++) {
-                    const pixel *p = top + x + idx + 1;
-                    const pixel pred = ((32 - fact) * p[0] + fact * p[1] + 16) >> 5;
-                    POS(x, y) = pred;
+                    const pixel *p = top + x + idx;
+                    POS(x, y) = INTRA_CHROMA_FILTER(p);
                 }
             }
         }
@@ -981,11 +980,10 @@ static void FUNC(pred_angular_h)(uint8_t *_src, const uint8_t *_top, const uint8
                 pred = p[1];
             } else {
                 if (!c_idx) {
-                    const int8_t* f = filter_flag ? ff_vvc_filter_g[fact] : ff_vvc_filter_c[fact] ;
-                    pred = (p[0] * f[0] + p[1] * f[1] + p[2] * f[2] + p[3] * f[3] + 32) >> 6;
-                    pred = CLIP(pred);
+                    const int8_t *f = ff_vvc_intra_luma_filter[filter_flag][fact];
+                    pred = INTRA_LUMA_FILTER(p);
                 } else {
-                    pred = ((32 - fact) * p[1] + fact * p[2] + 16) >> 5;
+                    pred = INTRA_CHROMA_FILTER(p);
                 }
             }
             if (need_pdpc) {
