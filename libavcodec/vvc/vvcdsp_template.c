@@ -24,6 +24,7 @@
 
 #include "vvcdec.h"
 
+#include "vvc_data.h"
 #include "vvc_inter_template.c"
 #include "vvc_intra_template.c"
 #include "vvc_filter_template.c"
