@@ -1157,32 +1157,13 @@ int ff_vvc_decode_aps(VVCParamSets *ps, const CodedBitstreamUnit *unit)
     return ret;
 }
 
-static int sh_subpic_idx(const H266RawSliceHeader *sh, const H266RawSPS *sps, const H266RawPPS *pps)
-{
-    const int sps_num_subpics = sps->sps_num_subpics_minus1 + 1;
-
-    if (!sps->sps_subpic_info_present_flag)
-        return 0;
-
-    if (!sps->sps_subpic_id_mapping_explicitly_signalled_flag)
-        return sh->sh_subpic_id;
-
-    for (int i = 0; i <= sps_num_subpics; i++) {
-        if (pps->pps_subpic_id[i] == sh->sh_subpic_id)
-            return i;
-    }
-
-    return sps_num_subpics;
-}
-
 static void sh_slice_address(VVCSH *sh, const H266RawSPS *sps, const VVCPPS *pps)
 {
     const int slice_address     = sh->r->sh_slice_address;
-    const int curr_subpic_idx   = sh_subpic_idx(sh->r, sps, pps->r);
 
     if (pps->r->pps_rect_slice_flag) {
         int pic_level_slice_idx = slice_address;
-        for (int j = 0; j < curr_subpic_idx; j++)
+        for (int j = 0; j < sh->r->curr_subpic_idx; j++)
             pic_level_slice_idx += pps->r->num_slices_in_subpic[j];
         sh->ctb_addr_in_curr_slice = pps->ctb_addr_in_slice + pps->slice_start_offset[pic_level_slice_idx];
         sh->num_ctus_in_curr_slice = pps->num_ctus_in_slice[pic_level_slice_idx];
