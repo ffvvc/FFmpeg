@@ -67,10 +67,10 @@ transmatrix[2][2] = {
     { a, -a },
 }
  */
-void ff_vvc_inv_dct2_2(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_2(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 {
     const int a = 64;
-    const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
+    const int32_t x0 = in[0 * in_stride], x1 = in[1 * in_stride];
 
     out[0 * out_stride] = a * (x0 + x1);
     out[1 * out_stride] = a * (x0 - x1);
@@ -84,16 +84,16 @@ transmatrix[4][4] = {
     { c, -b,  b, -c},
 }
  */
-void ff_vvc_inv_dct2_4(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_4(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 {
     const int a = 64, b = 83, c = 36;
-    const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
-    const int x2 = in[2 * in_stride], x3 = in[3 * in_stride];
-    const int E[2] = {
+    const int32_t x0 = in[0 * in_stride], x1 = in[1 * in_stride];
+    const int32_t x2 = in[2 * in_stride], x3 = in[3 * in_stride];
+    const int32_t E[2] = {
         a * (x0 + x2),
         a * (x0 - x2),
     };
-    const int O[2] = {
+    const int32_t O[2] = {
         b * x1 + c * x3,
         c * x1 - b * x3,
     };
@@ -116,26 +116,26 @@ transmatrix[8][8] = {
     { g, -f,  e, -d,  d, -e,  f, -g},
 }
  */
-void ff_vvc_inv_dct2_8(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_8(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18;
-    const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
-    const int x2 = in[2 * in_stride], x3 = in[3 * in_stride];
-    const int x4 = in[4 * in_stride], x5 = in[5 * in_stride];
-    const int x6 = in[6 * in_stride], x7 = in[7 * in_stride];
-    const int EE[2] = {
+    const int32_t x0 = in[0 * in_stride], x1 = in[1 * in_stride];
+    const int32_t x2 = in[2 * in_stride], x3 = in[3 * in_stride];
+    const int32_t x4 = in[4 * in_stride], x5 = in[5 * in_stride];
+    const int32_t x6 = in[6 * in_stride], x7 = in[7 * in_stride];
+    const int32_t EE[2] = {
         a * (x0 + x4),
         a * (x0 - x4),
     };
-    const int EO[2] = {
+    const int32_t EO[2] = {
         b * x2 + c * x6,
         c * x2 - b * x6,
     };
-    const int E[4] = {
+    const int32_t E[4] = {
         EE[0] + EO[0], EE[1] + EO[1],
         EE[1] - EO[1], EE[0] - EO[0],
     };
-    const int O[4] = {
+    const int32_t O[4] = {
         d * x1 + e * x3 + f * x5 + g * x7,
         e * x1 - g * x3 - d * x5 - f * x7,
         f * x1 - d * x3 + g * x5 + e * x7,
@@ -172,41 +172,41 @@ transmatrix[16][16] = {
     { o, -n,  m, -l,  k, -j,  i, -h,  h, -i,  j, -k,  l, -m,  n, -o},
 }
  */
-void ff_vvc_inv_dct2_16(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_16(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18, h = 90;
     const int i = 87, j = 80, k = 70, l = 57, m = 43, n = 25, o =  9;
-    const int x0  = in[0  * in_stride], x1  = in[1  * in_stride];
-    const int x2  = in[2  * in_stride], x3  = in[3  * in_stride];
-    const int x4  = in[4  * in_stride], x5  = in[5  * in_stride];
-    const int x6  = in[6  * in_stride], x7  = in[7  * in_stride];
-    const int x8  = in[8  * in_stride], x9  = in[9  * in_stride];
-    const int x10 = in[10 * in_stride], x11 = in[11 * in_stride];
-    const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
-    const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
-    const int EEE[2] = {
+    const int32_t x0  = in[0  * in_stride], x1  = in[1  * in_stride];
+    const int32_t x2  = in[2  * in_stride], x3  = in[3  * in_stride];
+    const int32_t x4  = in[4  * in_stride], x5  = in[5  * in_stride];
+    const int32_t x6  = in[6  * in_stride], x7  = in[7  * in_stride];
+    const int32_t x8  = in[8  * in_stride], x9  = in[9  * in_stride];
+    const int32_t x10 = in[10 * in_stride], x11 = in[11 * in_stride];
+    const int32_t x12 = in[12 * in_stride], x13 = in[13 * in_stride];
+    const int32_t x14 = in[14 * in_stride], x15 = in[15 * in_stride];
+    const int32_t EEE[2] = {
         a * (x0 + x8),
         a * (x0 - x8),
     };
-    const int EEO[2] = {
+    const int32_t EEO[2] = {
         b * x4 + c * x12,
         c * x4 - b * x12,
     };
-    const int EE[4] = {
+    const int32_t EE[4] = {
         EEE[0] + EEO[0], EEE[1] + EEO[1],
         EEE[1] - EEO[1], EEE[0] - EEO[0],
     };
-    const int EO[4] = {
+    const int32_t EO[4] = {
         d * x2  + e * x6 + f * x10 + g * x14,
         e * x2  - g * x6 - d * x10 - f * x14,
         f * x2  - d * x6 + g * x10 + e * x14,
         g * x2  - f * x6 + e * x10 - d * x14,
     };
-    const int E[8] = {
+    const int32_t E[8] = {
         EE[0] + EO[0], EE[1] + EO[1], EE[2] + EO[2], EE[3] + EO[3],
         EE[3] - EO[3], EE[2] - EO[2], EE[1] - EO[1], EE[0] - EO[0],
     };
-    const int O[8] = {
+    const int32_t O[8] = {
         h * x1 + i * x3 + j * x5 + k * x7 + l * x9 + m * x11 + n * x13 + o * x15,
         i * x1 + l * x3 + o * x5 - m * x7 - j * x9 - h * x11 - k * x13 - n * x15,
         j * x1 + o * x3 - k * x5 - i * x7 - n * x9 + l * x11 + h * x13 + m * x15,
@@ -271,51 +271,51 @@ transMatrix[32][32] = {
     { E, -D,  C, -B,  A, -z,  y, -x,  w, -v,  u, -t,  s, -r,  q, -p,  p, -q,  r, -s,  t, -u,  v, -w,  x, -y,  z, -A,  B, -C,  D, -E},
 }
  */
-void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_32(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18, h = 90;
     const int i = 87, j = 80, k = 70, l = 57, m = 43, n = 25, o =  9, p = 90;
     const int q = 90, r = 88, s = 85, t = 82, u = 78, v = 73, w = 67, x = 61;
     const int y = 54, z = 46, A = 38, B = 31, C = 22, D = 13, E_=  4;
-    const int x0  = in[0  * in_stride], x1  = in[1  * in_stride];
-    const int x2  = in[2  * in_stride], x3  = in[3  * in_stride];
-    const int x4  = in[4  * in_stride], x5  = in[5  * in_stride];
-    const int x6  = in[6  * in_stride], x7  = in[7  * in_stride];
-    const int x8  = in[8  * in_stride], x9  = in[9  * in_stride];
-    const int x10 = in[10 * in_stride], x11 = in[11 * in_stride];
-    const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
-    const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
-    const int x16 = in[16 * in_stride], x17 = in[17 * in_stride];
-    const int x18 = in[18 * in_stride], x19 = in[19 * in_stride];
-    const int x20 = in[20 * in_stride], x21 = in[21 * in_stride];
-    const int x22 = in[22 * in_stride], x23 = in[23 * in_stride];
-    const int x24 = in[24 * in_stride], x25 = in[25 * in_stride];
-    const int x26 = in[26 * in_stride], x27 = in[27 * in_stride];
-    const int x28 = in[28 * in_stride], x29 = in[29 * in_stride];
-    const int x30 = in[30 * in_stride], x31 = in[31 * in_stride];
-    const int EEEE[2] = {
+    const int32_t x0  = in[0  * in_stride], x1  = in[1  * in_stride];
+    const int32_t x2  = in[2  * in_stride], x3  = in[3  * in_stride];
+    const int32_t x4  = in[4  * in_stride], x5  = in[5  * in_stride];
+    const int32_t x6  = in[6  * in_stride], x7  = in[7  * in_stride];
+    const int32_t x8  = in[8  * in_stride], x9  = in[9  * in_stride];
+    const int32_t x10 = in[10 * in_stride], x11 = in[11 * in_stride];
+    const int32_t x12 = in[12 * in_stride], x13 = in[13 * in_stride];
+    const int32_t x14 = in[14 * in_stride], x15 = in[15 * in_stride];
+    const int32_t x16 = in[16 * in_stride], x17 = in[17 * in_stride];
+    const int32_t x18 = in[18 * in_stride], x19 = in[19 * in_stride];
+    const int32_t x20 = in[20 * in_stride], x21 = in[21 * in_stride];
+    const int32_t x22 = in[22 * in_stride], x23 = in[23 * in_stride];
+    const int32_t x24 = in[24 * in_stride], x25 = in[25 * in_stride];
+    const int32_t x26 = in[26 * in_stride], x27 = in[27 * in_stride];
+    const int32_t x28 = in[28 * in_stride], x29 = in[29 * in_stride];
+    const int32_t x30 = in[30 * in_stride], x31 = in[31 * in_stride];
+    const int32_t EEEE[2] = {
         a * (x0 + x16),
         a * (x0 - x16),
     };
-    const int EEEO[2] = {
+    const int32_t EEEO[2] = {
         b * x8 + c * x24,
         c * x8 - b * x24,
     };
-    const int EEE[4] = {
+    const int32_t EEE[4] = {
         EEEE[0] + EEEO[0], EEEE[1] + EEEO[1],
         EEEE[1] - EEEO[1], EEEE[0] - EEEO[0],
     };
-    const int EEO[4] = {
+    const int32_t EEO[4] = {
         d * x4  + e * x12 + f * x20 + g * x28,
         e * x4  - g * x12 - d * x20 - f * x28,
         f * x4  - d * x12 + g * x20 + e * x28,
         g * x4  - f * x12 + e * x20 - d * x28,
     };
-    const int EE[8] = {
+    const int32_t EE[8] = {
         EEE[0] + EEO[0], EEE[1] + EEO[1], EEE[2] + EEO[2], EEE[3] + EEO[3],
         EEE[3] - EEO[3], EEE[2] - EEO[2], EEE[1] - EEO[1], EEE[0] - EEO[0],
     };
-    const int EO[8] = {
+    const int32_t EO[8] = {
         h * x2 + i * x6 + j * x10 + k * x14 + l * x18 + m * x22 + n * x26 + o * x30,
         i * x2 + l * x6 + o * x10 - m * x14 - j * x18 - h * x22 - k * x26 - n * x30,
         j * x2 + o * x6 - k * x10 - i * x14 - n * x18 + l * x22 + h * x26 + m * x30,
@@ -325,11 +325,11 @@ void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptr
         n * x2 - k * x6 + h * x10 - j * x14 + m * x18 + o * x22 - l * x26 + i * x30,
         o * x2 - n * x6 + m * x10 - l * x14 + k * x18 - j * x22 + i * x26 - h * x30,
     };
-    const int E[16] = {
+    const int32_t E[16] = {
         EE[0] + EO[0], EE[1] + EO[1], EE[2] + EO[2], EE[3] + EO[3], EE[4] + EO[4], EE[5] + EO[5], EE[6] + EO[6], EE[7] + EO[7],
         EE[7] - EO[7], EE[6] - EO[6], EE[5] - EO[5], EE[4] - EO[4], EE[3] - EO[3], EE[2] - EO[2], EE[1] - EO[1], EE[0] - EO[0],
     };
-    const int O[16] = {
+    const int32_t O[16] = {
         p * x1 + q * x3 + r * x5 + s * x7 + t * x9 + u * x11 + v * x13 + w * x15 + x * x17 + y * x19 + z * x21 + A * x23 + B * x25 + C * x27 + D * x29 + E_* x31,
         q * x1 + t * x3 + w * x5 + z * x7 + C * x9 - E_* x11 - B * x13 - y * x15 - v * x17 - s * x19 - p * x21 - r * x23 - u * x25 - x * x27 - A * x29 - D * x31,
         r * x1 + w * x3 + B * x5 - D * x7 - y * x9 - t * x11 - p * x13 - u * x15 - z * x17 - E_* x19 + A * x21 + v * x23 + q * x25 + s * x27 + x * x29 + C * x31,
@@ -451,7 +451,7 @@ transMatrix[64][64] = {
 }
  */
 
-void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_64(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 {
     const int aa = 64, ab = 83, ac = 36, ad = 89, ae = 75, af = 50, ag = 18, ah = 90;
     const int ai = 87, aj = 80, ak = 70, al = 57, am = 43, an = 25, ao =  9, ap = 90;
@@ -461,61 +461,61 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
     const int bo = 81, bp = 79, bq = 77, br = 73, bs = 71, bt = 69, bu = 65, bv = 62;
     const int bw = 59, bx = 56, by = 52, bz = 48, ca = 44, cb = 41, cc = 37, cd = 33;
     const int ce = 28, cf = 24, cg = 20, ch = 15, ci = 11, cj =  7, ck =  2;
-    const int x0  = in[0  * in_stride], x1  = in[1  * in_stride];
-    const int x2  = in[2  * in_stride], x3  = in[3  * in_stride];
-    const int x4  = in[4  * in_stride], x5  = in[5  * in_stride];
-    const int x6  = in[6  * in_stride], x7  = in[7  * in_stride];
-    const int x8  = in[8  * in_stride], x9  = in[9  * in_stride];
-    const int x10 = in[10 * in_stride], x11 = in[11 * in_stride];
-    const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
-    const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
-    const int x16 = in[16 * in_stride], x17 = in[17 * in_stride];
-    const int x18 = in[18 * in_stride], x19 = in[19 * in_stride];
-    const int x20 = in[20 * in_stride], x21 = in[21 * in_stride];
-    const int x22 = in[22 * in_stride], x23 = in[23 * in_stride];
-    const int x24 = in[24 * in_stride], x25 = in[25 * in_stride];
-    const int x26 = in[26 * in_stride], x27 = in[27 * in_stride];
-    const int x28 = in[28 * in_stride], x29 = in[29 * in_stride];
-    const int x30 = in[30 * in_stride], x31 = in[31 * in_stride];
-    const int x32 = in[32 * in_stride], x33 = in[33 * in_stride];
-    const int x34 = in[34 * in_stride], x35 = in[35 * in_stride];
-    const int x36 = in[36 * in_stride], x37 = in[37 * in_stride];
-    const int x38 = in[38 * in_stride], x39 = in[39 * in_stride];
-    const int x40 = in[40 * in_stride], x41 = in[41 * in_stride];
-    const int x42 = in[42 * in_stride], x43 = in[43 * in_stride];
-    const int x44 = in[44 * in_stride], x45 = in[45 * in_stride];
-    const int x46 = in[46 * in_stride], x47 = in[47 * in_stride];
-    const int x48 = in[48 * in_stride], x49 = in[49 * in_stride];
-    const int x50 = in[50 * in_stride], x51 = in[51 * in_stride];
-    const int x52 = in[52 * in_stride], x53 = in[53 * in_stride];
-    const int x54 = in[54 * in_stride], x55 = in[55 * in_stride];
-    const int x56 = in[56 * in_stride], x57 = in[57 * in_stride];
-    const int x58 = in[58 * in_stride], x59 = in[59 * in_stride];
-    const int x60 = in[60 * in_stride], x61 = in[61 * in_stride];
-    const int x62 = in[62 * in_stride], x63 = in[63 * in_stride];
-    const int EEEEE[2] = {
+    const int32_t x0  = in[0  * in_stride], x1  = in[1  * in_stride];
+    const int32_t x2  = in[2  * in_stride], x3  = in[3  * in_stride];
+    const int32_t x4  = in[4  * in_stride], x5  = in[5  * in_stride];
+    const int32_t x6  = in[6  * in_stride], x7  = in[7  * in_stride];
+    const int32_t x8  = in[8  * in_stride], x9  = in[9  * in_stride];
+    const int32_t x10 = in[10 * in_stride], x11 = in[11 * in_stride];
+    const int32_t x12 = in[12 * in_stride], x13 = in[13 * in_stride];
+    const int32_t x14 = in[14 * in_stride], x15 = in[15 * in_stride];
+    const int32_t x16 = in[16 * in_stride], x17 = in[17 * in_stride];
+    const int32_t x18 = in[18 * in_stride], x19 = in[19 * in_stride];
+    const int32_t x20 = in[20 * in_stride], x21 = in[21 * in_stride];
+    const int32_t x22 = in[22 * in_stride], x23 = in[23 * in_stride];
+    const int32_t x24 = in[24 * in_stride], x25 = in[25 * in_stride];
+    const int32_t x26 = in[26 * in_stride], x27 = in[27 * in_stride];
+    const int32_t x28 = in[28 * in_stride], x29 = in[29 * in_stride];
+    const int32_t x30 = in[30 * in_stride], x31 = in[31 * in_stride];
+    const int32_t x32 = in[32 * in_stride], x33 = in[33 * in_stride];
+    const int32_t x34 = in[34 * in_stride], x35 = in[35 * in_stride];
+    const int32_t x36 = in[36 * in_stride], x37 = in[37 * in_stride];
+    const int32_t x38 = in[38 * in_stride], x39 = in[39 * in_stride];
+    const int32_t x40 = in[40 * in_stride], x41 = in[41 * in_stride];
+    const int32_t x42 = in[42 * in_stride], x43 = in[43 * in_stride];
+    const int32_t x44 = in[44 * in_stride], x45 = in[45 * in_stride];
+    const int32_t x46 = in[46 * in_stride], x47 = in[47 * in_stride];
+    const int32_t x48 = in[48 * in_stride], x49 = in[49 * in_stride];
+    const int32_t x50 = in[50 * in_stride], x51 = in[51 * in_stride];
+    const int32_t x52 = in[52 * in_stride], x53 = in[53 * in_stride];
+    const int32_t x54 = in[54 * in_stride], x55 = in[55 * in_stride];
+    const int32_t x56 = in[56 * in_stride], x57 = in[57 * in_stride];
+    const int32_t x58 = in[58 * in_stride], x59 = in[59 * in_stride];
+    const int32_t x60 = in[60 * in_stride], x61 = in[61 * in_stride];
+    const int32_t x62 = in[62 * in_stride], x63 = in[63 * in_stride];
+    const int32_t EEEEE[2] = {
         aa * (x0 + x32),
         aa * (x0 - x32),
     };
-    const int EEEEO[2] = {
+    const int32_t EEEEO[2] = {
         ab * x16 + ac * x48,
         ac * x16 - ab * x48,
     };
-    const int EEEE[4] = {
+    const int32_t EEEE[4] = {
         EEEEE[0] + EEEEO[0], EEEEE[1] + EEEEO[1],
         EEEEE[1] - EEEEO[1], EEEEE[0] - EEEEO[0],
     };
-    const int EEEO[4] = {
+    const int32_t EEEO[4] = {
         ad * x8  + ae * x24 + af * x40 + ag * x56,
         ae * x8  - ag * x24 - ad * x40 - af * x56,
         af * x8  - ad * x24 + ag * x40 + ae * x56,
         ag * x8  - af * x24 + ae * x40 - ad * x56,
     };
-    const int EEE[8] = {
+    const int32_t EEE[8] = {
         EEEE[0] + EEEO[0], EEEE[1] + EEEO[1], EEEE[2] + EEEO[2], EEEE[3] + EEEO[3],
         EEEE[3] - EEEO[3], EEEE[2] - EEEO[2], EEEE[1] - EEEO[1], EEEE[0] - EEEO[0],
     };
-    const int EEO[8] = {
+    const int32_t EEO[8] = {
         ah * x4 + ai * x12 + aj * x20 + ak * x28 + al * x36 + am * x44 + an * x52 + ao * x60,
         ai * x4 + al * x12 + ao * x20 - am * x28 - aj * x36 - ah * x44 - ak * x52 - an * x60,
         aj * x4 + ao * x12 - ak * x20 - ai * x28 - an * x36 + al * x44 + ah * x52 + am * x60,
@@ -525,11 +525,11 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
         an * x4 - ak * x12 + ah * x20 - aj * x28 + am * x36 + ao * x44 - al * x52 + ai * x60,
         ao * x4 - an * x12 + am * x20 - al * x28 + ak * x36 - aj * x44 + ai * x52 - ah * x60,
     };
-    const int EE[16] = {
+    const int32_t EE[16] = {
         EEE[0] + EEO[0], EEE[1] + EEO[1], EEE[2] + EEO[2], EEE[3] + EEO[3], EEE[4] + EEO[4], EEE[5] + EEO[5], EEE[6] + EEO[6], EEE[7] + EEO[7],
         EEE[7] - EEO[7], EEE[6] - EEO[6], EEE[5] - EEO[5], EEE[4] - EEO[4], EEE[3] - EEO[3], EEE[2] - EEO[2], EEE[1] - EEO[1], EEE[0] - EEO[0],
     };
-    const int EO[16] = {
+    const int32_t EO[16] = {
         ap * x2 + aq * x6 + ar * x10 + as * x14 + at * x18 + au * x22 + av * x26 + aw * x30 + ax * x34 + ay * x38 + az * x42 + ba * x46 + bb * x50 + bc * x54 + bd * x58 + be * x62,
         aq * x2 + at * x6 + aw * x10 + az * x14 + bc * x18 - be * x22 - bb * x26 - ay * x30 - av * x34 - as * x38 - ap * x42 - ar * x46 - au * x50 - ax * x54 - ba * x58 - bd * x62,
         ar * x2 + aw * x6 + bb * x10 - bd * x14 - ay * x18 - at * x22 - ap * x26 - au * x30 - az * x34 - be * x38 + ba * x42 + av * x46 + aq * x50 + as * x54 + ax * x58 + bc * x62,
@@ -547,11 +547,11 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
         bd * x2 - ba * x6 + ax * x10 - au * x14 + ar * x18 - ap * x22 + as * x26 - av * x30 + ay * x34 - bb * x38 + be * x42 + bc * x46 - az * x50 + aw * x54 - at * x58 + aq * x62,
         be * x2 - bd * x6 + bc * x10 - bb * x14 + ba * x18 - az * x22 + ay * x26 - ax * x30 + aw * x34 - av * x38 + au * x42 - at * x46 + as * x50 - ar * x54 + aq * x58 - ap * x62,
     };
-    const int E[32] = {
+    const int32_t E[32] = {
         EE[0]  + EO[0],  EE[1]  + EO[1],  EE[2]  + EO[2],  EE[3]  + EO[3],  EE[4]  + EO[4],  EE[5]  + EO[5],  EE[6] + EO[6], EE[7] + EO[7], EE[8] + EO[8], EE[9] + EO[9], EE[10] + EO[10], EE[11] + EO[11], EE[12] + EO[12], EE[13] + EO[13], EE[14] + EO[14], EE[15] + EO[15],
         EE[15] - EO[15], EE[14] - EO[14], EE[13] - EO[13], EE[12] - EO[12], EE[11] - EO[11], EE[10] - EO[10], EE[9] - EO[9], EE[8] - EO[8], EE[7] - EO[7], EE[6] - EO[6], EE[5]  - EO[5],  EE[4]  - EO[4],  EE[3]  - EO[3],  EE[2]  - EO[2],  EE[1]  - EO[1],  EE[0]  - EO[0],
     };
-    const int O[32] = {
+    const int32_t O[32] = {
         bf * x1 + bg * x3 + bh * x5 + bi * x7 + bj * x9 + bk * x11 + bl * x13 + bm * x15 + bn * x17 + bo * x19 + bp * x21 + bq * x23 +  br * x25 + bs * x27 + bt * x29 + bu * x31 + bv * x33 + bw * x35 + bx * x37 + by * x39 + bz * x41 + ca * x43 + cb * x45 + cc * x47 + cd * x49 + ce * x51 + cf * x53 + cg * x55 + ch * x57 + ci * x59 + cj * x61 + ck * x63,
         bg * x1 + bj * x3 + bm * x5 + bp * x7 + bs * x9 + bv * x11 + by * x13 + cb * x15 + ce * x17 + ch * x19 + ck * x21 - ci * x23 + -cf * x25 - cc * x27 - bz * x29 - bw * x31 - bt * x33 - bq * x35 - bn * x37 - bk * x39 - bh * x41 - bf * x43 - bi * x45 - bl * x47 - bo * x49 - br * x51 - bu * x53 - bx * x55 - ca * x57 - cd * x59 - cg * x61 - cj * x63,
         bh * x1 + bm * x3 + br * x5 + bw * x7 + cb * x9 + cg * x11 - ck * x13 - cf * x15 - ca * x17 - bv * x19 - bq * x21 - bl * x23 + -bg * x25 - bi * x27 - bn * x29 - bs * x31 - bx * x33 - cc * x35 - ch * x37 + cj * x39 + ce * x41 + bz * x43 + bu * x45 + bp * x47 + bk * x49 + bf * x51 + bj * x53 + bo * x55 + bt * x57 + by * x59 + cd * x61 + ci * x63,
@@ -652,10 +652,10 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
     out[63 * out_stride] = E[0]  - O[0];
 };
 
-static void matrix_mul(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size)
+static void matrix_mul(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size)
 {
     for (int i = 0; i < size; i++) {
-         int o = 0;
+         int32_t o = 0;
 
          for (int j = 0; j < size; j++)
               o += in[j * in_stride] * matrix[j * size];
@@ -665,13 +665,13 @@ static void matrix_mul(int *out, const ptrdiff_t out_stride, const int *in, cons
     }
 }
 
-static void inv_dct8(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size)
+static void inv_dct8(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size)
 {
     matrix_mul(out, out_stride, in, in_stride, matrix, size);
 }
 
 #define DEFINE_INV_DCT8_1D(S)                                                                  \
-void ff_vvc_inv_dct8_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride) \
+void ff_vvc_inv_dct8_ ## S(int32_t *out, ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride) \
 {                                                                                              \
     inv_dct8(out, out_stride, in, in_stride, &ff_vvc_dct8_##S##x##S[0][0], S);                 \
 }
@@ -681,13 +681,13 @@ DEFINE_INV_DCT8_1D( 8)
 DEFINE_INV_DCT8_1D(16)
 DEFINE_INV_DCT8_1D(32)
 
-static void inv_dst7(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size)
+static void inv_dst7(int32_t *out, const ptrdiff_t out_stride, const int32_t *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size)
 {
      matrix_mul(out, out_stride, in, in_stride, matrix, size);
 }
 
 #define DEFINE_INV_DST7_1D(S)                                                                  \
-void ff_vvc_inv_dst7_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride) \
+void ff_vvc_inv_dst7_ ## S(int32_t *out, ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride) \
 {                                                                                              \
     inv_dst7(out, out_stride, in, in_stride, &ff_vvc_dst7_##S##x##S[0][0], S);                 \
 }
@@ -697,14 +697,14 @@ DEFINE_INV_DST7_1D( 8)
 DEFINE_INV_DST7_1D(16)
 DEFINE_INV_DST7_1D(32)
 
-void ff_vvc_inv_lfnst_1d(int *v, const int *u, int no_zero_size, int n_tr_s,
+void ff_vvc_inv_lfnst_1d(int32_t *v, const int32_t *u, int no_zero_size, int n_tr_s,
     int pred_mode_intra, int lfnst_idx, int log2_transform_range)
 {
      int lfnst_tr_set_idx    = pred_mode_intra < 0 ? 1 : ff_vvc_lfnst_tr_set_index[pred_mode_intra];
      const int8_t *tr_mat = n_tr_s > 16 ? ff_vvc_lfnst_8x8[lfnst_tr_set_idx][lfnst_idx-1][0] : ff_vvc_lfnst_4x4[lfnst_tr_set_idx][lfnst_idx - 1][0];
 
      for (int j = 0; j < n_tr_s; j++, tr_mat++) {
-        int t = 0;
+        int32_t t = 0;
 
         for (int i = 0; i < no_zero_size; i++)
             t += u[i] * tr_mat[i * n_tr_s];

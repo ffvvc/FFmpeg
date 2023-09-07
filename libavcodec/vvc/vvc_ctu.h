@@ -95,7 +95,7 @@ typedef struct TransformBlock {
     int bd_shift;
     int bd_offset;
 
-    int *coeffs;
+    int32_t *coeffs;
 } TransformBlock;
 
 typedef enum VVCTreeType {
@@ -369,7 +369,7 @@ struct VVCLocalContext {
     SliceContext *sc;
     VVCFrameContext *fc;
     EntryPoint *ep;
-    int *coeffs;
+    int32_t *coeffs;
 } ;
 
 typedef struct VVCAllowedSplit {

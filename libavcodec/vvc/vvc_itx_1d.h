@@ -27,7 +27,7 @@
 #include <stddef.h>
 
 #define vvc_itx_1d_fn(name) \
-    void (name)(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+    void (name)(int32_t *out, ptrdiff_t out_stride, const int32_t *in, ptrdiff_t in_stride)
 typedef vvc_itx_1d_fn(*vvc_itx_1d_fn);
 
 vvc_itx_1d_fn(ff_vvc_inv_dct2_2);
@@ -46,7 +46,7 @@ vvc_itx_1d_fn(ff_vvc_inv_dct8_16);
 vvc_itx_1d_fn(ff_vvc_inv_dct8_32);
 
 
-void ff_vvc_inv_lfnst_1d(int *v, const int *u, int no_zero_size, int n_tr_s,
+void ff_vvc_inv_lfnst_1d(int32_t *v, const int32_t *u, int no_zero_size, int n_tr_s,
     int pred_mode_intra, int lfnst_idx, int log2_transform_range);
 
 #endif // AVCODEC_VVC_ITX_1D_H

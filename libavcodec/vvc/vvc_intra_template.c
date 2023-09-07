@@ -428,14 +428,14 @@ static int FUNC(lmcs_derive_chroma_scale)(VVCLocalContext *lc, const int x0, con
 }
 
 // 8.7.5.3 Picture reconstruction with luma dependent chroma residual scaling process for chroma samples
-static void FUNC(lmcs_scale_chroma)(VVCLocalContext *lc, int *dst, const int *coeff,
+static void FUNC(lmcs_scale_chroma)(VVCLocalContext *lc, int32_t *dst, const int32_t *coeff,
     const int width, const int height, const int x0_cu, const int y0_cu)
 {
     const int chroma_scale = FUNC(lmcs_derive_chroma_scale)(lc, x0_cu, y0_cu);
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            const int c = av_clip_intp2(*coeff, BIT_DEPTH);
+            const int32_t c = av_clip_intp2(*coeff, BIT_DEPTH);
 
             if (c > 0)
                 *dst = (c * chroma_scale + (1 << 10)) >> 11;

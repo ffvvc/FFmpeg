@@ -29,7 +29,7 @@
 #include "vvc_intra_template.c"
 #include "vvc_filter_template.c"
 
-static void FUNC(add_residual)(uint8_t *_dst, const int *res,
+static void FUNC(add_residual)(uint8_t *_dst, const int32_t *res,
     const int w, const int h, const ptrdiff_t _stride)
 {
     pixel *dst          = (pixel *)_dst;
@@ -45,7 +45,7 @@ static void FUNC(add_residual)(uint8_t *_dst, const int *res,
     }
 }
 
-static void FUNC(add_residual_joint)(uint8_t *_dst, const int *res,
+static void FUNC(add_residual_joint)(uint8_t *_dst, const int32_t *res,
     const int w, const int h, const ptrdiff_t _stride, const int c_sign, const int shift)
 {
     pixel *dst = (pixel *)_dst;
@@ -54,7 +54,7 @@ static void FUNC(add_residual_joint)(uint8_t *_dst, const int *res,
 
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-            const int r = ((*res) * c_sign) >> shift;
+            const int32_t r = ((*res) * c_sign) >> shift;
             dst[x] = av_clip_pixel(dst[x] + r);
             res++;
         }
@@ -62,7 +62,7 @@ static void FUNC(add_residual_joint)(uint8_t *_dst, const int *res,
     }
 }
 
-static void FUNC(pred_residual_joint)(int *buf, const int w, const int h,
+static void FUNC(pred_residual_joint)(int32_t *buf, const int w, const int h,
     const int c_sign, const int shift)
 {
     for (int y = 0; y < h; y++) {
@@ -73,7 +73,7 @@ static void FUNC(pred_residual_joint)(int *buf, const int w, const int h,
     }
 }
 
-static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height,
+static void FUNC(transform_bdpcm)(int32_t *coeffs, const int width, const int height,
     const int vertical, const int log2_transform_range)
 {
     int x, y;
