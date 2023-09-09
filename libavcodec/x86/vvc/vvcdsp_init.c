@@ -123,54 +123,28 @@ static void alf_classify_12_avx2(int *class_idx, int *transpose_idx,
     } while (0)
 
 
-#define SAO_BAND_FILTER_FUNCS(bitd, opt)                                                                                        \
-void ff_vvc_sao_band_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,  \
-                                              const int16_t *sao_offset_val, int sao_left_class, int width, int height);        \
-void ff_vvc_sao_band_filter_16_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
-void ff_vvc_sao_band_filter_32_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
-void ff_vvc_sao_band_filter_48_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
-void ff_vvc_sao_band_filter_64_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
-void ff_vvc_sao_band_filter_80_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
-void ff_vvc_sao_band_filter_96_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);       \
-void ff_vvc_sao_band_filter_112_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,    \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
-void ff_vvc_sao_band_filter_128_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,    \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+#define SAO_FILTER_FUNCS(w, bitd, opt)                                                  \
+void ff_vvc_sao_band_filter_##w##_##bitd##_##opt(                                       \
+    uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,   \
+    const int16_t *sao_offset_val, int sao_left_class, int width, int height);          \
+void ff_vvc_sao_edge_filter_##w##_##bitd##_##opt(                                       \
+    uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,                           \
+    const int16_t *sao_offset_val, int eo, int width, int height);                      \
 
-SAO_BAND_FILTER_FUNCS(8,  avx2)
-SAO_BAND_FILTER_FUNCS(10, avx2)
-SAO_BAND_FILTER_FUNCS(12, avx2)
+#define SAO_FUNCS(bitd, opt)                                                            \
+    SAO_FILTER_FUNCS(8,   bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(16,  bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(32,  bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(48,  bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(64,  bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(80,  bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(96,  bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(112, bitd, opt)                                                    \
+    SAO_FILTER_FUNCS(128, bitd, opt)                                                    \
 
-#define SAO_EDGE_FILTER_FUNCS(bitd, opt)                                                                      \
-void ff_vvc_sao_edge_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,        \
-                                              const int16_t *sao_offset_val, int eo, int width, int height);  \
-void ff_vvc_sao_edge_filter_16_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_32_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_48_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_64_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_80_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_96_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_112_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_vvc_sao_edge_filter_128_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-
-
-SAO_EDGE_FILTER_FUNCS(8, avx2)
-SAO_EDGE_FILTER_FUNCS(10, avx2)
-SAO_EDGE_FILTER_FUNCS(12, avx2)
+SAO_FUNCS(8,  avx2)
+SAO_FUNCS(10, avx2)
+SAO_FUNCS(12, avx2)
 
 #define SAO_FILTER_INIT(type, bitd, opt) do {                                       \
     c->sao.type##_filter[0]       = ff_vvc_sao_##type##_filter_8_##bitd##_##opt;    \
