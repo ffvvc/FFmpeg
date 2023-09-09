@@ -116,7 +116,7 @@ static void alf_classify_12_avx2(int *class_idx, int *transpose_idx,
     ff_vvc_alf_classify_16bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 12);
 }
 
-#define ALF_DSP(depth) do {                                                     \
+#define ALF_INIT(depth) do {                                                     \
         c->alf.filter[LUMA] = alf_filter_luma_##depth##_avx2;                   \
         c->alf.filter[CHROMA] = alf_filter_chroma_##depth##_avx2;               \
         c->alf.classify = alf_classify_##depth##_avx2;                          \
@@ -248,18 +248,18 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
     if (EXTERNAL_AVX2(cpu_flags)) {
         switch (bit_depth) {
             case 8:
-                ALF_DSP(8);
+                ALF_INIT(8);
                 PUT_VVC_LUMA_INIT(8, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
                 break;
             case 10:
-                ALF_DSP(10);
+                ALF_INIT(10);
                 PUT_VVC_LUMA_INIT(10, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
                 break;
             case 12:
-                ALF_DSP(12);
+                ALF_INIT(12);
                 PUT_VVC_LUMA_INIT(12, avx2);
                 break;
             default:
