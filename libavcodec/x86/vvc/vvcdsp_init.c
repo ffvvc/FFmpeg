@@ -28,7 +28,7 @@
 #include "libavcodec/vvc/vvcdsp.h"
 #include "libavutil/x86/asm.h"
 #include "libavutil/x86/cpu.h"
-#include "libavcodec/x86/vvcdsp.h"
+#include "libavcodec/x86/vvc/vvcdsp.h"
 #include <stdlib.h>
 #include <time.h>
 
