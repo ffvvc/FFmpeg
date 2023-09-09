@@ -116,51 +116,51 @@ static void alf_classify_12_avx2(int *class_idx, int *transpose_idx,
     ff_vvc_alf_classify_16bpc_avx2(class_idx, transpose_idx, gradient_tmp, width, height, vb_pos, 12);
 }
 
-#define ALF_INIT(depth) do {                                                     \
-        c->alf.filter[LUMA] = alf_filter_luma_##depth##_avx2;                   \
-        c->alf.filter[CHROMA] = alf_filter_chroma_##depth##_avx2;               \
-        c->alf.classify = alf_classify_##depth##_avx2;                          \
+#define ALF_INIT(bd) do {                                                       \
+        c->alf.filter[LUMA] = alf_filter_luma_##bd##_avx2;                      \
+        c->alf.filter[CHROMA] = alf_filter_chroma_##bd##_avx2;                  \
+        c->alf.classify = alf_classify_##bd##_avx2;                             \
     } while (0)
 
 
-#define SAO_FILTER_FUNCS(w, bitd, opt)                                                  \
-void ff_vvc_sao_band_filter_##w##_##bitd##_##opt(                                       \
-    uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,   \
-    const int16_t *sao_offset_val, int sao_left_class, int width, int height);          \
-void ff_vvc_sao_edge_filter_##w##_##bitd##_##opt(                                       \
-    uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,                           \
-    const int16_t *sao_offset_val, int eo, int width, int height);                      \
+#define SAO_FILTER_FUNCS(w, bd, opt)                                                  \
+void ff_vvc_sao_band_filter_##w##_##bd##_##opt(                                       \
+    uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+    const int16_t *sao_offset_val, int sao_left_class, int width, int height);        \
+void ff_vvc_sao_edge_filter_##w##_##bd##_##opt(                                       \
+    uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,                         \
+    const int16_t *sao_offset_val, int eo, int width, int height);                    \
 
-#define SAO_FUNCS(bitd, opt)                                                            \
-    SAO_FILTER_FUNCS(8,   bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(16,  bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(32,  bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(48,  bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(64,  bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(80,  bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(96,  bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(112, bitd, opt)                                                    \
-    SAO_FILTER_FUNCS(128, bitd, opt)                                                    \
+#define SAO_FUNCS(bd, opt)                                                            \
+    SAO_FILTER_FUNCS(8,   bd, opt)                                                    \
+    SAO_FILTER_FUNCS(16,  bd, opt)                                                    \
+    SAO_FILTER_FUNCS(32,  bd, opt)                                                    \
+    SAO_FILTER_FUNCS(48,  bd, opt)                                                    \
+    SAO_FILTER_FUNCS(64,  bd, opt)                                                    \
+    SAO_FILTER_FUNCS(80,  bd, opt)                                                    \
+    SAO_FILTER_FUNCS(96,  bd, opt)                                                    \
+    SAO_FILTER_FUNCS(112, bd, opt)                                                    \
+    SAO_FILTER_FUNCS(128, bd, opt)                                                    \
 
 SAO_FUNCS(8,  avx2)
 SAO_FUNCS(10, avx2)
 SAO_FUNCS(12, avx2)
 
-#define SAO_FILTER_INIT(type, bitd, opt) do {                                       \
-    c->sao.type##_filter[0]       = ff_vvc_sao_##type##_filter_8_##bitd##_##opt;    \
-    c->sao.type##_filter[1]       = ff_vvc_sao_##type##_filter_16_##bitd##_##opt;   \
-    c->sao.type##_filter[2]       = ff_vvc_sao_##type##_filter_32_##bitd##_##opt;   \
-    c->sao.type##_filter[3]       = ff_vvc_sao_##type##_filter_48_##bitd##_##opt;   \
-    c->sao.type##_filter[4]       = ff_vvc_sao_##type##_filter_64_##bitd##_##opt;   \
-    c->sao.type##_filter[5]       = ff_vvc_sao_##type##_filter_80_##bitd##_##opt;   \
-    c->sao.type##_filter[6]       = ff_vvc_sao_##type##_filter_96_##bitd##_##opt;   \
-    c->sao.type##_filter[7]       = ff_vvc_sao_##type##_filter_112_##bitd##_##opt;  \
-    c->sao.type##_filter[8]       = ff_vvc_sao_##type##_filter_128_##bitd##_##opt;  \
+#define SAO_FILTER_INIT(type, bd, opt) do {                                       \
+    c->sao.type##_filter[0]       = ff_vvc_sao_##type##_filter_8_##bd##_##opt;    \
+    c->sao.type##_filter[1]       = ff_vvc_sao_##type##_filter_16_##bd##_##opt;   \
+    c->sao.type##_filter[2]       = ff_vvc_sao_##type##_filter_32_##bd##_##opt;   \
+    c->sao.type##_filter[3]       = ff_vvc_sao_##type##_filter_48_##bd##_##opt;   \
+    c->sao.type##_filter[4]       = ff_vvc_sao_##type##_filter_64_##bd##_##opt;   \
+    c->sao.type##_filter[5]       = ff_vvc_sao_##type##_filter_80_##bd##_##opt;   \
+    c->sao.type##_filter[6]       = ff_vvc_sao_##type##_filter_96_##bd##_##opt;   \
+    c->sao.type##_filter[7]       = ff_vvc_sao_##type##_filter_112_##bd##_##opt;  \
+    c->sao.type##_filter[8]       = ff_vvc_sao_##type##_filter_128_##bd##_##opt;  \
 } while (0)
 
-#define SAO_INIT(bitd, opt) do {                                                    \
-    SAO_FILTER_INIT(edge, bitd, opt);                                               \
-    SAO_FILTER_INIT(band, bitd, opt);                                               \
+#define SAO_INIT(bd, opt) do {                                                    \
+    SAO_FILTER_INIT(edge, bd, opt);                                               \
+    SAO_FILTER_INIT(band, bd, opt);                                               \
 } while (0)
 
 
@@ -172,25 +172,25 @@ SAO_FUNCS(12, avx2)
 #define PUT_VVC_LUMA_16_FUNC(dir, opt)                                                                        \
     void ff_vvc_put_vvc_luma_##dir##_16_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
     const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
-    const int hf_idx, const int vf_idx, const int bitdepth);
+    const int hf_idx, const int vf_idx, const int bbd);
 
-#define PUT_VVC_LUMA_FUNCS(bitd, opt)    \
-    PUT_VVC_LUMA_##bitd##_FUNC(h,  opt)  \
-    PUT_VVC_LUMA_##bitd##_FUNC(v,  opt)  \
-    PUT_VVC_LUMA_##bitd##_FUNC(hv, opt)
+#define PUT_VVC_LUMA_FUNCS(bd, opt)    \
+    PUT_VVC_LUMA_##bd##_FUNC(h,  opt)  \
+    PUT_VVC_LUMA_##bd##_FUNC(v,  opt)  \
+    PUT_VVC_LUMA_##bd##_FUNC(hv, opt)
 
-#define PUT_VVC_LUMA_FORWARD_FUNC(dir, bitd, opt)                                                                      \
-static void ff_vvc_put_vvc_luma_##dir##_##bitd##_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
-    const int height, const intptr_t mx, const intptr_t my, const int width,                                           \
-    const int hf_idx, const int vf_idx)                                                                                \
-{                                                                                                                      \
-    ff_vvc_put_vvc_luma_##dir##_16_##opt(dst, _src, _src_stride, height, mx, my, width, hf_idx, vf_idx, bitd);         \
+#define PUT_VVC_LUMA_FORWARD_FUNC(dir, bd, opt)                                                                      \
+static void ff_vvc_put_vvc_luma_##dir##_##bd##_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
+    const int height, const intptr_t mx, const intptr_t my, const int width,                                         \
+    const int hf_idx, const int vf_idx)                                                                              \
+{                                                                                                                    \
+    ff_vvc_put_vvc_luma_##dir##_16_##opt(dst, _src, _src_stride, height, mx, my, width, hf_idx, vf_idx, bd);         \
 }
 
-#define PUT_VVC_LUMA_FORWARD_FUNCS(bitd, opt) \
-    PUT_VVC_LUMA_FORWARD_FUNC(h,  bitd, opt)  \
-    PUT_VVC_LUMA_FORWARD_FUNC(v,  bitd, opt)  \
-    PUT_VVC_LUMA_FORWARD_FUNC(hv, bitd, opt)
+#define PUT_VVC_LUMA_FORWARD_FUNCS(bd, opt) \
+    PUT_VVC_LUMA_FORWARD_FUNC(h,  bd, opt)  \
+    PUT_VVC_LUMA_FORWARD_FUNC(v,  bd, opt)  \
+    PUT_VVC_LUMA_FORWARD_FUNC(hv, bd, opt)
 
 PUT_VVC_LUMA_FUNCS(8,  avx2)
 PUT_VVC_LUMA_FUNCS(16, avx2)
@@ -203,18 +203,18 @@ PUT_VVC_LUMA_FORWARD_FUNCS(10, avx512icl)
 PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
 #endif
 
-#define PUT_VVC_LUMA_INIT(bitd, opt) do {                             \
-    c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_##bitd##_##opt;  \
-    c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_##bitd##_##opt;  \
-    c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bitd##_##opt; \
+#define PUT_VVC_LUMA_INIT(bd, opt) do {                             \
+    c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_##bd##_##opt;  \
+    c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_##bd##_##opt;  \
+    c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bd##_##opt; \
 } while (0)
 
-void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
+void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
     const int cpu_flags = av_get_cpu_flags();
 
     if (EXTERNAL_AVX2(cpu_flags)) {
-        switch (bit_depth) {
+        switch (bd) {
             case 8:
                 ALF_INIT(8);
                 PUT_VVC_LUMA_INIT(8, avx2);
@@ -235,7 +235,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
         }
     }
     if (EXTERNAL_AVX2_FAST(cpu_flags)) {
-        switch (bit_depth) {
+        switch (bd) {
             case 8:
                 SAO_INIT(8, avx2);
                 break;
@@ -250,7 +250,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
     }
 #if HAVE_AVX512ICL_EXTERNAL
     if (EXTERNAL_AVX512ICL(cpu_flags)) {
-        switch (bit_depth) {
+        switch (bd) {
             case 10:
                 PUT_VVC_LUMA_INIT(10, avx512icl);
                 break;
