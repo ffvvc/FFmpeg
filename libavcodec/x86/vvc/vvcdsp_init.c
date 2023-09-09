@@ -147,18 +147,6 @@ SAO_BAND_FILTER_FUNCS(8,  avx2)
 SAO_BAND_FILTER_FUNCS(10, avx2)
 SAO_BAND_FILTER_FUNCS(12, avx2)
 
-#define SAO_BAND_INIT(bitd, opt) do {                                       \
-    c->sao.band_filter[0]   = ff_vvc_sao_band_filter_8_##bitd##_##opt;      \
-    c->sao.band_filter[1]   = ff_vvc_sao_band_filter_16_##bitd##_##opt;     \
-    c->sao.band_filter[2]   = ff_vvc_sao_band_filter_32_##bitd##_##opt;     \
-    c->sao.band_filter[3]   = ff_vvc_sao_band_filter_48_##bitd##_##opt;     \
-    c->sao.band_filter[4]   = ff_vvc_sao_band_filter_64_##bitd##_##opt;     \
-    c->sao.band_filter[5]   = ff_vvc_sao_band_filter_80_##bitd##_##opt;     \
-    c->sao.band_filter[6]   = ff_vvc_sao_band_filter_96_##bitd##_##opt;     \
-    c->sao.band_filter[7]   = ff_vvc_sao_band_filter_112_##bitd##_##opt;    \
-    c->sao.band_filter[8]   = ff_vvc_sao_band_filter_128_##bitd##_##opt;    \
-} while (0)
-
 #define SAO_EDGE_FILTER_FUNCS(bitd, opt)                                                                      \
 void ff_vvc_sao_edge_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,        \
                                               const int16_t *sao_offset_val, int eo, int width, int height);  \
@@ -184,17 +172,23 @@ SAO_EDGE_FILTER_FUNCS(8, avx2)
 SAO_EDGE_FILTER_FUNCS(10, avx2)
 SAO_EDGE_FILTER_FUNCS(12, avx2)
 
-#define SAO_EDGE_INIT(bitd, opt) do {                                           \
-    c->sao.edge_filter[0]       = ff_vvc_sao_edge_filter_8_##bitd##_##opt;      \
-    c->sao.edge_filter[1]       = ff_vvc_sao_edge_filter_16_##bitd##_##opt;     \
-    c->sao.edge_filter[2]       = ff_vvc_sao_edge_filter_32_##bitd##_##opt;     \
-    c->sao.edge_filter[3]       = ff_vvc_sao_edge_filter_48_##bitd##_##opt;     \
-    c->sao.edge_filter[4]       = ff_vvc_sao_edge_filter_64_##bitd##_##opt;     \
-    c->sao.edge_filter[5]       = ff_vvc_sao_edge_filter_80_##bitd##_##opt;     \
-    c->sao.edge_filter[6]       = ff_vvc_sao_edge_filter_96_##bitd##_##opt;     \
-    c->sao.edge_filter[7]       = ff_vvc_sao_edge_filter_112_##bitd##_##opt;    \
-    c->sao.edge_filter[8]       = ff_vvc_sao_edge_filter_128_##bitd##_##opt;    \
+#define SAO_FILTER_INIT(type, bitd, opt) do {                                       \
+    c->sao.type##_filter[0]       = ff_vvc_sao_##type##_filter_8_##bitd##_##opt;    \
+    c->sao.type##_filter[1]       = ff_vvc_sao_##type##_filter_16_##bitd##_##opt;   \
+    c->sao.type##_filter[2]       = ff_vvc_sao_##type##_filter_32_##bitd##_##opt;   \
+    c->sao.type##_filter[3]       = ff_vvc_sao_##type##_filter_48_##bitd##_##opt;   \
+    c->sao.type##_filter[4]       = ff_vvc_sao_##type##_filter_64_##bitd##_##opt;   \
+    c->sao.type##_filter[5]       = ff_vvc_sao_##type##_filter_80_##bitd##_##opt;   \
+    c->sao.type##_filter[6]       = ff_vvc_sao_##type##_filter_96_##bitd##_##opt;   \
+    c->sao.type##_filter[7]       = ff_vvc_sao_##type##_filter_112_##bitd##_##opt;  \
+    c->sao.type##_filter[8]       = ff_vvc_sao_##type##_filter_128_##bitd##_##opt;  \
 } while (0)
+
+#define SAO_INIT(bitd, opt) do {                                                    \
+    SAO_FILTER_INIT(edge, bitd, opt);                                               \
+    SAO_FILTER_INIT(band, bitd, opt);                                               \
+} while (0)
+
 
 #define PUT_VVC_LUMA_8_FUNC(dir, opt)                                                                         \
     void ff_vvc_put_vvc_luma_##dir##_8_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,  \
@@ -269,16 +263,13 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bit_depth)
     if (EXTERNAL_AVX2_FAST(cpu_flags)) {
         switch (bit_depth) {
             case 8:
-                SAO_BAND_INIT(8, avx2);
-                SAO_EDGE_INIT(8, avx2);
+                SAO_INIT(8, avx2);
                 break;
             case 10:
-                SAO_BAND_INIT(10, avx2);
-                SAO_EDGE_INIT(10, avx2);
+                SAO_INIT(10, avx2);
                 break;
             case 12:
-                SAO_BAND_INIT(12, avx2);
-                SAO_EDGE_INIT(12, avx2);
+                SAO_INIT(12, avx2);
             default:
                 break;
         }
