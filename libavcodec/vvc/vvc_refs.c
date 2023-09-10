@@ -26,13 +26,6 @@
 
 #include "vvc_refs.h"
 
-#if !HAVE_THREADS
-#define pthread_mutex_init(m, a)        0
-#define pthread_mutex_lock(l)           do {} while(0)
-#define pthread_mutex_unlock(l)         do {} while(0)
-#define pthread_mutex_destroy(l)        do {} while(0)
-#endif
-
 #define VVC_FRAME_FLAG_OUTPUT    (1 << 0)
 #define VVC_FRAME_FLAG_SHORT_REF (1 << 1)
 #define VVC_FRAME_FLAG_LONG_REF  (1 << 2)
@@ -40,7 +33,7 @@
 
 typedef struct FrameProgress {
     atomic_int progress[VVC_PROGRESS_LAST];
-    pthread_mutex_t lock;
+    AVMutex lock;
 } FrameProgress;
 
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
@@ -86,7 +79,7 @@ void ff_vvc_clear_refs(VVCFrameContext *fc)
 
 static void free_progress(void *opaque, uint8_t *data)
 {
-    pthread_mutex_destroy(&((FrameProgress*)data)->lock);
+    ff_mutex_destroy(&((FrameProgress*)data)->lock);
     av_free(data);
 }
 
@@ -99,7 +92,7 @@ static AVBufferRef *alloc_progress(void)
     if (!p)
         return NULL;
 
-    ret = pthread_mutex_init(&p->lock, NULL);
+    ret = ff_mutex_init(&p->lock, NULL);
     if (ret) {
         av_free(p);
         return NULL;
@@ -511,12 +504,12 @@ void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
     FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
 
-    pthread_mutex_lock(&p->lock);
+    ff_mutex_lock(&p->lock);
 
     av_assert0(p->progress[vp] < y || p->progress[vp] == INT_MAX);
     p->progress[vp] = y;
 
-    pthread_mutex_unlock(&p->lock);
+    ff_mutex_unlock(&p->lock);
 }
 
 int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
@@ -524,10 +517,10 @@ int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
     int ready ;
     FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
 
-    pthread_mutex_lock(&p->lock);
+    ff_mutex_lock(&p->lock);
 
     ready = p->progress[vp] > y + 1;
 
-    pthread_mutex_unlock(&p->lock);
+    ff_mutex_unlock(&p->lock);
     return ready;
 }

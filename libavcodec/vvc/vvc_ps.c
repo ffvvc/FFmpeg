@@ -26,6 +26,7 @@
 #include "vvc_ps.h"
 #include "vvcdec.h"
 
+
 typedef void (*free_fn)(uint8_t *data);
 
 static void ps_free(void *opaque, uint8_t *data)
@@ -115,7 +116,7 @@ static int sps_chroma_qp_table(VVCSPS *sps)
 
     for (int i = 0; i < num_qp_tables; i++) {
         int num_points_in_qp_table;
-        int qp_in[VVC_MAX_POINTS_IN_QP_TABLE], qp_out[VVC_MAX_POINTS_IN_QP_TABLE];
+        int8_t qp_in[VVC_MAX_POINTS_IN_QP_TABLE], qp_out[VVC_MAX_POINTS_IN_QP_TABLE];
         unsigned int delta_qp_in[VVC_MAX_POINTS_IN_QP_TABLE];
         int off = sps->qp_bd_offset;
 
@@ -629,8 +630,8 @@ static int ph_compute_poc(const H266RawPictureHeader *ph, const H266RawSPS *sps,
     return poc_msb + poc_lsb;
 }
 
-static av_always_inline int lmcs_derive_lut_sample(int sample,
-    int *pivot1, int *pivot2, int *scale_coeff, const int idx, const int max)
+static av_always_inline uint16_t lmcs_derive_lut_sample(uint16_t sample,
+    uint16_t *pivot1, uint16_t *pivot2, uint16_t *scale_coeff, const int idx, const int max)
 {
     const int lut_sample =
         pivot1[idx] + ((scale_coeff[idx] * (sample - pivot2[idx]) + (1<< 10)) >> 11);
@@ -647,9 +648,9 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
     const int shift     = av_log2(org_cw);
     const int off       = 1 << (shift - 1);
     int cw[LMCS_MAX_BIN_SIZE];
-    int input_pivot[LMCS_MAX_BIN_SIZE];
-    int scale_coeff[LMCS_MAX_BIN_SIZE];
-    int inv_scale_coeff[LMCS_MAX_BIN_SIZE];
+    uint16_t input_pivot[LMCS_MAX_BIN_SIZE];
+    uint16_t scale_coeff[LMCS_MAX_BIN_SIZE];
+    uint16_t inv_scale_coeff[LMCS_MAX_BIN_SIZE];
     int i, delta_crs;
     if (bit_depth > LMCS_MAX_BIT_DEPTH)
         return AVERROR_PATCHWELCOME;
@@ -683,9 +684,9 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
     }
 
     //derive lmcs_fwd_lut
-    for (int sample = 0; sample < max; sample++) {
+    for (uint16_t sample = 0; sample < max; sample++) {
         const int idx_y = sample / org_cw;
-        const int fwd_sample = lmcs_derive_lut_sample(sample, lmcs->pivot,
+        const uint16_t fwd_sample = lmcs_derive_lut_sample(sample, lmcs->pivot,
             input_pivot, scale_coeff, idx_y, max);
         if (bit_depth > 8)
             ((uint16_t *)lmcs->fwd_lut)[sample] = fwd_sample;
@@ -696,8 +697,8 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
 
     //derive lmcs_inv_lut
     i = lmcs->min_bin_idx;
-    for (int sample = 0; sample < max; sample++) {
-        int inv_sample;
+    for (uint16_t sample = 0; sample < max; sample++) {
+        uint16_t inv_sample;
         while (sample >= lmcs->pivot[i + 1] && i <= lmcs->max_bin_idx)
             i++;
 
@@ -877,6 +878,12 @@ void ff_vvc_ps_uninit(VVCParamSets *ps)
     for (i = 0; i < FF_ARRAY_ELEMS(ps->pps_list); i++)
         av_buffer_unref(&ps->pps_list[i]);
 }
+
+enum {
+    APS_ALF,
+    APS_LMCS,
+    APS_SCALING,
+};
 
 static void alf_coeff(int16_t *coeff,
     const uint8_t *abs, const uint8_t *sign, const int size)
@@ -1150,32 +1157,13 @@ int ff_vvc_decode_aps(VVCParamSets *ps, const CodedBitstreamUnit *unit)
     return ret;
 }
 
-static int sh_subpic_idx(const H266RawSliceHeader *sh, const H266RawSPS *sps, const H266RawPPS *pps)
-{
-    const int sps_num_subpics = sps->sps_num_subpics_minus1 + 1;
-
-    if (!sps->sps_subpic_info_present_flag)
-        return 0;
-
-    if (!sps->sps_subpic_id_mapping_explicitly_signalled_flag)
-        return sh->sh_subpic_id;
-
-    for (int i = 0; i <= sps_num_subpics; i++) {
-        if (pps->pps_subpic_id[i] == sh->sh_subpic_id)
-            return i;
-    }
-
-    return sps_num_subpics;
-}
-
 static void sh_slice_address(VVCSH *sh, const H266RawSPS *sps, const VVCPPS *pps)
 {
     const int slice_address     = sh->r->sh_slice_address;
-    const int curr_subpic_idx   = sh_subpic_idx(sh->r, sps, pps->r);
 
     if (pps->r->pps_rect_slice_flag) {
         int pic_level_slice_idx = slice_address;
-        for (int j = 0; j < curr_subpic_idx; j++)
+        for (int j = 0; j < sh->r->curr_subpic_idx; j++)
             pic_level_slice_idx += pps->r->num_slices_in_subpic[j];
         sh->ctb_addr_in_curr_slice = pps->ctb_addr_in_slice + pps->slice_start_offset[pic_level_slice_idx];
         sh->num_ctus_in_curr_slice = pps->num_ctus_in_slice[pic_level_slice_idx];

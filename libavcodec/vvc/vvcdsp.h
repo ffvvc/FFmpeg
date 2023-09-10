@@ -60,17 +60,17 @@ typedef struct VVCInterDSPContext {
         intptr_t mx, intptr_t my, int width, int hf_idx, int vf_idx);
 
     void (*avg)(uint8_t *dst, ptrdiff_t dst_stride,
-        const int16_t *tmp0, const int16_t *tmp1, int width, int height);
+        const int16_t *src0, const int16_t *src1, int width, int height);
 
     void (*w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-        const int16_t *tmp0, const int16_t *tmp1, int width, int height,
+        const int16_t *src0, const int16_t *src1, int width, int height,
         int denom, int w0, int w1, int o0, int o1);
 
     void (*put_ciip)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
         const uint8_t *inter, ptrdiff_t inter_stride, int inter_weight);
 
     void (*put_gpm)(uint8_t *dst, ptrdiff_t dst_stride, int width, int height,
-        const int16_t *tmp, const int16_t *tmp1, const ptrdiff_t tmp_stride,
+        const int16_t *src0, const int16_t *src1,
         const uint8_t *weights, int step_x, int step_y);
 
     void (*fetch_samples)(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int x_frac, int y_frac);
@@ -126,10 +126,10 @@ typedef struct VVCLMCSDSPContext {
 typedef struct VVCLFDSPContext {
     int (*ladf_level[2 /* h, v */])(const uint8_t *pix, ptrdiff_t stride);
 
-    void (*filter_luma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, uint8_t max_len_p, uint8_t max_len_q, int hor_ctu_edge);
-    void (*filter_chroma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, int beta, int32_t tc,
-        uint8_t no_p, uint8_t no_q, int shift, int max_len_p, int max_len_q);
+    void (*filter_luma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
+        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int hor_ctu_edge);
+    void (*filter_chroma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
+        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
 } VVCLFDSPContext;
 
 struct SAOParams;
@@ -167,10 +167,6 @@ typedef struct VVCDSPContext {
 } VVCDSPContext;
 
 void ff_vvc_dsp_init(VVCDSPContext *hpc, int bit_depth);
-
-extern const int8_t ff_vvc_chroma_filters[3][32][4];
-extern const int8_t ff_vvc_luma_filters[3][16][8];
-extern const int8_t ff_vvc_dmvr_filters[16][2];
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *c, const int bit_depth);
 void ff_vvc_dsp_init_aarch64(VVCDSPContext *c, const int bit_depth);
