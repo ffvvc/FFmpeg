@@ -42,24 +42,46 @@
     } while (0)
 
 const char *itx_str[N_TX_TYPE] = {
-    "dct2", // DCT2
-    "dst7", // DST7
-    "dct8", // DCT8
+    "dct2",
+    "dct2",
+    "dct2",
+    "dct2",
+    "dct2",
+    "dct2",
+    "dct2",
+    "dst7",
+    "dst7",
+    "dst7",
+    "dst7",
+    "dst7",
+    "dct8",
+    "dct8",
+    "dct8",
+    "dct8",
+    "dct8",
 };
 
-const int itx_log2_min_size[N_TX_TYPE] = {
-    1,  // DCT2
-    2,  // DST7
-    2,  // DCT8
+const int itx_size[N_TX_TYPE] = {
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64,
+    1,
+    4,
+    8,
+    16,
+    32,
+    1,
+    4,
+    8,
+    16,
+    32,
 };
 
-const int itx_log2_max_size[N_TX_TYPE] = {
-    6,  // DCT2
-    5,  // DST7
-    5,  // DCT8
-};
-
-static void check_itx(VVCDSPContext h, enum TxType trh, enum TxType trv, int bit_depth)
+static void check_itx(VVCDSPContext h, int bit_depth)
 {
     // @TODO: test extended precision (log2_transform_range != 15)
     const int log2_transform_range = 15;
@@ -69,10 +91,10 @@ static void check_itx(VVCDSPContext h, enum TxType trh, enum TxType trv, int bit
     LOCAL_ALIGNED_32(int, ref_src, [BUF_SIZE]);
     LOCAL_ALIGNED_32(int, new_src, [BUF_SIZE]);
 
-    for (int log2_width = itx_log2_min_size[trh]; log2_width <= itx_log2_max_size[trh]; ++log2_width) {
-        const int width = 1 << log2_width;
-        for (int log2_height = itx_log2_min_size[trv]; log2_height <= itx_log2_max_size[trv]; ++log2_height) {
-            const int height = 1 << log2_height;
+    for (enum TxType trh = DCT2_1; trh < N_TX_TYPE; ++trh) {
+        const int width = itx_size[trh];
+        for (enum TxType trv = DCT2_1; trv < N_TX_TYPE; ++trv) {
+            const int height = itx_size[trv];
 
             declare_func_emms(AV_CPU_FLAG_MMX, void, int16_t *dst, const int *src,
                               int nzw, int log2_transform_range);
@@ -84,8 +106,7 @@ static void check_itx(VVCDSPContext h, enum TxType trh, enum TxType trv, int bit
             memset(new_dst, 0, BUF_SIZE);
 
             // @TODO: test nzw != width
-            if (check_func(h.itx.itx[trh][trv][log2_width][log2_height],
-                           "inv_%s_%s_%dx%d_%d",
+            if (check_func(h.itx.itx[trh][trv], "inv_%s_%s_%dx%d_%d",
                            itx_str[trh], itx_str[trv], width, height, bit_depth)) {
                 call_ref(ref_dst, ref_src, width, log2_transform_range);
                 call_new(new_dst, new_src, width, log2_transform_range);
@@ -103,8 +124,8 @@ void checkasm_check_vvc_itx(void)
 {
     VVCDSPContext h;
     ff_vvc_dsp_init(&h, 8);
-    check_itx(h, DCT2, DCT2, 8);
+    check_itx(h, 8);
     ff_vvc_dsp_init(&h, 10);
-    check_itx(h, DCT2, DCT2, 10);
+    check_itx(h, 10);
     report("idct2");
 }

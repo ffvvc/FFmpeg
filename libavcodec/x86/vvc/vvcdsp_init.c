@@ -272,7 +272,7 @@ ITX_ALL_VARIANTS(10, avx2);
 
 #undef ITX
 #define ITX(TYPE_H, type_h, TYPE_V, type_v, width, height, bitd, opt)           \
-    c->itx.itx[TYPE_H][TYPE_V][TX_SIZE_##width][TX_SIZE_##height] = ITX_NAME(type_h, type_v, width, height, bitd, opt);
+    c->itx.itx[TYPE_H##_##width][TYPE_V##_##height] = ITX_NAME(type_h, type_v, width, height, bitd, opt);
 
 #define ITX_INIT(bitd, opt) do {                                                \
     ITX_ALL_VARIANTS(bitd, opt)                                                 \

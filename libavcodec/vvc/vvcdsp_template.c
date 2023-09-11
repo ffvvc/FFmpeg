@@ -253,7 +253,7 @@ static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
     itx->transform_bdpcm             = FUNC(transform_bdpcm);
 #undef ITX_2D
 #define ITX_2D(TYPE_H, type_h, TYPE_V, type_v, width, height)                   \
-    itx->itx[TYPE_H][TYPE_V][TX_SIZE_##width][TX_SIZE_##height] = FUNC(inv_##type_h##_##type_v##_##width##x##height);
+    itx->itx[TYPE_H##_##width][TYPE_V##_##height] = FUNC(inv_##type_h##_##type_v##_##width##x##height);
 #undef ITX_1D_H
 #define ITX_1D_H(TYPE_H, type_h, TYPE_V, type_v, width, height)                 \
     ITX_2D(TYPE_H, type_h, TYPE_V, type_v, width, height)

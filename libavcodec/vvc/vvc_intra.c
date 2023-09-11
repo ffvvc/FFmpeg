@@ -129,12 +129,13 @@ static void ilfnst_transform(const VVCLocalContext *lc, TransformBlock *tb)
 static void derive_transform_type(const VVCFrameContext *fc, const VVCLocalContext *lc, const TransformBlock *tb, enum TxType *trh, enum TxType *trv)
 {
     const CodingUnit *cu = lc->cu;
-    static const enum TxType mts_to_trh[] = {DCT2, DST7, DCT8, DST7, DCT8};
-    static const enum TxType mts_to_trv[] = {DCT2, DST7, DST7, DCT8, DCT8};
+    static const enum TxType mts_to_trh[] = {DCT2_1, DST7_1, DCT8_1, DST7_1, DCT8_1};
+    static const enum TxType mts_to_trv[] = {DCT2_1, DST7_1, DST7_1, DCT8_1, DCT8_1};
     const VVCSPS *sps       = fc->ps.sps;
     int implicit_mts_enabled = 0;
     if (tb->c_idx || (cu->isp_split_type != ISP_NO_SPLIT && cu->lfnst_idx)) {
-        *trh = *trv = DCT2;
+        *trh = DCT2_1 + tb->log2_tb_width;
+        *trv = DCT2_1 + tb->log2_tb_height;
         return;
     }
 
@@ -150,16 +151,36 @@ static void derive_transform_type(const VVCFrameContext *fc, const VVCLocalConte
         const int w = tb->tb_width;
         const int h = tb->tb_height;
         if (cu->sbt_flag) {
-            *trh = (cu->sbt_horizontal_flag  || cu->sbt_pos_flag) ? DST7 : DCT8;
-            *trv = (!cu->sbt_horizontal_flag || cu->sbt_pos_flag) ? DST7 : DCT8;
+            *trh = (cu->sbt_horizontal_flag  || cu->sbt_pos_flag) ? DST7_1 : DCT8_1;
+            *trv = (!cu->sbt_horizontal_flag || cu->sbt_pos_flag) ? DST7_1 : DCT8_1;
         } else {
-            *trh = (w >= 4 && w <= 16) ? DST7 : DCT2;
-            *trv = (h >= 4 && h <= 16) ? DST7 : DCT2;
+            *trh = (w >= 4 && w <= 16) ? DST7_1 : DCT2_1;
+            *trv = (h >= 4 && h <= 16) ? DST7_1 : DCT2_1;
+        }
+        if (*trh == DCT2_1 || tb->log2_tb_width == 0) {
+            *trh += tb->log2_tb_width;
+        } else {
+            *trh += tb->log2_tb_width - 1;
+        }
+        if (*trv == DCT2_1 || tb->log2_tb_height == 0) {
+            *trv += tb->log2_tb_height;
+        } else {
+            *trv += tb->log2_tb_height - 1;
         }
         return;
     }
     *trh = mts_to_trh[cu->mts_idx];
+    if (*trh == DCT2_1 || tb->log2_tb_width == 0) {
+        *trh += tb->log2_tb_width;
+    } else {
+        *trh += tb->log2_tb_width - 1;
+    }
     *trv = mts_to_trv[cu->mts_idx];
+    if (*trv == DCT2_1 || tb->log2_tb_height == 0) {
+        *trv += tb->log2_tb_height;
+    } else {
+        *trv += tb->log2_tb_height - 1;
+    }
 }
 
 static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
@@ -463,8 +484,7 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
                 derive_transform_type(fc, lc, tb, &trh, &trv);
 
                 nzw = tb->max_scan_x + 1;
-                fc->vvcdsp.itx.itx[trh][trv][tb->log2_tb_width][tb->log2_tb_height](
-                        tb->pixels, tb->coeffs, nzw, sps->log2_transform_range);
+                fc->vvcdsp.itx.itx[trh][trv](tb->pixels, tb->coeffs, nzw, sps->log2_transform_range);
             } else {
                 for (int y = 0; y < h; ++y) {
                     for (int x = 0; x < w; ++x) {

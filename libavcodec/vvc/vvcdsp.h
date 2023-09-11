@@ -28,21 +28,24 @@
 #include <stddef.h>
 
 enum TxType {
-    DCT2,
-    DST7,
-    DCT8,
+    DCT2_1,
+    DCT2_2,
+    DCT2_4,
+    DCT2_8,
+    DCT2_16,
+    DCT2_32,
+    DCT2_64,
+    DST7_1,
+    DST7_4,
+    DST7_8,
+    DST7_16,
+    DST7_32,
+    DCT8_1,
+    DCT8_4,
+    DCT8_8,
+    DCT8_16,
+    DCT8_32,
     N_TX_TYPE,
-};
-
-enum TxSize {
-    TX_SIZE_1 = 0,
-    TX_SIZE_2,
-    TX_SIZE_4,
-    TX_SIZE_8,
-    TX_SIZE_16,
-    TX_SIZE_32,
-    TX_SIZE_64,
-    N_TX_SIZE,
 };
 
 typedef struct VVCInterDSPContext {
@@ -115,7 +118,7 @@ typedef struct VVCItxDSPContext {
     void (*add_residual)(uint8_t *dst, const int16_t *res, int width, int height, ptrdiff_t stride);
     void (*add_residual_joint)(uint8_t *dst, const int16_t *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
     void (*pred_residual_joint)(int16_t *buf, int width, int height, int c_sign, int shift);
-    void (*itx[N_TX_TYPE][N_TX_TYPE][N_TX_SIZE][N_TX_SIZE])(int16_t *dst, const int *coeff, int nzw, int log2_transform_range);
+    void (*itx[N_TX_TYPE][N_TX_TYPE])(int16_t *dst, const int *coeff, int nzw, int log2_transform_range);
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int log2_transform_range);
 } VVCItxDSPContext;
 
