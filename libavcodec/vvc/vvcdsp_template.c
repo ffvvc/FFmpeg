@@ -96,6 +96,7 @@ static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height
 }
 
 #define ITX_COMMON_SIZES(TYPE_H, type_h, TYPE_V, type_v)                        \
+    ITX_1x1(TYPE_H, type_h, TYPE_V, type_v, 1, 1)                               \
     ITX_1D_V(TYPE_H, type_h, TYPE_V, type_v, 1, 4);                             \
     ITX_1D_V(TYPE_H, type_h, TYPE_V, type_v, 1, 8);                             \
     ITX_1D_V(TYPE_H, type_h, TYPE_V, type_v, 1, 16);                            \
@@ -235,6 +236,13 @@ static void FUNC(inv_##type_h##_##type_v##_##width##x##height)(int16_t *dst,    
     ff_vvc_inv_##type_v##_##height(temp, 1, coeff, 1);                          \
     scale(dst, temp, width, height, 6 + log2_transform_range - BIT_DEPTH);      \
 }
+#undef ITX_1x1
+#define ITX_1x1(TYPE_H, type_h, TYPE_V, type_v, width, height)                  \
+static void FUNC(inv_##type_h##_##type_v##_##width##x##height)(int16_t *dst,    \
+    const int *coeff, int nzw, int log2_transform_range)                        \
+{                                                                               \
+    scale(dst, coeff, width, height, 6 + log2_transform_range - BIT_DEPTH);     \
+}
 ITX
 
 static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
@@ -251,6 +259,9 @@ static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
     ITX_2D(TYPE_H, type_h, TYPE_V, type_v, width, height)
 #undef ITX_1D_V
 #define ITX_1D_V(TYPE_H, type_h, TYPE_V, type_v, width, height)                 \
+    ITX_2D(TYPE_H, type_h, TYPE_V, type_v, width, height)
+#undef ITX_1x1
+#define ITX_1x1(TYPE_H, type_h, TYPE_V, type_v, width, height)                  \
     ITX_2D(TYPE_H, type_h, TYPE_V, type_v, width, height)
     ITX
 
