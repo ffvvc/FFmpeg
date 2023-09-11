@@ -28,20 +28,24 @@
 #include <stddef.h>
 
 enum TxType {
-    DCT2,
-    DST7,
-    DCT8,
+    DCT2_1,
+    DCT2_2,
+    DCT2_4,
+    DCT2_8,
+    DCT2_16,
+    DCT2_32,
+    DCT2_64,
+    DST7_1,
+    DST7_4,
+    DST7_8,
+    DST7_16,
+    DST7_32,
+    DCT8_1,
+    DCT8_4,
+    DCT8_8,
+    DCT8_16,
+    DCT8_32,
     N_TX_TYPE,
-};
-
-enum TxSize {
-    TX_SIZE_2,
-    TX_SIZE_4,
-    TX_SIZE_8,
-    TX_SIZE_16,
-    TX_SIZE_32,
-    TX_SIZE_64,
-    N_TX_SIZE,
 };
 
 typedef struct VVCInterDSPContext {
@@ -96,7 +100,7 @@ struct VVCLocalContext;
 
 typedef struct VVCIntraDSPContext {
     void (*intra_cclm_pred)(const struct VVCLocalContext *lc, int x0, int y0, int w, int h);
-    void (*lmcs_scale_chroma)(struct VVCLocalContext *lc, int *dst, const int *coeff, int w, int h, int x0_cu, int y0_cu);
+    void (*lmcs_scale_chroma)(struct VVCLocalContext *lc, int16_t *dst, const int16_t *coeff, int w, int h, int x0_cu, int y0_cu);
     void (*intra_pred)(const struct VVCLocalContext *lc, int x0, int y0, int w, int h, int c_idx);
     void (*pred_planar)(uint8_t *src, const uint8_t *top, const uint8_t *left, int w, int h, ptrdiff_t stride);
     void (*pred_mip)(uint8_t *src, const uint8_t *top, const uint8_t *left, int w, int h, ptrdiff_t stride,
@@ -111,11 +115,10 @@ typedef struct VVCIntraDSPContext {
 } VVCIntraDSPContext;
 
 typedef struct VVCItxDSPContext {
-    void (*add_residual)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride);
-    void (*add_residual_joint)(uint8_t *dst, const int *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
-    void (*pred_residual_joint)(int *buf, int width, int height, int c_sign, int shift);
-
-    void (*itx[N_TX_TYPE][N_TX_SIZE])(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step);
+    void (*add_residual)(uint8_t *dst, const int16_t *res, int width, int height, ptrdiff_t stride);
+    void (*add_residual_joint)(uint8_t *dst, const int16_t *res, int width, int height, ptrdiff_t stride, int c_sign, int shift);
+    void (*pred_residual_joint)(int16_t *buf, int width, int height, int c_sign, int shift);
+    void (*itx[N_TX_TYPE][N_TX_TYPE])(int16_t *dst, const int *coeff, int nzw, int log2_transform_range);
     void (*transform_bdpcm)(int *coeffs, int width, int height, int vertical, int log2_transform_range);
 } VVCItxDSPContext;
 

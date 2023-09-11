@@ -129,12 +129,13 @@ static void ilfnst_transform(const VVCLocalContext *lc, TransformBlock *tb)
 static void derive_transform_type(const VVCFrameContext *fc, const VVCLocalContext *lc, const TransformBlock *tb, enum TxType *trh, enum TxType *trv)
 {
     const CodingUnit *cu = lc->cu;
-    static const enum TxType mts_to_trh[] = {DCT2, DST7, DCT8, DST7, DCT8};
-    static const enum TxType mts_to_trv[] = {DCT2, DST7, DST7, DCT8, DCT8};
+    static const enum TxType mts_to_trh[] = {DCT2_1, DST7_1, DCT8_1, DST7_1, DCT8_1};
+    static const enum TxType mts_to_trv[] = {DCT2_1, DST7_1, DST7_1, DCT8_1, DCT8_1};
     const VVCSPS *sps       = fc->ps.sps;
     int implicit_mts_enabled = 0;
     if (tb->c_idx || (cu->isp_split_type != ISP_NO_SPLIT && cu->lfnst_idx)) {
-        *trh = *trv = DCT2;
+        *trh = DCT2_1 + tb->log2_tb_width;
+        *trv = DCT2_1 + tb->log2_tb_height;
         return;
     }
 
@@ -150,16 +151,36 @@ static void derive_transform_type(const VVCFrameContext *fc, const VVCLocalConte
         const int w = tb->tb_width;
         const int h = tb->tb_height;
         if (cu->sbt_flag) {
-            *trh = (cu->sbt_horizontal_flag  || cu->sbt_pos_flag) ? DST7 : DCT8;
-            *trv = (!cu->sbt_horizontal_flag || cu->sbt_pos_flag) ? DST7 : DCT8;
+            *trh = (cu->sbt_horizontal_flag  || cu->sbt_pos_flag) ? DST7_1 : DCT8_1;
+            *trv = (!cu->sbt_horizontal_flag || cu->sbt_pos_flag) ? DST7_1 : DCT8_1;
         } else {
-            *trh = (w >= 4 && w <= 16) ? DST7 : DCT2;
-            *trv = (h >= 4 && h <= 16) ? DST7 : DCT2;
+            *trh = (w >= 4 && w <= 16) ? DST7_1 : DCT2_1;
+            *trv = (h >= 4 && h <= 16) ? DST7_1 : DCT2_1;
+        }
+        if (*trh == DCT2_1 || tb->log2_tb_width == 0) {
+            *trh += tb->log2_tb_width;
+        } else {
+            *trh += tb->log2_tb_width - 1;
+        }
+        if (*trv == DCT2_1 || tb->log2_tb_height == 0) {
+            *trv += tb->log2_tb_height;
+        } else {
+            *trv += tb->log2_tb_height - 1;
         }
         return;
     }
     *trh = mts_to_trh[cu->mts_idx];
+    if (*trh == DCT2_1 || tb->log2_tb_width == 0) {
+        *trh += tb->log2_tb_width;
+    } else {
+        *trh += tb->log2_tb_width - 1;
+    }
     *trv = mts_to_trv[cu->mts_idx];
+    if (*trv == DCT2_1 || tb->log2_tb_height == 0) {
+        *trv += tb->log2_tb_height;
+    } else {
+        *trv += tb->log2_tb_height - 1;
+    }
 }
 
 static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
@@ -176,11 +197,11 @@ static void add_residual_for_joint_coding_chroma(VVCLocalContext *lc,
     uint8_t *dst = &fc->frame->data[c_idx][(tb->y0 >> vs) * stride +
                                           ((tb->x0 >> hs) << fc->ps.sps->pixel_shift)];
     if (chroma_scale) {
-        fc->vvcdsp.itx.pred_residual_joint(tb->coeffs, tb->tb_width, tb->tb_height, c_sign, shift);
-        fc->vvcdsp.intra.lmcs_scale_chroma(lc, tb->coeffs, tb->coeffs, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
-        fc->vvcdsp.itx.add_residual(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride);
+        fc->vvcdsp.itx.pred_residual_joint(tb->pixels, tb->tb_width, tb->tb_height, c_sign, shift);
+        fc->vvcdsp.intra.lmcs_scale_chroma(lc, tb->pixels, tb->pixels, tb->tb_width, tb->tb_height, cu->x0, cu->y0);
+        fc->vvcdsp.itx.add_residual(dst, tb->pixels, tb->tb_width, tb->tb_height, stride);
     } else {
-        fc->vvcdsp.itx.add_residual_joint(dst, tb->coeffs, tb->tb_width, tb->tb_height, stride, c_sign, shift);
+        fc->vvcdsp.itx.add_residual_joint(dst, tb->pixels, tb->tb_width, tb->tb_height, stride, c_sign, shift);
     }
 }
 
@@ -268,32 +289,6 @@ static void predict_intra(VVCLocalContext *lc, const TransformUnit *tu, const in
                 fc->vvcdsp.intra.intra_pred(lc, x0, y0, w, h, 2);
             }
             add_reconstructed_area(lc, 1, x0, y0, w, h);
-        }
-    }
-}
-
-static void scale_clip(int *coeff, const int nzw, const int w, const int h,
-    const int shift, const int log2_transform_range)
-{
-    const int add = 1 << (shift - 1);
-    for (int y = 0; y < h; y++) {
-        int *p = coeff + y * w;
-        for (int x = 0; x < nzw; x++) {
-            *p = av_clip_intp2((*p + add) >> shift, log2_transform_range);
-            p++;
-        }
-        memset(p, 0, sizeof(*p) * (w - nzw));
-    }
-}
-
-static void scale(int *out, const int *in, const int w, const int h, const int shift)
-{
-    const int add = 1 << (shift - 1);
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int *o = out + y * w + x;
-            const int *i = in + y * w + x;
-            *o = (*i + add) >> shift;
         }
     }
 }
@@ -441,35 +436,6 @@ static void dequant(const VVCLocalContext *lc, const TransformUnit *tu, Transfor
     }
 }
 
-static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int *temp)
-{
-    const VVCSPS *sps   = fc->ps.sps;
-    const int w         = tb->tb_width;
-    const int h         = tb->tb_height;
-    const int nzw       = tb->max_scan_x + 1;
-
-    for (int x = 0; x < nzw; x++)
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w);
-    scale_clip(temp, nzw, w, h, 7, sps->log2_transform_range);
-
-    for (int y = 0; y < h; y++)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1);
-    scale(tb->coeffs, tb->coeffs, w, h, 5 + sps->log2_transform_range - sps->bit_depth);
-}
-
-static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int  *temp)
-{
-    const VVCSPS *sps   = fc->ps.sps;
-    const int w         = tb->tb_width;
-    const int h         = tb->tb_height;
-
-    if (w > 1)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1);
-    else
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1);
-    scale(tb->coeffs, temp, w, h, 6 + sps->log2_transform_range - sps->bit_depth);
-}
-
 static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const CodingUnit *cu)
 {
     const VVCSPS *sps        = lc->fc->ps.sps;
@@ -490,7 +456,7 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
     const VVCSH *sh             = &lc->sc->sh;
     const CodingUnit *cu        = lc->cu;
     const int ps                = fc->ps.sps->pixel_shift;
-    DECLARE_ALIGNED(32, int, temp)[MAX_TB_SIZE * MAX_TB_SIZE];
+    DECLARE_ALIGNED(32, int16_t, temp)[MAX_TB_SIZE * MAX_TB_SIZE];
 
     for (int i = 0; i < tu->nb_tbs; i++) {
         TransformBlock *tb  = &tu->tbs[i];
@@ -511,19 +477,25 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
             dequant(lc, tu, tb);
             if (!tb->ts) {
                 enum TxType trh, trv;
+                int nzw;
 
                 if (cu->apply_lfnst_flag[c_idx])
                     ilfnst_transform(lc, tb);
                 derive_transform_type(fc, lc, tb, &trh, &trv);
-                if (w > 1 && h > 1)
-                    itx_2d(fc, tb, trh, trv, temp);
-                else
-                    itx_1d(fc, tb, trh, trv, temp);
+
+                nzw = tb->max_scan_x + 1;
+                fc->vvcdsp.itx.itx[trh][trv](tb->pixels, tb->coeffs, nzw, sps->log2_transform_range);
+            } else {
+                for (int y = 0; y < h; ++y) {
+                    for (int x = 0; x < w; ++x) {
+                        tb->pixels[y * w + x] = tb->coeffs[y * w + x];
+                    }
+                }
             }
 
             if (chroma_scale)
-                fc->vvcdsp.intra.lmcs_scale_chroma(lc, temp, tb->coeffs, w, h, cu->x0, cu->y0);
-            fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->coeffs, w, h, stride);
+                fc->vvcdsp.intra.lmcs_scale_chroma(lc, temp, tb->pixels, w, h, cu->x0, cu->y0);
+            fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->pixels, w, h, stride);
 
             if (tu->joint_cbcr_residual_flag && tb->c_idx)
                 add_residual_for_joint_coding_chroma(lc, tu, tb, chroma_scale);

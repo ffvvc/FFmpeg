@@ -98,6 +98,9 @@ static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int c
         fc->tab.coeffs = av_malloc(ctu_count * sizeof(*fc->tab.coeffs) * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
         if (!fc->tab.coeffs)
             return AVERROR(ENOMEM);
+        fc->tab.pixels = av_malloc(ctu_count * sizeof(*fc->tab.pixels) * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
+        if (!fc->tab.pixels)
+            return AVERROR(ENOMEM);
         fc->rpl_tab_pool = av_buffer_pool_init(ctu_count * sizeof(RefPicListTab), av_buffer_allocz);
         if (!fc->rpl_tab_pool)
             return AVERROR(ENOMEM);
@@ -717,6 +720,7 @@ fail:
 
 static int frame_context_setup(VVCFrameContext *fc, VVCContext *s)
 {
+    const VVCSPS *sps = fc->ps.sps;
     int ret = 0;
 
     // copy refs from the last frame
@@ -740,8 +744,8 @@ static int frame_context_setup(VVCFrameContext *fc, VVCContext *s)
     ret = pic_arrays_init(s, fc);
     if (ret < 0)
         goto fail;
-    ff_vvc_dsp_init(&fc->vvcdsp, fc->ps.sps->bit_depth);
-    ff_videodsp_init(&fc->vdsp, fc->ps.sps->bit_depth);
+    ff_vvc_dsp_init(&fc->vvcdsp, sps->bit_depth);
+    ff_videodsp_init(&fc->vdsp, sps->bit_depth);
 
 fail:
     return ret;
