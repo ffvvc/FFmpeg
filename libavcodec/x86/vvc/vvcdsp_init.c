@@ -167,6 +167,40 @@ PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
     c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bd##_##opt; \
 } while (0)
 
+#define AVG_BPC_FUNC(bpc, opt)                                                                      \
+void BF(ff_vvc_avg, bpc, opt)(uint8_t *dst, ptrdiff_t dst_stride,                                   \
+    const int16_t *src0, const int16_t *src1, intptr_t width, intptr_t height, intptr_t pixel_max); \
+void BF(ff_vvc_w_avg, bpc, opt)(uint8_t *dst, ptrdiff_t dst_stride,                                 \
+    const int16_t *src0, const int16_t *src1, intptr_t width, intptr_t height,                      \
+    intptr_t denom, intptr_t w0, intptr_t w1,  intptr_t o0, intptr_t o1, intptr_t pixel_max);       \
+
+
+#define AVG_FUNCS(bpc, bd, opt)                                                                     \
+static void bf(avg, bd, opt)(uint8_t *dst, ptrdiff_t dst_stride,                                    \
+    const int16_t *src0, const int16_t *src1, int width, int height)                                \
+{                                                                                                   \
+    BF(ff_vvc_avg, bpc, opt)(dst, dst_stride, src0, src1, width, height, (1 << bd)  - 1);           \
+}                                                                                                   \
+static void bf(w_avg, bd, opt)(uint8_t *dst, ptrdiff_t dst_stride,                                  \
+    const int16_t *src0, const int16_t *src1, int width, int height,                                \
+    int denom, int w0, int w1, int o0, int o1)                                                      \
+{                                                                                                   \
+    BF(ff_vvc_w_avg, bpc, opt)(dst, dst_stride, src0, src1, width, height,                          \
+        denom, w0, w1, o0, o1, (1 << bd)  - 1);                                                     \
+}
+
+AVG_BPC_FUNC(8,   avx2)
+AVG_BPC_FUNC(16,  avx2)
+
+AVG_FUNCS(8,  8,  avx2)
+AVG_FUNCS(16, 10, avx2)
+AVG_FUNCS(16, 12, avx2)
+
+#define AVG_INIT(bd, opt) do {                                          \
+    c->inter.avg    = bf(avg, bd, opt);                                 \
+    c->inter.w_avg  = bf(w_avg, bd, opt);                               \
+} while (0)
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
     const int cpu_flags = av_get_cpu_flags();
@@ -176,17 +210,20 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             case 8:
                 ALF_INIT(8);
                 PUT_VVC_LUMA_INIT(8, avx2);
+                AVG_INIT(8, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
                 break;
             case 10:
                 ALF_INIT(10);
                 PUT_VVC_LUMA_INIT(10, avx2);
+                AVG_INIT(10, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
                 break;
             case 12:
                 ALF_INIT(12);
                 PUT_VVC_LUMA_INIT(12, avx2);
+                AVG_INIT(12, avx2);
                 break;
             default:
                 break;
