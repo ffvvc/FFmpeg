@@ -36,7 +36,7 @@ static const uint32_t pixel_mask[] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff, 0x3ff
 #define PIXEL_STRIDE (MAX_CTU_SIZE * 2)
 #define EXTRA_BEFORE 3
 #define EXTRA_AFTER  4
-#define SRC_EXTRA    (EXTRA_BEFORE + EXTRA_AFTER)
+#define SRC_EXTRA    (EXTRA_BEFORE + EXTRA_AFTER) * 2
 #define SRC_BUF_SIZE (PIXEL_STRIDE + SRC_EXTRA) * (PIXEL_STRIDE + SRC_EXTRA)
 #define DST_BUF_SIZE (MAX_CTU_SIZE * MAX_CTU_SIZE * 2)
 #define SRC_OFFSET   ((PIXEL_STRIDE + EXTRA_BEFORE * 2) * EXTRA_BEFORE)
