@@ -121,52 +121,6 @@ SAO_FUNCS(12, avx2)
     SAO_FILTER_INIT(band, bd, opt);                                               \
 } while (0)
 
-
-#define PUT_VVC_LUMA_8_FUNC(dir, opt)                                                                         \
-    void ff_vvc_put_vvc_luma_##dir##_8_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,  \
-    const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
-    const int hf_idx, const int vf_idx);                                                                      \
-
-#define PUT_VVC_LUMA_16_FUNC(dir, opt)                                                                        \
-    void ff_vvc_put_vvc_luma_##dir##_16_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
-    const int height, const intptr_t mx, const intptr_t my, const int width,                                  \
-    const int hf_idx, const int vf_idx, const int bbd);
-
-#define PUT_VVC_LUMA_FUNCS(bd, opt)    \
-    PUT_VVC_LUMA_##bd##_FUNC(h,  opt)  \
-    PUT_VVC_LUMA_##bd##_FUNC(v,  opt)  \
-    PUT_VVC_LUMA_##bd##_FUNC(hv, opt)
-
-#define PUT_VVC_LUMA_FORWARD_FUNC(dir, bd, opt)                                                                      \
-static void ff_vvc_put_vvc_luma_##dir##_##bd##_##opt(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride, \
-    const int height, const intptr_t mx, const intptr_t my, const int width,                                         \
-    const int hf_idx, const int vf_idx)                                                                              \
-{                                                                                                                    \
-    ff_vvc_put_vvc_luma_##dir##_16_##opt(dst, _src, _src_stride, height, mx, my, width, hf_idx, vf_idx, bd);         \
-}
-
-#define PUT_VVC_LUMA_FORWARD_FUNCS(bd, opt) \
-    PUT_VVC_LUMA_FORWARD_FUNC(h,  bd, opt)  \
-    PUT_VVC_LUMA_FORWARD_FUNC(v,  bd, opt)  \
-    PUT_VVC_LUMA_FORWARD_FUNC(hv, bd, opt)
-
-PUT_VVC_LUMA_FUNCS(8,  avx2)
-PUT_VVC_LUMA_FUNCS(16, avx2)
-PUT_VVC_LUMA_FORWARD_FUNCS(10, avx2)
-PUT_VVC_LUMA_FORWARD_FUNCS(12, avx2)
-
-#if HAVE_AVX512ICL_EXTERNAL
-PUT_VVC_LUMA_FUNCS(16, avx512icl)
-PUT_VVC_LUMA_FORWARD_FUNCS(10, avx512icl)
-PUT_VVC_LUMA_FORWARD_FUNCS(12, avx512icl)
-#endif
-
-#define PUT_VVC_LUMA_INIT(bd, opt) do {                             \
-    c->inter.put[LUMA][0][1] = ff_vvc_put_vvc_luma_h_##bd##_##opt;  \
-    c->inter.put[LUMA][1][0] = ff_vvc_put_vvc_luma_v_##bd##_##opt;  \
-    c->inter.put[LUMA][1][1] = ff_vvc_put_vvc_luma_hv_##bd##_##opt; \
-} while (0)
-
 #define AVG_BPC_FUNC(bpc, opt)                                                                      \
 void BF(ff_vvc_avg, bpc, opt)(uint8_t *dst, ptrdiff_t dst_stride,                                   \
     const int16_t *src0, const int16_t *src1, intptr_t width, intptr_t height, intptr_t pixel_max); \
@@ -209,20 +163,17 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
         switch (bd) {
             case 8:
                 ALF_INIT(8);
-                PUT_VVC_LUMA_INIT(8, avx2);
                 AVG_INIT(8, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
                 c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
                 break;
             case 10:
                 ALF_INIT(10);
-                PUT_VVC_LUMA_INIT(10, avx2);
                 AVG_INIT(10, avx2);
                 c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
                 break;
             case 12:
                 ALF_INIT(12);
-                PUT_VVC_LUMA_INIT(12, avx2);
                 AVG_INIT(12, avx2);
                 break;
             default:
@@ -243,18 +194,4 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
                 break;
         }
     }
-#if HAVE_AVX512ICL_EXTERNAL
-    if (EXTERNAL_AVX512ICL(cpu_flags)) {
-        switch (bd) {
-            case 10:
-                PUT_VVC_LUMA_INIT(10, avx512icl);
-                break;
-            case 12:
-                PUT_VVC_LUMA_INIT(12, avx512icl);
-                break;
-            default:
-            break;
-        }
-    }
-#endif
 }
