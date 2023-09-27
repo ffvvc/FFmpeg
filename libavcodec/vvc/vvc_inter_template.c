@@ -26,7 +26,7 @@
 static void FUNC(put_vvc_pel_pixels)(int16_t *dst,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
@@ -41,7 +41,7 @@ static void FUNC(put_vvc_pel_pixels)(int16_t *dst,
 
 static void FUNC(put_vvc_pel_uni_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
-    const intptr_t mx, const intptr_t my, const int width, const int hf_idx, const int vf_idx)
+    const intptr_t mx, const intptr_t my, const int width, const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
@@ -58,7 +58,7 @@ static void FUNC(put_vvc_pel_uni_pixels)(uint8_t *_dst, const ptrdiff_t _dst_str
 static void FUNC(put_vvc_pel_uni_w_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
     const int denom, const int wx, const int _ox, const intptr_t mx, const intptr_t my,
-    const int width, const int hf_idx, const int vf_idx)
+    const int width, const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
@@ -97,11 +97,11 @@ static void FUNC(put_vvc_pel_uni_w_pixels)(uint8_t *_dst, const ptrdiff_t _dst_s
 
 static void FUNC(put_vvc_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src           = (const pixel*)_src;
     const ptrdiff_t src_stride = _src_stride / sizeof(pixel);
-    const int8_t *filter       = ff_vvc_inter_luma_filters[hf_idx][mx];
+    const int8_t *filter       = hf;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
@@ -113,11 +113,11 @@ static void FUNC(put_vvc_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdif
 
 static void FUNC(put_vvc_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src           = (pixel*)_src;
     const ptrdiff_t src_stride = _src_stride / sizeof(pixel);
-    const int8_t *filter       = ff_vvc_inter_luma_filters[vf_idx][my];
+    const int8_t *filter       = vf;
 
     for (int y = 0; y < height; y++)  {
         for (int x = 0; x < width; x++)
@@ -129,13 +129,13 @@ static void FUNC(put_vvc_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdif
 
 static void FUNC(put_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     int16_t tmp_array[(MAX_PB_SIZE + LUMA_EXTRA) * MAX_PB_SIZE];
     int16_t *tmp                = tmp_array;
     const pixel *src            = (const pixel*)_src;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
-    const int8_t *filter = ff_vvc_inter_luma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
 
     src   -= LUMA_EXTRA_BEFORE * src_stride;
     for (int y = 0; y < height + LUMA_EXTRA; y++) {
@@ -146,7 +146,7 @@ static void FUNC(put_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdi
     }
 
     tmp    = tmp_array + LUMA_EXTRA_BEFORE * MAX_PB_SIZE;
-    filter = ff_vvc_inter_luma_filters[vf_idx][my];
+    filter = vf;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
             dst[x] = LUMA_FILTER(tmp, MAX_PB_SIZE) >> 6;
@@ -158,13 +158,13 @@ static void FUNC(put_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdi
 static void FUNC(put_vvc_luma_uni_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src           = (const pixel*)_src;
     pixel *dst                 = (pixel *)_dst;
     const ptrdiff_t src_stride = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride = _dst_stride / sizeof(pixel);
-    const int8_t *filter       = ff_vvc_inter_luma_filters[hf_idx][mx];
+    const int8_t *filter       = hf;
     const int shift            = 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset           = 1 << (shift - 1);
@@ -185,14 +185,14 @@ static void FUNC(put_vvc_luma_uni_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride
 static void FUNC(put_vvc_luma_uni_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
 
     const pixel *src            = (const pixel*)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_luma_filters[vf_idx][my];
+    const int8_t *filter        = vf;
     const int shift             = 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -213,7 +213,7 @@ static void FUNC(put_vvc_luma_uni_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride
 static void FUNC(put_vvc_luma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     int16_t tmp_array[(MAX_PB_SIZE + LUMA_EXTRA) * MAX_PB_SIZE];
     int16_t *tmp                = tmp_array;
@@ -221,7 +221,7 @@ static void FUNC(put_vvc_luma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_luma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int shift             =  14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -238,7 +238,7 @@ static void FUNC(put_vvc_luma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride
     }
 
     tmp    = tmp_array + LUMA_EXTRA_BEFORE * MAX_PB_SIZE;
-    filter = ff_vvc_inter_luma_filters[vf_idx][my];
+    filter = vf;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -253,14 +253,14 @@ static void FUNC(put_vvc_luma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride
 
 static void FUNC(put_vvc_luma_uni_w_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, int height,
-    const int denom, const int wx, const int _ox,
-    const intptr_t mx, const intptr_t my, const int width, const int hf_idx, const int vf_idx)
+    const int denom, const int wx, const int _ox, const intptr_t mx, const intptr_t my,
+    const int width, const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel*)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_luma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int ox                = _ox * (1 << (BIT_DEPTH - 8));
     const int shift             = denom + 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
@@ -279,14 +279,14 @@ static void FUNC(put_vvc_luma_uni_w_h)(uint8_t *_dst,  const ptrdiff_t _dst_stri
 
 static void FUNC(put_vvc_luma_uni_w_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
-    const int denom, const int wx, const int _ox,
-    const intptr_t mx, const intptr_t my, const int width, const int hf_idx, const int vf_idx)
+    const int denom, const int wx, const int _ox, const intptr_t mx, const intptr_t my,
+    const int width, const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel*)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_luma_filters[vf_idx][my];
+    const int8_t *filter        = vf;
     const int ox                = _ox * (1 << (BIT_DEPTH - 8));
     const int shift             = denom + 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
@@ -306,7 +306,7 @@ static void FUNC(put_vvc_luma_uni_w_v)(uint8_t *_dst,  const ptrdiff_t _dst_stri
 static void FUNC(put_vvc_luma_uni_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height, const int denom,
     const int wx, const int _ox, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     int16_t tmp_array[(MAX_PB_SIZE + LUMA_EXTRA) * MAX_PB_SIZE];
     int16_t *tmp                = tmp_array;
@@ -314,7 +314,7 @@ static void FUNC(put_vvc_luma_uni_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_str
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_luma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int ox                = _ox * (1 << (BIT_DEPTH - 8));
     const int shift             = denom + 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
@@ -332,7 +332,7 @@ static void FUNC(put_vvc_luma_uni_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_str
     }
 
     tmp    = tmp_array + LUMA_EXTRA_BEFORE * MAX_PB_SIZE;
-    filter = ff_vvc_inter_luma_filters[vf_idx][my];
+    filter = vf;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
             dst[x] = av_clip_pixel((((LUMA_FILTER(tmp, MAX_PB_SIZE) >> 6) * wx + offset) >> shift) + ox);
@@ -352,11 +352,11 @@ static void FUNC(put_vvc_luma_uni_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_str
 
 static void FUNC(put_vvc_chroma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
@@ -368,11 +368,11 @@ static void FUNC(put_vvc_chroma_h)(int16_t *dst, const uint8_t *_src, const ptrd
 
 static void FUNC(put_vvc_chroma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[vf_idx][my];
+    const int8_t *filter        = vf;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
@@ -384,13 +384,13 @@ static void FUNC(put_vvc_chroma_v)(int16_t *dst, const uint8_t *_src, const ptrd
 
 static void FUNC(put_vvc_chroma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     int16_t tmp_array[(MAX_PB_SIZE + CHROMA_EXTRA) * MAX_PB_SIZE];
     int16_t *tmp                = tmp_array;
     const pixel *src            = (const pixel *)_src;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
 
     src -= CHROMA_EXTRA_BEFORE * src_stride;
 
@@ -402,7 +402,7 @@ static void FUNC(put_vvc_chroma_hv)(int16_t *dst, const uint8_t *_src, const ptr
     }
 
     tmp    = tmp_array + CHROMA_EXTRA_BEFORE * MAX_PB_SIZE;
-    filter = ff_vvc_inter_chroma_filters[vf_idx][my];
+    filter = vf;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
@@ -415,13 +415,13 @@ static void FUNC(put_vvc_chroma_hv)(int16_t *dst, const uint8_t *_src, const ptr
 static void FUNC(put_vvc_chroma_uni_h)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int shift             = 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -440,13 +440,13 @@ static void FUNC(put_vvc_chroma_uni_h)(uint8_t *_dst, const ptrdiff_t _dst_strid
 static void FUNC(put_vvc_chroma_uni_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
-    const ptrdiff_t src_stride   = _src_stride / sizeof(pixel);
-    const ptrdiff_t dst_stride   = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[vf_idx][my];
+    const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
+    const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
+    const int8_t *filter        = vf;
     const int shift             = 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -465,7 +465,7 @@ static void FUNC(put_vvc_chroma_uni_v)(uint8_t *_dst, const ptrdiff_t _dst_strid
 static void FUNC(put_vvc_chroma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width,
-    const int hf_idx, const int vf_idx)
+    const int8_t *hf, const int8_t *vf)
 {
     int16_t tmp_array[(MAX_PB_SIZE + CHROMA_EXTRA) * MAX_PB_SIZE];
     int16_t *tmp                = tmp_array;
@@ -473,7 +473,7 @@ static void FUNC(put_vvc_chroma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stri
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int shift             = 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -490,8 +490,8 @@ static void FUNC(put_vvc_chroma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stri
         tmp += MAX_PB_SIZE;
     }
 
-    tmp      = tmp_array + CHROMA_EXTRA_BEFORE * MAX_PB_SIZE;
-    filter = ff_vvc_inter_chroma_filters[vf_idx][my];
+    tmp    = tmp_array + CHROMA_EXTRA_BEFORE * MAX_PB_SIZE;
+    filter = vf;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
@@ -503,13 +503,13 @@ static void FUNC(put_vvc_chroma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stri
 
 static void FUNC(put_vvc_chroma_uni_w_h)(uint8_t *_dst, ptrdiff_t _dst_stride,
     const uint8_t *_src, ptrdiff_t _src_stride, int height, int denom, int wx, int ox,
-    intptr_t mx, intptr_t my, int width, const int hf_idx, const int vf_idx)
+    intptr_t mx, intptr_t my, int width, const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int shift             = denom + 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -530,13 +530,13 @@ static void FUNC(put_vvc_chroma_uni_w_h)(uint8_t *_dst, ptrdiff_t _dst_stride,
 static void FUNC(put_vvc_chroma_uni_w_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
     const int denom, const int wx, const int _ox, const intptr_t mx, const intptr_t my,
-    const int width, const int hf_idx, const int vf_idx)
+    const int width, const int8_t *hf, const int8_t *vf)
 {
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[vf_idx][my];
+    const int8_t *filter        = vf;
     const int shift             = denom + 14 - BIT_DEPTH;
     const int ox                = _ox * (1 << (BIT_DEPTH - 8));
 #if BIT_DEPTH < 14
@@ -556,7 +556,7 @@ static void FUNC(put_vvc_chroma_uni_w_v)(uint8_t *_dst, const ptrdiff_t _dst_str
 
 static void FUNC(put_vvc_chroma_uni_w_hv)(uint8_t *_dst, ptrdiff_t _dst_stride,
      const uint8_t *_src, ptrdiff_t _src_stride,  int height, int denom, int wx, int ox,
-     intptr_t mx, intptr_t my, int width, const int hf_idx, const int vf_idx)
+     intptr_t mx, intptr_t my, int width, const int8_t *hf, const int8_t *vf)
 {
     int16_t tmp_array[(MAX_PB_SIZE + CHROMA_EXTRA) * MAX_PB_SIZE];
     int16_t *tmp                = tmp_array;
@@ -564,7 +564,7 @@ static void FUNC(put_vvc_chroma_uni_w_hv)(uint8_t *_dst, ptrdiff_t _dst_stride,
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int8_t *filter        = ff_vvc_inter_chroma_filters[hf_idx][mx];
+    const int8_t *filter        = hf;
     const int shift             = denom + 14 - BIT_DEPTH;
 #if BIT_DEPTH < 14
     const int offset            = 1 << (shift - 1);
@@ -581,8 +581,8 @@ static void FUNC(put_vvc_chroma_uni_w_hv)(uint8_t *_dst, ptrdiff_t _dst_stride,
         tmp += MAX_PB_SIZE;
     }
 
-    tmp      = tmp_array + CHROMA_EXTRA_BEFORE * MAX_PB_SIZE;
-    filter = ff_vvc_inter_chroma_filters[vf_idx][my];
+    tmp    = tmp_array + CHROMA_EXTRA_BEFORE * MAX_PB_SIZE;
+    filter = vf;
 
     ox     = ox * (1 << (BIT_DEPTH - 8));
     for (int y = 0; y < height; y++) {
