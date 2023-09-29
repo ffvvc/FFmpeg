@@ -248,85 +248,48 @@ static void luma_mc_uni(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_s
     }
 }
 
-static void luma_bdof(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
-    const uint8_t *_src0, const ptrdiff_t src0_stride, const int mx0, const int my0,
-    const uint8_t *_src1, const ptrdiff_t src1_stride, const int mx1, const int my1,
-    const int block_w, const int block_h, const int hf_idx, const int vf_idx)
-{
-    const VVCFrameContext *fc   = lc->fc;
-    int16_t *tmp0               = lc->tmp  + 1 + MAX_PB_SIZE;
-    int16_t *tmp1               = lc->tmp1 + 1 + MAX_PB_SIZE;
-    const int8_t *hf0           = ff_vvc_inter_luma_filters[hf_idx][mx0];
-    const int8_t *vf0           = ff_vvc_inter_luma_filters[vf_idx][my0];
-    const int8_t *hf1           = ff_vvc_inter_luma_filters[hf_idx][mx1];
-    const int8_t *vf1           = ff_vvc_inter_luma_filters[vf_idx][my1];
-
-
-    fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](tmp0, _src0, src0_stride, block_h, mx0, my0, block_w, hf0, vf0);
-    fc->vvcdsp.inter.bdof_fetch_samples(tmp0, _src0, src0_stride, mx0, my0, block_w, block_h);
-
-    fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](tmp1, _src1, src1_stride, block_h, mx1, my1, block_w, hf1, vf1);
-    fc->vvcdsp.inter.bdof_fetch_samples(tmp1, _src1, src1_stride, mx1, my1, block_w, block_h);
-
-    fc->vvcdsp.inter.apply_bdof(dst, dst_stride, tmp0, tmp1, block_w, block_h);
-}
-
- static void luma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
+static void luma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
     const AVFrame *ref0, const Mv *mv0, const int x_off, const int y_off, const int block_w, const int block_h,
     const AVFrame *ref1, const Mv *mv1, const MvField *mvf, const int hf_idx, const int vf_idx,
     const MvField *orig_mv, const int sb_bdof_flag)
 {
     const VVCFrameContext *fc   = lc->fc;
     const PredictionUnit *pu    = &lc->cu->pu;
-    ptrdiff_t src0_stride       = ref0->linesize[0];
-    ptrdiff_t src1_stride       = ref1->linesize[0];
-    const int mx0               = mv0->x & 0xf;
-    const int my0               = mv0->y & 0xf;
-    const int mx1               = mv1->x & 0xf;
-    const int my1               = mv1->y & 0xf;
+    const AVFrame *ref[]        = { ref0, ref1 };
+    int16_t *tmp[]              = { lc->tmp + sb_bdof_flag * (1 + MAX_PB_SIZE), lc->tmp1 + sb_bdof_flag * (1 + MAX_PB_SIZE) };
+    int denom, w0, w1, o0, o1;
+    const int weight_flag       = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, pu->dmvr_flag);
 
-    const int x_off0            = x_off + (mv0->x >> 4);
-    const int y_off0            = y_off + (mv0->y >> 4);
-    const int x_off1            = x_off + (mv1->x >> 4);
-    const int y_off1            = y_off + (mv1->y >> 4);
+    for (int i = L0; i <= L1; i++) {
+        const Mv *mv            = mvf->mv + i;
+        const int mx            = mv->x & 0xf;
+        const int my            = mv->y & 0xf;
+        const int ox            = x_off + (mv->x >> 4);
+        const int oy            = y_off + (mv->y >> 4);
+        ptrdiff_t src_stride    = ref[i]->linesize[0];
+        const uint8_t *src      = ref[i]->data[0] + oy * src_stride + (ox << fc->ps.sps->pixel_shift);
+        const int8_t *hf        = ff_vvc_inter_luma_filters[hf_idx][mx];
+        const int8_t *vf        = ff_vvc_inter_luma_filters[vf_idx][my];
 
-    const uint8_t *src0         = ref0->data[0] + y_off0 * src0_stride + (int)((unsigned)x_off0 << fc->ps.sps->pixel_shift);
-    const uint8_t *src1         = ref1->data[0] + y_off1 * src1_stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
+        if (pu->dmvr_flag) {
+            const int x_sb = x_off + (orig_mv->mv[i].x >> 4);
+            const int y_sb = y_off + (orig_mv->mv[i].y >> 4);
 
-    if (pu->dmvr_flag) {
-        const int x_sb0 = x_off + (orig_mv->mv[L0].x >> 4);
-        const int y_sb0 = y_off + (orig_mv->mv[L0].y >> 4);
-        const int x_sb1 = x_off + (orig_mv->mv[L1].x >> 4);
-        const int y_sb1 = y_off + (orig_mv->mv[L1].y >> 4);
-        EMULATED_EDGE_DMVR_LUMA(lc->edge_emu_buffer,  &src0, &src0_stride, x_sb0, y_sb0, x_off0, y_off0);
-        EMULATED_EDGE_DMVR_LUMA(lc->edge_emu_buffer2, &src1, &src1_stride, x_sb1, y_sb1, x_off1, y_off1);
-    } else {
-        EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src0, &src0_stride, x_off0, y_off0);
-        EMULATED_EDGE_LUMA(lc->edge_emu_buffer2, &src1, &src1_stride, x_off1, y_off1);
-    }
-    if (sb_bdof_flag) {
-        luma_bdof(lc, dst, dst_stride, src0, src0_stride, mx0, my0, src1, src1_stride, mx1, my1,
-            block_w, block_h, hf_idx, vf_idx);
-    } else {
-        int denom, w0, w1, o0, o1;
-        const int8_t *hf0   = ff_vvc_inter_luma_filters[hf_idx][mx0];
-        const int8_t *vf0   = ff_vvc_inter_luma_filters[vf_idx][my0];
-        const int8_t *hf1   = ff_vvc_inter_luma_filters[hf_idx][mx1];
-        const int8_t *vf1   = ff_vvc_inter_luma_filters[vf_idx][my1];
-
-        fc->vvcdsp.inter.put[LUMA][!!my0][!!mx0](lc->tmp, src0, src0_stride,
-            block_h, mx0, my0, block_w, hf0, vf0);
-
-        fc->vvcdsp.inter.put[LUMA][!!my1][!!mx1](lc->tmp1, src1, src1_stride,
-            block_h, mx1, my1, block_w, hf1, vf1);
-
-        if (derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, pu->dmvr_flag)) {
-            fc->vvcdsp.inter.w_avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h,
-                denom, w0, w1, o0, o1);
+            EMULATED_EDGE_DMVR_LUMA(lc->edge_emu_buffer, &src, &src_stride, x_sb, y_sb, ox, oy);
         } else {
-            fc->vvcdsp.inter.avg(dst, dst_stride, lc->tmp, lc->tmp1, block_w, block_h);
+            EMULATED_EDGE_LUMA(lc->edge_emu_buffer, &src, &src_stride, ox, oy);
         }
+        fc->vvcdsp.inter.put[LUMA][!!my][!!mx](tmp[i], src, src_stride, block_h, mx, my, block_w, hf, vf);
+        if (sb_bdof_flag)
+            fc->vvcdsp.inter.bdof_fetch_samples(tmp[i], src, src_stride, mx, my, block_w, block_h);
     }
+
+    if (sb_bdof_flag)
+        fc->vvcdsp.inter.apply_bdof(dst, dst_stride, tmp[L0], tmp[L1], block_w, block_h);
+    else if (weight_flag)
+        fc->vvcdsp.inter.w_avg(dst, dst_stride, tmp[L0], tmp[L1], block_w, block_h, denom, w0, w1, o0, o1);
+    else
+        fc->vvcdsp.inter.avg(dst, dst_stride, tmp[L0], tmp[L1], block_w, block_h);
 }
 
 static void chroma_mc_uni(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
