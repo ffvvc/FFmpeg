@@ -27,6 +27,7 @@
 
 #include "libavcodec/vvc/vvcdsp.h"
 #include "libavcodec/vvc/vvcdec.h"
+#include "libavcodec/vvc/vvc_data.h"
 
 #include "checkasm.h"
 
@@ -67,11 +68,11 @@ static const uint32_t pixel_mask[] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff, 0x3ff
 #define CHECK_FUNC(func, ...) if (check_func(func, __VA_ARGS__)) {                  \
     memset(dst0, 0, DST_BUF_SIZE);                                                  \
     memset(dst1, 0, DST_BUF_SIZE);                                                  \
-    call_ref(dst0, src0 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf_idx, vf_idx);  \
-    call_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf_idx, vf_idx);  \
+    call_ref(dst0, src0 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf, vf);          \
+    call_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf, vf);          \
     if (memcmp(dst0, dst1, DST_BUF_SIZE))                                           \
         fail();                                                                     \
-    bench_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf_idx, vf_idx); \
+    bench_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf, vf);         \
 }
 
 static void check_put_vvc_luma(VVCDSPContext *c, int bit_depth)
@@ -83,16 +84,18 @@ static void check_put_vvc_luma(VVCDSPContext *c, int bit_depth)
 
     declare_func(void, int16_t *dst, const uint8_t *src, const ptrdiff_t src_stride,
         const int height, const intptr_t mx, const intptr_t my, const int width,
-        const int hf_idx, const int vf_idx);
+        const int8_t *hf, const int8_t *vf);
 
     randomize_pixels(src0, src1, SRC_BUF_SIZE);
 
     for (int h = 4; h <= MAX_CU_SIZE; h *= 2) {
         for (int w = 4; w <= MAX_CU_SIZE; w *= 2) {
-            int mx     = rnd() % 16;
-            int my     = rnd() % 16;
-            int hf_idx = rnd() % 3;
-            int vf_idx = rnd() % 3;
+            const int mx        = rnd() % 16;
+            const int my        = rnd() % 16;
+            const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % 3][mx];
+            const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % 3][my];
+
+            CHECK_FUNC(c->inter.put[LUMA][0][0], "put_vvc_luma_%d_%d_%d", bit_depth, w, h);
             CHECK_FUNC(c->inter.put[LUMA][0][1], "put_vvc_luma_h_%d_%d_%d", bit_depth, w, h);
             CHECK_FUNC(c->inter.put[LUMA][1][0], "put_vvc_luma_v_%d_%d_%d",  bit_depth, w, h);
             CHECK_FUNC(c->inter.put[LUMA][1][1], "put_vvc_luma_hv_%d_%d_%d", bit_depth, w, h);
