@@ -90,15 +90,16 @@ static void check_put_vvc_luma(VVCDSPContext *c, int bit_depth)
 
     for (int h = 4; h <= MAX_CU_SIZE; h *= 2) {
         for (int w = 4; w <= MAX_CU_SIZE; w *= 2) {
+            const int idx       = av_log2(w) - 1;
             const int mx        = rnd() % 16;
             const int my        = rnd() % 16;
             const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % 3][mx];
             const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % 3][my];
 
-            CHECK_FUNC(c->inter.put[LUMA][0][0], "put_vvc_luma_%d_%d_%d", bit_depth, w, h);
-            CHECK_FUNC(c->inter.put[LUMA][0][1], "put_vvc_luma_h_%d_%d_%d", bit_depth, w, h);
-            CHECK_FUNC(c->inter.put[LUMA][1][0], "put_vvc_luma_v_%d_%d_%d",  bit_depth, w, h);
-            CHECK_FUNC(c->inter.put[LUMA][1][1], "put_vvc_luma_hv_%d_%d_%d", bit_depth, w, h);
+            CHECK_FUNC(c->inter.put[LUMA][idx][0][0], "put_vvc_luma_%d_%d_%d", bit_depth, w, h);
+            CHECK_FUNC(c->inter.put[LUMA][idx][0][1], "put_vvc_luma_h_%d_%d_%d", bit_depth, w, h);
+            CHECK_FUNC(c->inter.put[LUMA][idx][1][0], "put_vvc_luma_v_%d_%d_%d",  bit_depth, w, h);
+            CHECK_FUNC(c->inter.put[LUMA][idx][1][1], "put_vvc_luma_hv_%d_%d_%d", bit_depth, w, h);
         }
     }
 }

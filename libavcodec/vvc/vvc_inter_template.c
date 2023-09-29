@@ -983,8 +983,11 @@ static void FUNC(dmvr_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrd
     }
 }
 
-#define PEL_FUNC(dst, idx1, idx2, idx3, a)                                      \
-        inter->dst[idx1][idx2][idx3] = FUNC(a)                                  \
+#define PEL_FUNC(dst, C, idx1, idx2, a)                                         \
+    do {                                                                        \
+        for (int w = 0; w < 7; w++)                                             \
+            inter->dst[C][w][idx1][idx2] = FUNC(a);                             \
+    } while (0)                                                                 \
 
 #define DIR_FUNCS(d, C, c)                                                      \
         PEL_FUNC(put_##d, C, 0, 0, put_vvc_pel_##d##_pixels);                   \
