@@ -85,7 +85,7 @@ static void emulated_edge_dmvr(const VVCFrameContext *fc, uint8_t *dst, const ui
    }
 }
 
-static void emulated_edge_bilinear(const VVCFrameContext *fc, uint8_t *dst, uint8_t **src, ptrdiff_t *src_stride,
+static void emulated_edge_bilinear(const VVCFrameContext *fc, uint8_t *dst, const uint8_t **src, ptrdiff_t *src_stride,
     const int x_off, const int y_off, const int block_w, const int block_h)
 {
     int pic_width   = fc->ps.pps->width;
@@ -677,41 +677,34 @@ static int parametric_mv_refine(const int *sad, const int stride)
 
 #define SAD_ARRAY_SIZE 5
 //8.5.3 Decoder-side motion vector refinement process
-static void dmvr_mv_refine(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int *sb_bdof_flag,
+static void dmvr_mv_refine(VVCLocalContext *lc, MvField *mvf, MvField *orig_mv, int *sb_bdof_flag,
     const AVFrame *ref0, const AVFrame *ref1, const int x_off, const int y_off, const int block_w, const int block_h)
 {
     const VVCFrameContext *fc   = lc->fc;
-    ptrdiff_t src0_stride       = ref0->linesize[0];
-    ptrdiff_t src1_stride       = ref1->linesize[0];
-    Mv *mv0                     = mv->mv + L0;
-    Mv *mv1                     = mv->mv + L1;
     const int sr_range          = 2;
-    const int mx0               = mv0->x & 0xf;
-    const int my0               = mv0->y & 0xf;
-    const int mx1               = mv1->x & 0xf;
-    const int my1               = mv1->y & 0xf;
-    const int x_off0            = x_off + (mv0->x >> 4) - sr_range;
-    const int y_off0            = y_off + (mv0->y >> 4) - sr_range;
-    const int x_off1            = x_off + (mv1->x >> 4) - sr_range;
-    const int y_off1            = y_off + (mv1->y >> 4) - sr_range;
-    const int pred_w            = block_w + 2 * sr_range;
-    const int pred_h            = block_h + 2 * sr_range;
-
-    uint8_t *src0               = ref0->data[0] + y_off0 * src0_stride + (int)((unsigned)x_off0 << fc->ps.sps->pixel_shift);
-    uint8_t *src1               = ref1->data[0] + y_off1 * src1_stride + (int)((unsigned)x_off1 << fc->ps.sps->pixel_shift);
-
+    const AVFrame *ref[]        = { ref0, ref1 };
+    int16_t *tmp[]              = { lc->tmp, lc->tmp1 };
     int sad[SAD_ARRAY_SIZE][SAD_ARRAY_SIZE];
     int min_dx, min_dy, min_sad, dx, dy;
 
-    *orig_mv = *mv;
+    *orig_mv = *mvf;
     min_dx = min_dy = dx = dy = 2;
 
-    EMULATED_EDGE_BILINEAR(lc->edge_emu_buffer, &src0, &src0_stride, x_off0, y_off0);
-    EMULATED_EDGE_BILINEAR(lc->edge_emu_buffer2, &src1, &src1_stride, x_off1, y_off1);
-    fc->vvcdsp.inter.dmvr[!!my0][!!mx0](lc->tmp, src0, src0_stride, pred_h, mx0, my0, pred_w);
-    fc->vvcdsp.inter.dmvr[!!my1][!!mx1](lc->tmp1, src1, src1_stride, pred_h, mx1, my1, pred_w);
+    for (int i = L0; i <= L1; i++) {
+        const int pred_w        = block_w + 2 * sr_range;
+        const int pred_h        = block_h + 2 * sr_range;
+        const Mv *mv            = mvf->mv + i;
+        const int mx            = mv->x & 0xf;
+        const int my            = mv->y & 0xf;
+        const int ox            = x_off + (mv->x >> 4) - sr_range;
+        const int oy            = y_off + (mv->y >> 4) - sr_range;
+        ptrdiff_t src_stride    = ref[i]->linesize[LUMA];
+        const uint8_t *src      = ref[i]->data[LUMA] + oy * src_stride + (ox << fc->ps.sps->pixel_shift);
+        EMULATED_EDGE_BILINEAR(lc->edge_emu_buffer, &src, &src_stride, ox, oy);
+        fc->vvcdsp.inter.dmvr[!!my][!!mx](tmp[i], src, src_stride, pred_h, mx, my, pred_w);
+    }
 
-    min_sad = fc->vvcdsp.inter.sad(lc->tmp, lc->tmp1, dx, dy, block_w, block_h);
+    min_sad = fc->vvcdsp.inter.sad(tmp[L0], tmp[L1], dx, dy, block_w, block_h);
     min_sad -= min_sad >> 2;
     sad[dy][dx] = min_sad;
 
@@ -736,12 +729,13 @@ static void dmvr_mv_refine(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, i
             dmv[0] += parametric_mv_refine(&sad[min_dy][min_dx], 1);
             dmv[1] += parametric_mv_refine(&sad[min_dy][min_dx], SAD_ARRAY_SIZE);
         }
-        mv0->x += dmv[0];
-        mv0->y += dmv[1];
-        mv1->x += -dmv[0];
-        mv1->y += -dmv[1];
-        ff_vvc_clip_mv(mv0);
-        ff_vvc_clip_mv(mv1);
+
+        for (int i = L0; i <= L1; i++) {
+            Mv *mv = mvf->mv + i;
+            mv->x += (1 - 2 * i) * dmv[0];
+            mv->y += (1 - 2 * i) * dmv[1];
+            ff_vvc_clip_mv(mv);
+        }
     }
     if (min_sad < 2 * block_w * block_h) {
         *sb_bdof_flag = 0;
