@@ -121,6 +121,167 @@ SAO_FUNCS(12, avx2)
     SAO_FILTER_INIT(band, bd, opt);                                               \
 } while (0)
 
+#define PEL_LINK(dst, idx1, idx2, idx3, name, D, opt) \
+    dst[idx1][idx2][idx3] = ff_vvc_put_## name ## _ ## D ## _##opt; \
+
+#define MC_8TAP_LINKS(pointer, my, mx, fname, bitd, opt )       \
+    PEL_LINK(pointer, 1, my , mx , fname##4 ,  bitd, opt ); \
+    PEL_LINK(pointer, 2, my , mx , fname##8 ,  bitd, opt ); \
+    PEL_LINK(pointer, 3, my , mx , fname##16,  bitd, opt ); \
+    PEL_LINK(pointer, 4, my , mx , fname##32,  bitd, opt ); \
+    PEL_LINK(pointer, 5, my , mx , fname##64,  bitd, opt ); \
+    PEL_LINK(pointer, 6, my , mx , fname##128, bitd, opt ); \
+
+#define MC_8TAP_LINKS_SSE4(bd)                                  \
+    MC_8TAP_LINKS(c->inter.put[LUMA], 0, 0, pixels, bd, sse4);  \
+    MC_8TAP_LINKS(c->inter.put[LUMA], 0, 1, 8tap_h, bd, sse4);  \
+    MC_8TAP_LINKS(c->inter.put[LUMA], 1, 0, 8tap_v, bd, sse4);  \
+    MC_8TAP_LINKS(c->inter.put[LUMA], 1, 1, 8tap_hv, bd, sse4) \
+
+#define PEL_PROTOTYPE(name, D, opt) \
+void ff_vvc_put_ ## name ## _ ## D ## _##opt(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride, int height, intptr_t mx, intptr_t my,int width, const int8_t *hf, const int8_t *vf);
+#if 0
+ \
+void ff_hevc_put_hevc_bi_ ## name ## _ ## D ## _##opt(uint8_t *_dst, ptrdiff_t _dststride, const uint8_t *_src, ptrdiff_t _srcstride, const int16_t *src2, int height, intptr_t mx, intptr_t my, int width); \
+void ff_hevc_put_hevc_uni_ ## name ## _ ## D ## _##opt(uint8_t *_dst, ptrdiff_t _dststride, const uint8_t *_src, ptrdiff_t _srcstride, int height, intptr_t mx, intptr_t my, int width); \
+void ff_hevc_put_hevc_uni_w_ ## name ## _ ## D ## _##opt(uint8_t *_dst, ptrdiff_t _dststride, const uint8_t *_src, ptrdiff_t _srcstride, int height, int denom, int wx, int ox, intptr_t mx, intptr_t my, int width); \
+void ff_hevc_put_hevc_bi_w_ ## name ## _ ## D ## _##opt(uint8_t *_dst, ptrdiff_t _dststride, const uint8_t *_src, ptrdiff_t _srcstride, const int16_t *src2, int height, int denom, int wx0, int wx1, int ox0, int ox1, intptr_t mx, intptr_t my, int width)
+#endif
+
+#define MC_8TAP_PROTOTYPES(fname, bitd, opt) \
+        PEL_PROTOTYPE(fname##4,  bitd, opt); \
+        PEL_PROTOTYPE(fname##8,  bitd, opt); \
+        PEL_PROTOTYPE(fname##16, bitd, opt); \
+        PEL_PROTOTYPE(fname##32, bitd, opt); \
+        PEL_PROTOTYPE(fname##64, bitd, opt); \
+        PEL_PROTOTYPE(fname##128, bitd, opt)
+
+///////////////////////////////////////////////////////////////////////////////
+// MC_8TAP_PIXELS
+///////////////////////////////////////////////////////////////////////////////
+MC_8TAP_PROTOTYPES(pixels  ,  8, sse4);
+MC_8TAP_PROTOTYPES(pixels  , 10, sse4);
+MC_8TAP_PROTOTYPES(pixels  , 12, sse4);
+MC_8TAP_PROTOTYPES(8tap_h  ,  8, sse4);
+MC_8TAP_PROTOTYPES(8tap_h  , 10, sse4);
+MC_8TAP_PROTOTYPES(8tap_h  , 12, sse4);
+MC_8TAP_PROTOTYPES(8tap_v  ,  8, sse4);
+MC_8TAP_PROTOTYPES(8tap_v  , 10, sse4);
+MC_8TAP_PROTOTYPES(8tap_v  , 12, sse4);
+MC_8TAP_PROTOTYPES(8tap_hv ,  8, sse4);
+MC_8TAP_PROTOTYPES(8tap_hv , 10, sse4);
+MC_8TAP_PROTOTYPES(8tap_hv , 12, sse4);
+
+#if HAVE_AVX2_EXTERNAL
+#define MC_8TAP_PROTOTYPES_AVX2(fname)              \
+    PEL_PROTOTYPE(fname##32 , 8, avx2);             \
+    PEL_PROTOTYPE(fname##64 , 8, avx2);             \
+    PEL_PROTOTYPE(fname##128, 8, avx2);             \
+    PEL_PROTOTYPE(fname##16 ,10, avx2);             \
+    PEL_PROTOTYPE(fname##32 ,10, avx2);             \
+    PEL_PROTOTYPE(fname##64 ,10, avx2);             \
+    PEL_PROTOTYPE(fname##128,10, avx2);             \
+    PEL_PROTOTYPE(fname##16 ,12, avx2);             \
+    PEL_PROTOTYPE(fname##32 ,12, avx2);             \
+    PEL_PROTOTYPE(fname##64 ,12, avx2);             \
+    PEL_PROTOTYPE(fname##128,12, avx2)              \
+
+MC_8TAP_PROTOTYPES_AVX2(pixels);
+MC_8TAP_PROTOTYPES_AVX2(8tap_h);
+MC_8TAP_PROTOTYPES_AVX2(8tap_v);
+MC_8TAP_PROTOTYPES_AVX2(8tap_hv);
+PEL_PROTOTYPE(8tap_hv16, 8, avx2);
+#endif
+
+#define mc_rep_func(name, bitd, step, W, opt) \
+void ff_vvc_put_##name##W##_##bitd##_##opt(int16_t *_dst,                                                       \
+    const uint8_t *_src, ptrdiff_t _srcstride, int height, intptr_t mx, intptr_t my, int width,                 \
+    const int8_t *hf, const int8_t *vf)                                                                         \
+{                                                                                                               \
+    int i;                                                                                                      \
+    int16_t *dst;                                                                                               \
+    for (i = 0; i < W; i += step) {                                                                             \
+        const uint8_t *src  = _src + (i * ((bitd + 7) / 8));                                                    \
+        dst = _dst + i;                                                                                         \
+        ff_vvc_put_##name##step##_##bitd##_##opt(dst, src, _srcstride, height, mx, my, width, hf, vf);          \
+    }                                                                                                           \
+}
+#if 0
+#define mc_rep_uni_func(name, bitd, step, W, opt) \
+void ff_hevc_put_hevc_uni_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride,                        \
+                                                     const uint8_t *_src, ptrdiff_t _srcstride, int height,     \
+                                                    intptr_t mx, intptr_t my, int width)                        \
+{                                                                                                               \
+    int i;                                                                                                      \
+    uint8_t *dst;                                                                                               \
+    for (i = 0; i < W; i += step) {                                                                             \
+        const uint8_t *src = _src + (i * ((bitd + 7) / 8));                                                     \
+        dst = _dst + (i * ((bitd + 7) / 8));                                                                    \
+        ff_hevc_put_hevc_uni_##name##step##_##bitd##_##opt(dst, dststride, src, _srcstride,                     \
+                                                          height, mx, my, width);                               \
+    }                                                                                                           \
+}
+#define mc_rep_bi_func(name, bitd, step, W, opt) \
+void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, const uint8_t *_src,    \
+                                                    ptrdiff_t _srcstride, const int16_t *_src2,                 \
+                                                   int height, intptr_t mx, intptr_t my, int width)             \
+{                                                                                                               \
+    int i;                                                                                                      \
+    uint8_t  *dst;                                                                                              \
+    for (i = 0; i < W ; i += step) {                                                                            \
+        const uint8_t *src  = _src + (i * ((bitd + 7) / 8));                                                    \
+        const int16_t *src2 = _src2 + i;                                                                        \
+        dst  = _dst + (i * ((bitd + 7) / 8));                                                                   \
+        ff_hevc_put_hevc_bi_##name##step##_##bitd##_##opt(dst, dststride, src, _srcstride, src2,                \
+                                                          height, mx, my, width);                               \
+    }                                                                                                           \
+}
+#endif
+
+#define mc_rep_funcs(name, bitd, step, W, opt)        \
+    mc_rep_func(name, bitd, step, W, opt)
+#if 0
+    mc_rep_uni_func(name, bitd, step, W, opt)        \
+    mc_rep_bi_func(name, bitd, step, W, opt)
+#endif
+
+#define MC_REP_FUNCS_SSE4(fname)                \
+    mc_rep_funcs(fname, 8, 16,128, sse4)        \
+    mc_rep_funcs(fname, 8, 16, 64, sse4)        \
+    mc_rep_funcs(fname, 8, 16, 32, sse4)        \
+    mc_rep_funcs(fname,10,  8,128, sse4)        \
+    mc_rep_funcs(fname,10,  8, 64, sse4)        \
+    mc_rep_funcs(fname,10,  8, 32, sse4)        \
+    mc_rep_funcs(fname,10,  8, 16, sse4)        \
+    mc_rep_funcs(fname,12,  8,128, sse4)        \
+    mc_rep_funcs(fname,12,  8, 64, sse4)        \
+    mc_rep_funcs(fname,12,  8, 32, sse4)        \
+    mc_rep_funcs(fname,12,  8, 16, sse4)        \
+
+MC_REP_FUNCS_SSE4(pixels)
+MC_REP_FUNCS_SSE4(8tap_h)
+MC_REP_FUNCS_SSE4(8tap_v)
+MC_REP_FUNCS_SSE4(8tap_hv)
+mc_rep_funcs(8tap_hv, 8, 8, 16, sse4)
+
+#if HAVE_AVX2_EXTERNAL
+
+#define MC_REP_FUNCS_AVX2(fname)                \
+    mc_rep_funcs(fname, 8, 32, 64, avx2)       \
+    mc_rep_funcs(fname, 8, 32,128, avx2)       \
+    mc_rep_funcs(fname,10, 16, 32, avx2)       \
+    mc_rep_funcs(fname,10, 16, 64, avx2)       \
+    mc_rep_funcs(fname,10, 16,128, avx2)       \
+    mc_rep_funcs(fname,12, 16, 32, avx2)       \
+    mc_rep_funcs(fname,12, 16, 64, avx2)       \
+    mc_rep_funcs(fname,12, 16,128, avx2)       \
+
+MC_REP_FUNCS_AVX2(pixels)
+MC_REP_FUNCS_AVX2(8tap_h)
+MC_REP_FUNCS_AVX2(8tap_v)
+MC_REP_FUNCS_AVX2(8tap_hv)
+#endif
+
 #define AVG_BPC_FUNC(bpc, opt)                                                                      \
 void BF(ff_vvc_avg, bpc, opt)(uint8_t *dst, ptrdiff_t dst_stride,                                   \
     const int16_t *src0, const int16_t *src1, intptr_t width, intptr_t height, intptr_t pixel_max); \
@@ -155,9 +316,59 @@ AVG_FUNCS(16, 12, avx2)
     c->inter.w_avg  = bf(w_avg, bd, opt);                               \
 } while (0)
 
+#define MC_8TAP_LINKS_AVX2(bd) do {                                             \
+        c->inter.put[LUMA][4][0][0] = ff_vvc_put_pixels32_##bd##_avx2;          \
+        c->inter.put[LUMA][5][0][0] = ff_vvc_put_pixels64_##bd##_avx2;          \
+        c->inter.put[LUMA][6][0][0] = ff_vvc_put_pixels128_##bd##_avx2;         \
+        c->inter.put[LUMA][4][0][1] = ff_vvc_put_8tap_h32_##bd##_avx2;          \
+        c->inter.put[LUMA][5][0][1] = ff_vvc_put_8tap_h64_##bd##_avx2;          \
+        c->inter.put[LUMA][6][0][1] = ff_vvc_put_8tap_h128_##bd##_avx2;         \
+        c->inter.put[LUMA][4][1][0] = ff_vvc_put_8tap_v32_##bd##_avx2;          \
+        c->inter.put[LUMA][5][1][0] = ff_vvc_put_8tap_v64_##bd##_avx2;          \
+        c->inter.put[LUMA][6][1][0] = ff_vvc_put_8tap_v128_##bd##_avx2;         \
+    } while (0)
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
     const int cpu_flags = av_get_cpu_flags();
+
+    if (bd == 8) {
+        if (EXTERNAL_SSE4(cpu_flags)) {
+            MC_8TAP_LINKS_SSE4(8);
+        }
+        if (EXTERNAL_AVX2_FAST(cpu_flags)) {
+            MC_8TAP_LINKS_AVX2(8);
+        }
+    } else if (bd == 10) {
+        if (EXTERNAL_SSE4(cpu_flags)) {
+            MC_8TAP_LINKS_SSE4(10);
+            //hevc avx2 8 bits still have issue need to fix it fistly
+        }
+        if (EXTERNAL_AVX2_FAST(cpu_flags)) {
+            MC_8TAP_LINKS_AVX2(10);
+            c->inter.put[LUMA][3][0][0] = ff_vvc_put_pixels16_10_avx2;
+            c->inter.put[LUMA][3][0][1] = ff_vvc_put_8tap_h16_10_avx2;
+            c->inter.put[LUMA][3][1][0] = ff_vvc_put_8tap_v16_10_avx2;
+            c->inter.put[LUMA][3][1][1] = ff_vvc_put_8tap_hv16_10_avx2;
+            c->inter.put[LUMA][4][1][1] = ff_vvc_put_8tap_hv32_10_avx2;
+            c->inter.put[LUMA][5][1][1] = ff_vvc_put_8tap_hv64_10_avx2;
+            c->inter.put[LUMA][6][1][1] = ff_vvc_put_8tap_hv128_10_avx2;
+        }
+    } else if (bd == 12) {
+        if (EXTERNAL_SSE4(cpu_flags)) {
+            MC_8TAP_LINKS_SSE4(12);
+        }
+        if (EXTERNAL_AVX2_FAST(cpu_flags)) {
+            MC_8TAP_LINKS_AVX2(12);
+            c->inter.put[LUMA][3][0][0] = ff_vvc_put_pixels16_12_avx2;
+            c->inter.put[LUMA][3][0][1] = ff_vvc_put_8tap_h16_12_avx2;
+            c->inter.put[LUMA][3][1][0] = ff_vvc_put_8tap_v16_12_avx2;
+            c->inter.put[LUMA][3][1][1] = ff_vvc_put_8tap_hv16_12_avx2;
+            c->inter.put[LUMA][4][1][1] = ff_vvc_put_8tap_hv32_12_avx2;
+            c->inter.put[LUMA][5][1][1] = ff_vvc_put_8tap_hv64_12_avx2;
+            c->inter.put[LUMA][6][1][1] = ff_vvc_put_8tap_hv128_12_avx2;
+        }
+    }
 
     if (EXTERNAL_AVX2(cpu_flags)) {
         switch (bd) {

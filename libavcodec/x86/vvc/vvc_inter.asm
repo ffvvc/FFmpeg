@@ -19,8 +19,8 @@
 ; * License along with FFmpeg; if not, write to the Free Software
 ; * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 ; */
-
-%include "libavutil/x86/x86util.asm"
+%define MAX_PB_SIZE 128
+%include "libavcodec/x86/xvc_mc.asm"
 
 SECTION_RODATA 64
 
@@ -47,8 +47,6 @@ AVG_JMP_TABLE  w_avg,  8, avx2,                2, 4, 8, 16, 32, 64, 128
 AVG_JMP_TABLE  w_avg, 16, avx2,                2, 4, 8, 16, 32, 64, 128
 
 SECTION .text
-
-%define MAX_PB_SIZE 128*2
 
 %macro AVG_W16_FN 3 ; bpc, op, count
     %assign %%i 0
@@ -203,7 +201,7 @@ SECTION .text
     jmp                  %1
 %endmacro
 
-%define AVG_SRC_STRIDE MAX_PB_SIZE
+%define AVG_SRC_STRIDE MAX_PB_SIZE*2
 
 ;void ff_vvc_avg_%1bpc_avx2(uint8_t *dst, ptrdiff_t dst_stride,
 ;   const int16_t *src0, const int16_t *src1, intptr_t width, intptr_t height, intptr_t pixel_max);
@@ -279,10 +277,71 @@ cglobal vvc_w_avg_%1bpc, 4, 7, 8, dst, stride, src0, src1, w, h, t0, t1
     AVG_FN               %1, W_AVG
 %endmacro
 
+%macro VVC_PUT_PIXELS 2
+    PUT_PIXELS vvc, %1, %2
+%endmacro
+
+%macro VVC_PUT_4TAP 2
+    PUT_4TAP vvc, %1, %2
+%endmacro
+
+%macro VVC_PUT_8TAP 2
+    PUT_8TAP vvc, %1, %2
+%endmacro
+
+%macro VVC_PUT_8TAP_HV 2
+    PUT_8TAP_HV vvc, %1, %2
+%endmacro
+
 %if ARCH_X86_64
+
+INIT_XMM sse4
+VVC_PUT_PIXELS  2, 8
+VVC_PUT_PIXELS  4, 8
+VVC_PUT_PIXELS  8, 8
+VVC_PUT_PIXELS 16, 8
+
+VVC_PUT_PIXELS 2, 10
+VVC_PUT_PIXELS 4, 10
+VVC_PUT_PIXELS 8, 10
+
+VVC_PUT_PIXELS 2, 12
+VVC_PUT_PIXELS 4, 12
+VVC_PUT_PIXELS 8, 12
+
+VVC_PUT_8TAP 4,  8
+VVC_PUT_8TAP 8,  8
+VVC_PUT_8TAP 16, 8
+
+VVC_PUT_8TAP 4, 10
+VVC_PUT_8TAP 8, 10
+
+VVC_PUT_8TAP 4, 12
+VVC_PUT_8TAP 8, 12
+
+VVC_PUT_8TAP_HV 4, 8
+VVC_PUT_8TAP_HV 8, 8
+
+VVC_PUT_8TAP_HV 4, 10
+VVC_PUT_8TAP_HV 8, 10
+
+VVC_PUT_8TAP_HV 4, 12
+VVC_PUT_8TAP_HV 8, 12
 
 %if HAVE_AVX2_EXTERNAL
 INIT_YMM avx2
+
+VVC_PUT_PIXELS  32, 8
+VVC_PUT_PIXELS  16, 10
+VVC_PUT_PIXELS  16, 12
+
+VVC_PUT_8TAP 32,  8
+VVC_PUT_8TAP 16, 10
+VVC_PUT_8TAP 16, 12
+
+VVC_PUT_8TAP_HV 32, 8
+VVC_PUT_8TAP_HV 16, 10
+VVC_PUT_8TAP_HV 16, 12
 
 VVC_AVG_AVX2 16
 
