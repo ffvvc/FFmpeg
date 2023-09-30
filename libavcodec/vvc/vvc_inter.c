@@ -25,6 +25,8 @@
 #include "vvc_mvs.h"
 #include "vvc_refs.h"
 
+// +1 is enough, + 32 for asm alignment
+#define PROF_TEMP_OFFSET (MAX_PB_SIZE + 32)
 static const int bcw_w_lut[] = {4, 5, 3, 10, -2};
 
 static int emulated_edge(const VVCFrameContext *fc, uint8_t *dst, const uint8_t **src, ptrdiff_t *src_stride,
@@ -256,7 +258,7 @@ static void luma_mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_st
     const PredictionUnit *pu    = &lc->cu->pu;
     const int idx               = av_log2(block_w) - 1;
     const AVFrame *ref[]        = { ref0, ref1 };
-    int16_t *tmp[]              = { lc->tmp + sb_bdof_flag * (1 + MAX_PB_SIZE), lc->tmp1 + sb_bdof_flag * (1 + MAX_PB_SIZE) };
+    int16_t *tmp[]              = { lc->tmp + sb_bdof_flag * PROF_TEMP_OFFSET, lc->tmp1 + sb_bdof_flag * PROF_TEMP_OFFSET };
     int denom, w0, w1, o0, o1;
     const int weight_flag       = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, pu->dmvr_flag);
 
@@ -370,7 +372,7 @@ static void luma_prof_uni(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst
     const VVCFrameContext *fc   = lc->fc;
     const uint8_t *src          = ref->data[0];
     ptrdiff_t src_stride        = ref->linesize[0];
-    uint16_t *prof_tmp          = lc->tmp + 1 + MAX_PB_SIZE;
+    uint16_t *prof_tmp          = lc->tmp + PROF_TEMP_OFFSET;
     const int idx               = av_log2(block_w) - 1;
     const int lx                = mvf->pred_flag - PF_L0;
     const Mv *mv                = mvf->mv + lx;
@@ -409,7 +411,7 @@ static void luma_prof_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_
     const PredictionUnit *pu    = &lc->cu->pu;
     const AVFrame *ref[]        = { ref0, ref1 };
     int16_t *tmp[]              = { lc->tmp, lc->tmp1 };
-    uint16_t *prof_tmp          = lc->tmp2 + 1 + MAX_PB_SIZE;
+    uint16_t *prof_tmp          = lc->tmp2 + PROF_TEMP_OFFSET;
     const int idx               = av_log2(block_w) - 1;
     int denom, w0, w1, o0, o1;
     const int weight_flag       = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, LUMA, 0);
