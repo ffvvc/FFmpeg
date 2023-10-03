@@ -139,7 +139,7 @@ SAO_FUNCS(12, avx2)
     MC_8TAP_LINKS(c->inter.put[LUMA], 1, 1, 8tap_hv, bd, sse4) \
 
 #define PEL_PROTOTYPE(name, D, opt) \
-void ff_vvc_put_ ## name ## _ ## D ## _##opt(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride, int height, intptr_t mx, intptr_t my,int width, const int8_t *hf, const int8_t *vf);
+void ff_vvc_put_ ## name ## _ ## D ## _##opt(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride, int height, const int8_t *hf, const int8_t *vf, int width);
 #if 0
  \
 void ff_hevc_put_hevc_bi_ ## name ## _ ## D ## _##opt(uint8_t *_dst, ptrdiff_t _dststride, const uint8_t *_src, ptrdiff_t _srcstride, const int16_t *src2, int height, intptr_t mx, intptr_t my, int width); \
@@ -195,15 +195,14 @@ PEL_PROTOTYPE(8tap_hv16, 8, avx2);
 
 #define mc_rep_func(name, bitd, step, W, opt) \
 void ff_vvc_put_##name##W##_##bitd##_##opt(int16_t *_dst,                                                       \
-    const uint8_t *_src, ptrdiff_t _srcstride, int height, intptr_t mx, intptr_t my, int width,                 \
-    const int8_t *hf, const int8_t *vf)                                                                         \
+    const uint8_t *_src, ptrdiff_t _srcstride, int height, const int8_t *hf, const int8_t *vf, int width)       \
 {                                                                                                               \
     int i;                                                                                                      \
     int16_t *dst;                                                                                               \
     for (i = 0; i < W; i += step) {                                                                             \
         const uint8_t *src  = _src + (i * ((bitd + 7) / 8));                                                    \
         dst = _dst + i;                                                                                         \
-        ff_vvc_put_##name##step##_##bitd##_##opt(dst, src, _srcstride, height, mx, my, width, hf, vf);          \
+        ff_vvc_put_##name##step##_##bitd##_##opt(dst, src, _srcstride, height, hf, vf, width);                  \
     }                                                                                                           \
 }
 #if 0

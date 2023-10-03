@@ -314,9 +314,8 @@
 %endmacro
 
 ; ******************************
-; void %1_put_pixels(int16_t *dst, ptrdiff_t dststride,
-;                         const uint8_t *_src, ptrdiff_t _srcstride,
-;                         int height, int mx, int my, const int8_t *hf, const int8_t *vf)
+; void %1_put_pixels(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+;                         int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 
 %macro PUT_PIXELS 3
@@ -335,15 +334,13 @@ cglobal %1_put_pixels%2_%3, 4, 4, 3, dst, src, srcstride,height
  %endmacro
 
 ; ******************************
-; void put_8tap_hX_X_X(int16_t *dst, ptrdiff_t dststride,
-;                           const uint8_t *_src, ptrdiff_t _srcstride,
-;                       int height, int mx, int my, int width)
+; void put_8tap_hX_X_X(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+;                       int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 
 %macro PUT_8TAP 3
-cglobal %1_put_8tap_h%2_%3, 5, 6, 16, dst, src, srcstride, height, mx, rfilter
+cglobal %1_put_8tap_h%2_%3, 5, 5, 16, dst, src, srcstride, height, rfilter
 
-    mov               rfilterq, r7m
     MC_8TAP_FILTER          %3, rfilterq
 .loop:
     MC_8TAP_H_LOAD          %3, srcq, %2, 10
@@ -357,18 +354,16 @@ cglobal %1_put_8tap_h%2_%3, 5, 6, 16, dst, src, srcstride, height, mx, rfilter
 
 
 ; ******************************
-; void put_8tap_vX_X_X(int16_t *dst, ptrdiff_t dststride,
-;                           const uint8_t *_src, ptrdiff_t _srcstride,
-;                       int height, int mx, int my, int width)
+; void put_8tap_vX_X_X(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+;                      int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 
-cglobal %1_put_8tap_v%2_%3, 4, 8, 16, dst, src, srcstride, height, r3src, my, rfilter
-    mov             rfilterq, r8m
+cglobal %1_put_8tap_v%2_%3, 6, 8, 16, dst, src, srcstride, height, r3src, rfilter
+    mov             rfilterq, r5mp
     MC_8TAP_FILTER        %3, rfilter
-    movifnidn            myd, mym
     lea               r3srcq, [srcstrideq*3]
 .loop:
-    MC_8TAP_V_LOAD           %3, srcq, srcstride, %2, r7
+    MC_8TAP_V_LOAD        %3, srcq, srcstride, %2, r7
     MC_8TAP_COMPUTE       %2, %3, 1
 %if %3 > 8
     packssdw              m0, m1
@@ -380,14 +375,11 @@ cglobal %1_put_8tap_v%2_%3, 4, 8, 16, dst, src, srcstride, height, r3src, my, rf
 
 
 ; ******************************
-; void put_8tap_hvX_X(int16_t *dst, ptrdiff_t dststride,
-;                          const uint8_t *_src, ptrdiff_t _srcstride,
-;                       int height, int mx, int my)
+; void put_8tap_hvX_X(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+;                     int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 %macro PUT_8TAP_HV 3
-cglobal %1_put_8tap_hv%2_%3, 6, 9, 16, 64*4, dst, src, srcstride, height, mx, my, r3src, hf, vf
-    mov                     hfq, r7m
-    mov                     vfq, r8m
+cglobal %1_put_8tap_hv%2_%3, 6, 6, 16, dst, src, srcstride, height, hf, vf, r3src
     lea                  r3srcq, [srcstrideq*3]
     sub                    srcq, r3srcq
 
