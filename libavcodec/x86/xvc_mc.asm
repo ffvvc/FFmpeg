@@ -35,17 +35,38 @@
 %endif
 %endmacro
 
-%macro MC_8TAP_FILTER 2 ;bitdepth, filter
-    vpbroadcastw      m12, [%2q + 0 * 2]  ; coeff 0, 1
-    vpbroadcastw      m13, [%2q + 1 * 2]  ; coeff 2, 3
-    vpbroadcastw      m14, [%2q + 2 * 2]  ; coeff 4, 5
-    vpbroadcastw      m15, [%2q + 3 * 2]  ; coeff 6, 7
-%if %1 != 8
-    pmovsxbw          m12, xm12
-    pmovsxbw          m13, xm13
-    pmovsxbw          m14, xm14
-    pmovsxbw          m15, xm15
+%macro MC_8TAP_SAVE_FILTER 5    ;offset, mm registers
+    mova [rsp + %1 + 0*mmsize], %2
+    mova [rsp + %1 + 1*mmsize], %3
+    mova [rsp + %1 + 2*mmsize], %4
+    mova [rsp + %1 + 3*mmsize], %5
+%endmacro
+
+%macro MC_8TAP_FILTER 2-3 ;bitdepth, filter, offset
+    vpbroadcastw                      m12, [%2q + 0 * 2]  ; coeff 0, 1
+    vpbroadcastw                      m13, [%2q + 1 * 2]  ; coeff 2, 3
+    vpbroadcastw                      m14, [%2q + 2 * 2]  ; coeff 4, 5
+    vpbroadcastw                      m15, [%2q + 3 * 2]  ; coeff 6, 7
+%if %0 == 3
+    MC_8TAP_SAVE_FILTER                %3, m12, m13, m14, m15
 %endif
+
+%if %1 != 8
+    pmovsxbw                          m12, xm12
+    pmovsxbw                          m13, xm13
+    pmovsxbw                          m14, xm14
+    pmovsxbw                          m15, xm15
+    %if %0 == 3
+    MC_8TAP_SAVE_FILTER     %3 + 4*mmsize, m12, m13, m14, m15
+    %endif
+%elif %0 == 3
+    pmovsxbw                          m8, xm12
+    pmovsxbw                          m9, xm13
+    pmovsxbw                         m10, xm14
+    pmovsxbw                         m11, xm15
+    MC_8TAP_SAVE_FILTER     %3 + 4*mmsize, m8, m9, m10, m11
+%endif
+
 %endmacro
 
 %macro MC_8TAP_H_LOAD 4
@@ -194,30 +215,18 @@
 %macro MC_8TAP_HV_COMPUTE 4     ; width, bitdepth, filter
 
 %if %2 == 8
-    vpbroadcastw     m15, [%3q + 0 * 2]
-    pmaddubsw         m0, m15               ;x1*c1+x2*c2
-    vpbroadcastw     m15, [%3q + 1 * 2]
-    pmaddubsw         m2, m15               ;x3*c3+x4*c4
-    vpbroadcastw     m15, [%3q + 2 * 2]
-    pmaddubsw         m4, m15               ;x5*c5+x6*c6
-    vpbroadcastw     m15, [%3q + 3 * 2]
-    pmaddubsw         m6, m15               ;x7*c7+x8*c8
+    pmaddubsw         m0, [%3q+0*mmsize]    ;x1*c1+x2*c2
+    pmaddubsw         m2, [%3q+1*mmsize]    ;x3*c3+x4*c4
+    pmaddubsw         m4, [%3q+2*mmsize]    ;x5*c5+x6*c6
+    pmaddubsw         m6, [%3q+3*mmsize]    ;x7*c7+x8*c8
     paddw             m0, m2
     paddw             m4, m6
     paddw             m0, m4
 %else
-    vpbroadcastw     m15, [%3q + 0 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m0, m15
-    vpbroadcastw     m15, [%3q + 1 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m2, m15
-    vpbroadcastw     m15, [%3q + 2 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m4, m15
-    vpbroadcastw     m15, [%3q + 3 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m6, m15
+    pmaddwd           m0, [%3q+4*mmsize]
+    pmaddwd           m2, [%3q+5*mmsize]
+    pmaddwd           m4, [%3q+6*mmsize]
+    pmaddwd           m6, [%3q+7*mmsize]
     paddd             m0, m2
     paddd             m4, m6
     paddd             m0, m4
@@ -225,18 +234,10 @@
     psrad             m0, %2-8
 %endif
 %if %1 > 4
-    vpbroadcastw     m15, [%3q + 0 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m1, m15
-    vpbroadcastw     m15, [%3q + 1 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m3, m15
-    vpbroadcastw     m15, [%3q + 2 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m5, m15
-    vpbroadcastw     m15, [%3q + 3 * 2]
-    pmovsxbw         m15, xm15
-    pmaddwd           m7, m15
+    pmaddwd           m1, [%3q+4*mmsize]
+    pmaddwd           m3, [%3q+5*mmsize]
+    pmaddwd           m5, [%3q+6*mmsize]
+    pmaddwd           m7, [%3q+7*mmsize]
     paddd             m1, m3
     paddd             m5, m7
     paddd             m1, m5
@@ -379,7 +380,12 @@ cglobal %1_put_8tap_v%2_%3, 6, 8, 16, dst, src, srcstride, height, r3src, rfilte
 ;                     int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 %macro PUT_8TAP_HV 3
-cglobal %1_put_8tap_hv%2_%3, 6, 6, 16, dst, src, srcstride, height, hf, vf, r3src
+cglobal %1_put_8tap_hv%2_%3, 6, 6, 16, 0 - mmsize*16, dst, src, srcstride, height, hf, vf, r3src
+    MC_8TAP_FILTER           %3, hf, 0
+    lea                     hfq, [rsp]
+    MC_8TAP_FILTER           %3, vf, 8*mmsize
+    lea                     vfq, [rsp + 8*mmsize]
+
     lea                  r3srcq, [srcstrideq*3]
     sub                    srcq, r3srcq
 
