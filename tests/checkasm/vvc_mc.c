@@ -65,14 +65,14 @@ static const uint32_t pixel_mask[] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff, 0x3ff
     } while (0)
 
 
-#define CHECK_FUNC(func, ...) if (check_func(func, __VA_ARGS__)) {                  \
-    memset(dst0, 0, DST_BUF_SIZE);                                                  \
-    memset(dst1, 0, DST_BUF_SIZE);                                                  \
-    call_ref(dst0, src0 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf, vf);          \
-    call_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf, vf);          \
-    if (memcmp(dst0, dst1, DST_BUF_SIZE))                                           \
-        fail();                                                                     \
-    bench_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, mx, my, w, hf, vf);         \
+#define CHECK_FUNC(func, ...) if (check_func(func, __VA_ARGS__)) {              \
+    memset(dst0, 0, DST_BUF_SIZE);                                              \
+    memset(dst1, 0, DST_BUF_SIZE);                                              \
+    call_ref(dst0, src0 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);              \
+    call_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);              \
+    if (memcmp(dst0, dst1, DST_BUF_SIZE))                                       \
+        fail();                                                                 \
+    bench_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);             \
 }
 
 static void check_put_vvc_luma(VVCDSPContext *c, int bit_depth)
@@ -83,8 +83,7 @@ static void check_put_vvc_luma(VVCDSPContext *c, int bit_depth)
     LOCAL_ALIGNED_32(uint8_t, src1, [SRC_BUF_SIZE]);
 
     declare_func(void, int16_t *dst, const uint8_t *src, const ptrdiff_t src_stride,
-        const int height, const intptr_t mx, const intptr_t my, const int width,
-        const int8_t *hf, const int8_t *vf);
+        const int height, const int8_t *hf, const int8_t *vf, const int width);
 
     randomize_pixels(src0, src1, SRC_BUF_SIZE);
 

@@ -47,15 +47,15 @@ enum TxSize {
 typedef struct VVCInterDSPContext {
     void (*put[2 /* luma, chroma */][7 /* log2(width) - 1 */][2 /* int, frac */][2 /* int, frac */])(
         int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int height,
-        intptr_t mx, intptr_t my, int width, const int8_t *hf, const int8_t *vf);
+        const int8_t *hf, const int8_t *vf, int width);
 
     void (*put_uni[2 /* luma, chroma */][7 /* log2(width) - 1 */][2 /* int, frac */][2 /* int, frac */])(
         uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, int height,
-        intptr_t mx, intptr_t my, int width, const int8_t *hf, const int8_t *vf);
+        const int8_t *hf, const int8_t *vf, int width);
 
     void (*put_uni_w[2 /* luma, chroma */][7 /* log2(width) - 1 */][2 /* int, frac */][2 /* int, frac */])(
         uint8_t *dst, ptrdiff_t dst_stride, const uint8_t *src, ptrdiff_t src_stride, int height,
-        int denom, int wx, int ox,  intptr_t mx, intptr_t my, int width, const int8_t *hf, const int8_t *vf);
+        int denom, int wx, int ox, const int8_t *hf, const int8_t *vf, int width);
 
     void (*avg)(uint8_t *dst, ptrdiff_t dst_stride,
         const int16_t *src0, const int16_t *src1, int width, int height);
