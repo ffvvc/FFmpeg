@@ -32,6 +32,7 @@
 #include "checkasm.h"
 
 static const uint32_t pixel_mask[] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff, 0x3fff3fff, 0xffffffff };
+static const int sizes[] = { 2, 4, 8, 16, 32, 64, 128 };
 
 #define SIZEOF_PIXEL ((bit_depth + 7) / 8)
 #define PIXEL_STRIDE (MAX_CTU_SIZE * 2)
@@ -75,32 +76,101 @@ static const uint32_t pixel_mask[] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff, 0x3ff
     bench_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);             \
 }
 
-static void check_put_vvc_luma(VVCDSPContext *c, int bit_depth)
+static void check_put_vvc_luma(void)
 {
     LOCAL_ALIGNED_32(int16_t, dst0, [DST_BUF_SIZE / 2]);
     LOCAL_ALIGNED_32(int16_t, dst1, [DST_BUF_SIZE / 2]);
     LOCAL_ALIGNED_32(uint8_t, src0, [SRC_BUF_SIZE]);
     LOCAL_ALIGNED_32(uint8_t, src1, [SRC_BUF_SIZE]);
+    VVCDSPContext c;
 
-    declare_func(void, int16_t *dst, const uint8_t *src, const ptrdiff_t src_stride,
+    declare_func_emms(AV_CPU_FLAG_MMX | AV_CPU_FLAG_MMXEXT, void, int16_t *dst, const uint8_t *src, const ptrdiff_t src_stride,
         const int height, const int8_t *hf, const int8_t *vf, const int width);
 
-    randomize_pixels(src0, src1, SRC_BUF_SIZE);
+    for (int bit_depth = 8; bit_depth <= 12; bit_depth++) {
+        randomize_pixels(src0, src1, SRC_BUF_SIZE);
+        ff_vvc_dsp_init(&c, bit_depth);
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                for (int h = 4; h <= MAX_CTU_SIZE; h *= 2) {
+                    for (int w = 4; w <= MAX_CTU_SIZE; w *= 2) {
+                        const int idx       = av_log2(w) - 1;
+                        const int mx        = rnd() % 16;
+                        const int my        = rnd() % 16;
+                        const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % 3][mx];
+                        const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % 3][my];
+                        const char *type;
+                        switch ((j << 1) | i) {
+                            case 0: type = "put_luma_pixels"; break; // 0 0
+                            case 1: type = "put_luma_h"; break; // 0 1
+                            case 2: type = "put_luma_v"; break; // 1 0
+                            case 3: type = "put_luma_hv"; break; // 1 1
+                        }
+                        if (check_func(c.inter.put[LUMA][idx][j][i], "%s_%d_%dx%d", type, bit_depth, w, h)) {
+                            memset(dst0, 0, DST_BUF_SIZE);
+                            memset(dst1, 0, DST_BUF_SIZE);
+                            call_ref(dst0, src0 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);
+                            call_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);
+                            if (memcmp(dst0, dst1, DST_BUF_SIZE))
+                                fail();
+                            bench_new(dst1, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);
 
-    for (int h = 4; h <= MAX_CU_SIZE; h *= 2) {
-        for (int w = 4; w <= MAX_CU_SIZE; w *= 2) {
-            const int idx       = av_log2(w) - 1;
-            const int mx        = rnd() % 16;
-            const int my        = rnd() % 16;
-            const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % 3][mx];
-            const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % 3][my];
-
-            CHECK_FUNC(c->inter.put[LUMA][idx][0][0], "put_vvc_luma_%d_%d_%d", bit_depth, w, h);
-            CHECK_FUNC(c->inter.put[LUMA][idx][0][1], "put_vvc_luma_h_%d_%d_%d", bit_depth, w, h);
-            CHECK_FUNC(c->inter.put[LUMA][idx][1][0], "put_vvc_luma_v_%d_%d_%d",  bit_depth, w, h);
-            CHECK_FUNC(c->inter.put[LUMA][idx][1][1], "put_vvc_luma_hv_%d_%d_%d", bit_depth, w, h);
+                        }
+                    }
+                }
+            }
         }
     }
+    report("luma_put");
+}
+
+static void check_put_vvc_luma_uni(void)
+{
+    LOCAL_ALIGNED_32(uint8_t, dst0, [DST_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, dst1, [DST_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, src0, [SRC_BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, src1, [SRC_BUF_SIZE]);
+
+    VVCDSPContext c;
+    declare_func_emms(AV_CPU_FLAG_MMX | AV_CPU_FLAG_MMXEXT, void, uint8_t *dst, ptrdiff_t dststride,
+        uint8_t *src, ptrdiff_t srcstride,  int height, const int8_t *hf, const int8_t *vf, int width);
+
+    for (int bit_depth = 8; bit_depth <= 12; bit_depth++) {
+        ff_vvc_dsp_init(&c, bit_depth);
+        randomize_pixels(src0, src1, SRC_BUF_SIZE);
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                for (int h = 4; h <= MAX_CTU_SIZE; h *= 2) {
+                    for (int w = 4; w <= MAX_CTU_SIZE; w *= 2) {
+                        const int idx       = av_log2(w) - 1;
+                        const int mx        = rnd() % 16;
+                        const int my        = rnd() % 16;
+                        const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % 3][mx];
+                        const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % 3][my];
+                        const char *type;
+
+                        switch ((j << 1) | i) {
+                            case 0: type = "put_uni_pixels"; break; // 0 0
+                            case 1: type = "put_uni_h"; break; // 0 1
+                            case 2: type = "put_uni_v"; break; // 1 0
+                            case 3: type = "put_uni_hv"; break; // 1 1
+                        }
+
+                        if (check_func(c.inter.put_uni[LUMA][idx][j][i], "luma_%s_%d_%dx%d", type, bit_depth, w, h)) {
+                            memset(dst0, 0, DST_BUF_SIZE);
+                            memset(dst1, 0, DST_BUF_SIZE);
+                            call_ref(dst0, PIXEL_STRIDE, src0 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);
+                            call_new(dst1, PIXEL_STRIDE, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);
+                            if (memcmp(dst0, dst1, DST_BUF_SIZE))
+                                fail();
+                            bench_new(dst1, PIXEL_STRIDE, src1 + SRC_OFFSET, PIXEL_STRIDE, h, hf, vf, w);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    report("luma_put_uni");
 }
 
 #define AVG_SRC_BUF_SIZE (MAX_CTU_SIZE * MAX_CTU_SIZE)
@@ -175,11 +245,10 @@ void checkasm_check_vvc_mc(void)
 {
     int bit_depth;
     VVCDSPContext h;
-    for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
-        ff_vvc_dsp_init(&h, bit_depth);
-        check_put_vvc_luma(&h, bit_depth);
-    }
-    report("put_vvc_luma");
+
+    check_put_vvc_luma();
+
+    check_put_vvc_luma_uni();
 
     for (bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
         ff_vvc_dsp_init(&h, bit_depth);
