@@ -21,6 +21,23 @@
 ; */
 %include "libavutil/x86/x86util.asm"
 
+SECTION_RODATA 32
+cextern pw_255
+cextern pw_512
+cextern pw_2048
+cextern pw_1023
+cextern pw_1024
+cextern pw_4096
+cextern pw_8192
+%define scale_8 pw_512
+%define scale_10 pw_2048
+%define scale_12 pw_8192
+%define max_pixels_8 pw_255
+%define max_pixels_10 pw_1023
+max_pixels_12:          times 16 dw ((1 << 12)-1)
+cextern pb_0
+
+SECTION .text
 %macro SIMPLE_LOAD 4    ;width, bitd, tab, r1
 %if %1 == 2 || (%2 == 8 && %1 <= 4)
     movd              %4, [%3]                                               ; load data from source
@@ -162,6 +179,24 @@
 %endif
 %endmacro
 
+%macro PEL_12STORE2 3
+    movd           [%1], %2
+%endmacro
+%macro PEL_12STORE4 3
+    movq           [%1], %2
+%endmacro
+%macro PEL_12STORE8 3
+    movdqu         [%1], %2
+%endmacro
+%macro PEL_12STORE16 3
+%if cpuflag(avx2)
+    movu            [%1], %2
+%else
+    PEL_12STORE8      %1, %2, %3
+    movdqu       [%1+16], %3
+%endif
+%endmacro
+
 %macro PEL_10STORE2 3
     movd           [%1], %2
 %endmacro
@@ -169,19 +204,39 @@
     movq           [%1], %2
 %endmacro
 %macro PEL_10STORE8 3
-    movdqa         [%1], %2
+    movdqu         [%1], %2
 %endmacro
 %macro PEL_10STORE16 3
 %if cpuflag(avx2)
     movu            [%1], %2
 %else
     PEL_10STORE8      %1, %2, %3
-    movdqa       [%1+16], %3
+    movdqu       [%1+16], %3
 %endif
 %endmacro
 %macro PEL_10STORE32 3
     PEL_10STORE16     %1, %2, %3
     movu         [%1+32], %3
+%endmacro
+
+%macro PEL_8STORE2 3
+    pextrw          [%1], %2, 0
+%endmacro
+%macro PEL_8STORE4 3
+    movd            [%1], %2
+%endmacro
+%macro PEL_8STORE8 3
+    movq           [%1], %2
+%endmacro
+%macro PEL_8STORE16 3
+%if cpuflag(avx2)
+    movdqu        [%1], %2
+%else
+    movu          [%1], %2
+%endif ; avx
+%endmacro
+%macro PEL_8STORE32 3
+    movu          [%1], %2
 %endmacro
 
 %macro LOOP_END 3
@@ -313,14 +368,30 @@
 %endif
 %endif
 %endmacro
+%macro UNI_COMPUTE 5
+    pmulhrsw          %3, %5
+%if %1 > 8 || (%2 > 8 && %1 > 4)
+    pmulhrsw          %4, %5
+%endif
+%if %2 == 8
+    packuswb          %3, %4
+%else
+    CLIPW             %3, [pb_0], [max_pixels_%2]
+%if (%1 > 8 && notcpuflag(avx)) || %1 > 16
+    CLIPW             %4, [pb_0], [max_pixels_%2]
+%endif
+%endif
+%endmacro
+
 
 ; ******************************
-; void %1_put_pixels(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+; void %1_put_pixels(int16_t *dst, const uint8_t *_src, ptrdiff_t srcstride,
 ;                         int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 
 %macro PUT_PIXELS 3
-    MC_PIXELS     %1, %2, %3
+    MC_PIXELS       %1, %2, %3
+    MC_UNI_PIXELS   %1, %2, %3
 %endmacro
 
 %macro MC_PIXELS 3
@@ -332,17 +403,29 @@ cglobal %1_put_pixels%2_%3, 4, 4, 3, dst, src, srcstride,height
     PEL_10STORE%2     dstq, m0, m1
     LOOP_END         dst, src, srcstride
     RET
- %endmacro
+%endmacro
+
+%macro MC_UNI_PIXELS 3
+cglobal %1_put_uni_pixels%2_%3, 5, 5, 2, dst, dststride, src, srcstride,height
+.loop:
+    SIMPLE_LOAD       %2, %3, srcq, m0
+    PEL_%3STORE%2   dstq, m0, m1
+    add             dstq, dststrideq             ; dst += dststride
+    add             srcq, srcstrideq             ; src += srcstride
+    dec          heightd                         ; cmp height
+    jnz               .loop                      ; height loop
+    RET
+%endmacro
 
 ; ******************************
-; void put_8tap_hX_X_X(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+; void put_8tap_hX_X_X(int16_t *dst, const uint8_t *_src, ptrdiff_t srcstride,
 ;                       int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 
 %macro PUT_8TAP 3
-cglobal %1_put_8tap_h%2_%3, 5, 5, 16, dst, src, srcstride, height, rfilter
+cglobal %1_put_8tap_h%2_%3, 5, 5, 16, dst, src, srcstride, height, hf
 
-    MC_8TAP_FILTER          %3, rfilterq
+    MC_8TAP_FILTER          %3, hf
 .loop:
     MC_8TAP_H_LOAD          %3, srcq, %2, 10
     MC_8TAP_COMPUTE         %2, %3, 1
@@ -353,15 +436,36 @@ cglobal %1_put_8tap_h%2_%3, 5, 5, 16, dst, src, srcstride, height, rfilter
     LOOP_END               dst, src, srcstride
     RET
 
+; ******************************
+; void put_uni_8tap_hX_X_X(int16_t *dst, ptrdiff_t dststride, const uint8_t *_src, ptrdiff_t srcstride,
+;                       int height, const int8_t *hf, const int8_t *vf, int width)
+; ******************************
+cglobal %1_put_uni_8tap_h%2_%3, 6, 7, 16 , dst, dststride, src, srcstride, height, hf
+    mova                 m9, [scale_%3]
+    MC_8TAP_FILTER       %3, hf
+.loop:
+    MC_8TAP_H_LOAD       %3, srcq, %2, 10
+    MC_8TAP_COMPUTE      %2, %3
+%if %3 > 8
+    packssdw             m0, m1
+%endif
+    UNI_COMPUTE          %2, %3, m0, m1, m9
+    PEL_%3STORE%2      dstq, m0, m1
+    add                dstq, dststrideq             ; dst += dststride
+    add                srcq, srcstrideq             ; src += srcstride
+    dec             heightd                         ; cmp height
+    jnz               .loop                         ; height loop
+    RET
+
 
 ; ******************************
-; void put_8tap_vX_X_X(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+; void put_8tap_vX_X_X(int16_t *dst, const uint8_t *_src, ptrdiff_t srcstride,
 ;                      int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 
-cglobal %1_put_8tap_v%2_%3, 6, 8, 16, dst, src, srcstride, height, r3src, rfilter
-    mov             rfilterq, r5mp
-    MC_8TAP_FILTER        %3, rfilter
+cglobal %1_put_8tap_v%2_%3, 6, 8, 16, dst, src, srcstride, height, r3src, vf
+    mov                  vfq, r5mp
+    MC_8TAP_FILTER        %3, vf
     lea               r3srcq, [srcstrideq*3]
 .loop:
     MC_8TAP_V_LOAD        %3, srcq, srcstride, %2, r7
@@ -372,11 +476,35 @@ cglobal %1_put_8tap_v%2_%3, 6, 8, 16, dst, src, srcstride, height, r3src, rfilte
     PEL_10STORE%2       dstq, m0, m1
     LOOP_END             dst, src, srcstride
     RET
+
+; ******************************
+; void put_uni_8tap_vX_X_X(int16_t *dst, ptrdiff_t dststride, const uint8_t *_src, ptrdiff_t srcstride,
+;                       int height, const int8_t *hf, const int8_t *vf, int width)
+; ******************************
+cglobal %1_put_uni_8tap_v%2_%3, 5, 9, 16, dst, dststride, src, srcstride, height, r3src, vf
+    mov              vfq, r6mp
+    MC_8TAP_FILTER    %3, vf
+    movdqa            m9, [scale_%3]
+    lea           r3srcq, [srcstrideq*3]
+.loop:
+    MC_8TAP_V_LOAD    %3, srcq, srcstride, %2, r8
+    MC_8TAP_COMPUTE   %2, %3
+%if %3 > 8
+    packssdw          m0, m1
+%endif
+    UNI_COMPUTE       %2, %3, m0, m1, m9
+    PEL_%3STORE%2   dstq, m0, m1
+    add             dstq, dststrideq             ; dst += dststride
+    add             srcq, srcstrideq             ; src += srcstride
+    dec          heightd                         ; cmp height
+    jnz               .loop                      ; height loop
+    RET
+
 %endmacro
 
 
 ; ******************************
-; void put_8tap_hvX_X(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride,
+; void put_8tap_hvX_X(int16_t *dst, const uint8_t *_src, ptrdiff_t srcstride,
 ;                     int height, const int8_t *hf, const int8_t *vf, int width)
 ; ******************************
 %macro PUT_8TAP_HV 3
@@ -453,4 +581,82 @@ cglobal %1_put_8tap_hv%2_%3, 6, 6, 16, 0 - mmsize*16, dst, src, srcstride, heigh
 
     LOOP_END                dst, src, srcstride
     RET
+
+
+cglobal %1_put_uni_8tap_hv%2_%3, 7, 9, 16, 0 - 16*mmsize, dst, dststride, src, srcstride, height, hf, vf, r3src
+    MC_8TAP_FILTER           %3, hf, 0
+    lea                     hfq, [rsp]
+    MC_8TAP_FILTER           %3, vf, 8*mmsize
+    lea                     vfq, [rsp + 8*mmsize]
+    lea           r3srcq, [srcstrideq*3]
+    sub             srcq, r3srcq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP              m8, m0
+    add             srcq, srcstrideq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP              m9, m0
+    add             srcq, srcstrideq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP             m10, m0
+    add             srcq, srcstrideq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP             m11, m0
+    add             srcq, srcstrideq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP             m12, m0
+    add             srcq, srcstrideq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP             m13, m0
+    add             srcq, srcstrideq
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP             m14, m0
+    add             srcq, srcstrideq
+.loop:
+    MC_8TAP_H_LOAD       %3, srcq, %2, 15
+    MC_8TAP_HV_COMPUTE   %2, %3, hf, ackssdw
+    SWAP             m15, m0
+    punpcklwd         m0, m8, m9
+    punpcklwd         m2, m10, m11
+    punpcklwd         m4, m12, m13
+    punpcklwd         m6, m14, m15
+%if %2 > 4
+    punpckhwd         m1, m8, m9
+    punpckhwd         m3, m10, m11
+    punpckhwd         m5, m12, m13
+    punpckhwd         m7, m14, m15
+%endif
+    MC_8TAP_HV_COMPUTE   %2, 14, vf, ackusdw
+    UNI_COMPUTE       %2, %3, m0, m1, [scale_%3]
+    PEL_%3STORE%2   dstq, m0, m1
+
+%if %2 <= 4
+    movq              m8, m9
+    movq              m9, m10
+    movq             m10, m11
+    movq             m11, m12
+    movq             m12, m13
+    movq             m13, m14
+    movq             m14, m15
+%else
+    mova            m8, m9
+    mova            m9, m10
+    mova           m10, m11
+    mova           m11, m12
+    mova           m12, m13
+    mova           m13, m14
+    mova           m14, m15
+%endif
+    add             dstq, dststrideq             ; dst += dststride
+    add             srcq, srcstrideq             ; src += srcstride
+    dec          heightd                         ; cmp height
+    jnz               .loop                      ; height loop
+    RET
+
 %endmacro
