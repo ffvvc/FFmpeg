@@ -125,35 +125,49 @@ SAO_FUNCS(12, avx2)
     dst[C][W][idx1][idx2] = ff_vvc_put_## name ## _ ## D ## _##opt;                     \
     dst ## _uni[C][W][idx1][idx2] = ff_vvc_put_uni_ ## name ## _ ## D ## _##opt;        \
 
-#define MC_8TAP_LINKS(pointer, C, my, mx, fname, bitd, opt )       \
-    PEL_LINK(pointer, C, 1, my , mx , fname##4 ,  bitd, opt ); \
-    PEL_LINK(pointer, C, 2, my , mx , fname##8 ,  bitd, opt ); \
-    PEL_LINK(pointer, C, 3, my , mx , fname##16,  bitd, opt ); \
-    PEL_LINK(pointer, C, 4, my , mx , fname##32,  bitd, opt ); \
-    PEL_LINK(pointer, C, 5, my , mx , fname##64,  bitd, opt ); \
-    PEL_LINK(pointer, C, 6, my , mx , fname##128, bitd, opt ); \
+#define MC_TAP_LINKS(pointer, C, my, mx, fname, bitd, opt )         \
+    PEL_LINK(pointer, C, 1, my , mx , fname##4 ,  bitd, opt );      \
+    PEL_LINK(pointer, C, 2, my , mx , fname##8 ,  bitd, opt );      \
+    PEL_LINK(pointer, C, 3, my , mx , fname##16,  bitd, opt );      \
+    PEL_LINK(pointer, C, 4, my , mx , fname##32,  bitd, opt );      \
+    PEL_LINK(pointer, C, 5, my , mx , fname##64,  bitd, opt );      \
+    PEL_LINK(pointer, C, 6, my , mx , fname##128, bitd, opt );      \
 
-#define MC_8TAP_LINKS_SSE4(bd)                                  \
-    MC_8TAP_LINKS(c->inter.put, LUMA, 0, 0, pixels, bd, sse4);  \
-    MC_8TAP_LINKS(c->inter.put, LUMA, 0, 1, 8tap_h, bd, sse4);  \
-    MC_8TAP_LINKS(c->inter.put, LUMA, 1, 0, 8tap_v, bd, sse4);  \
-    MC_8TAP_LINKS(c->inter.put, LUMA, 1, 1, 8tap_hv, bd, sse4) \
+#define MC_8TAP_LINKS(pointer, my, mx, fname, bitd, opt)            \
+    MC_TAP_LINKS(pointer, LUMA, my, mx, fname, bitd, opt)           \
+
+#define MC_8TAP_LINKS_SSE4(bd)                                      \
+    MC_8TAP_LINKS(c->inter.put, 0, 0, pixels, bd, sse4);            \
+    MC_8TAP_LINKS(c->inter.put, 0, 1, 8tap_h, bd, sse4);            \
+    MC_8TAP_LINKS(c->inter.put, 1, 0, 8tap_v, bd, sse4);            \
+    MC_8TAP_LINKS(c->inter.put, 1, 1, 8tap_hv, bd, sse4)            \
+
+#define MC_4TAP_LINKS(pointer, my, mx, fname, bitd, opt)            \
+    PEL_LINK(pointer, CHROMA, 0, my , mx , fname##2 ,  bitd, opt ); \
+    MC_TAP_LINKS(pointer, CHROMA, my, mx, fname, bitd, opt)         \
+
+#define MC_4TAP_LINKS_SSE4(bd)                                      \
+    MC_4TAP_LINKS(c->inter.put, 0, 0, pixels, bd, sse4);            \
+    MC_4TAP_LINKS(c->inter.put, 0, 1, 4tap_h, bd, sse4);            \
+    MC_4TAP_LINKS(c->inter.put, 1, 0, 4tap_v, bd, sse4);            \
+    MC_4TAP_LINKS(c->inter.put, 1, 1, 4tap_hv, bd, sse4)            \
+
+#define MC_LINK_SSE4(bd)                                            \
+    MC_4TAP_LINKS_SSE4(bd)                                          \
+    MC_8TAP_LINKS_SSE4(bd)
 
 #define PEL_PROTOTYPE(name, D, opt) \
 void ff_vvc_put_ ## name ## _ ## D ## _##opt(int16_t *dst, const uint8_t *_src, ptrdiff_t _srcstride, int height, const int8_t *hf, const int8_t *vf, int width);                               \
 void ff_vvc_put_uni_ ## name ## _ ## D ## _##opt(uint8_t *_dst, ptrdiff_t _dststride, const uint8_t *_src, ptrdiff_t _srcstride, int height, const int8_t *hf, const int8_t *vf, int width);    \
 
-#define MC_8TAP_PROTOTYPES(fname, bitd, opt) \
-        PEL_PROTOTYPE(fname##4,  bitd, opt); \
-        PEL_PROTOTYPE(fname##8,  bitd, opt); \
-        PEL_PROTOTYPE(fname##16, bitd, opt); \
-        PEL_PROTOTYPE(fname##32, bitd, opt); \
-        PEL_PROTOTYPE(fname##64, bitd, opt); \
-        PEL_PROTOTYPE(fname##128, bitd, opt)
+#define MC_8TAP_PROTOTYPES(fname, bitd, opt)    \
+    PEL_PROTOTYPE(fname##4,  bitd, opt);        \
+    PEL_PROTOTYPE(fname##8,  bitd, opt);        \
+    PEL_PROTOTYPE(fname##16, bitd, opt);        \
+    PEL_PROTOTYPE(fname##32, bitd, opt);        \
+    PEL_PROTOTYPE(fname##64, bitd, opt);        \
+    PEL_PROTOTYPE(fname##128, bitd, opt)
 
-///////////////////////////////////////////////////////////////////////////////
-// MC_8TAP_PIXELS
-///////////////////////////////////////////////////////////////////////////////
 MC_8TAP_PROTOTYPES(pixels  ,  8, sse4);
 MC_8TAP_PROTOTYPES(pixels  , 10, sse4);
 MC_8TAP_PROTOTYPES(pixels  , 12, sse4);
@@ -166,6 +180,25 @@ MC_8TAP_PROTOTYPES(8tap_v  , 12, sse4);
 MC_8TAP_PROTOTYPES(8tap_hv ,  8, sse4);
 MC_8TAP_PROTOTYPES(8tap_hv , 10, sse4);
 MC_8TAP_PROTOTYPES(8tap_hv , 12, sse4);
+
+#define MC_4TAP_PROTOTYPES(fname, bitd, opt)    \
+    PEL_PROTOTYPE(fname##2,  bitd, opt);        \
+    PEL_PROTOTYPE(fname##4,  bitd, opt);        \
+    PEL_PROTOTYPE(fname##8,  bitd, opt);        \
+    PEL_PROTOTYPE(fname##16, bitd, opt);        \
+    PEL_PROTOTYPE(fname##32, bitd, opt);        \
+    PEL_PROTOTYPE(fname##64, bitd, opt);        \
+    PEL_PROTOTYPE(fname##128, bitd, opt)
+
+#define MC_4TAP_PROTOTYPES_SSE4(bitd)           \
+    PEL_PROTOTYPE(pixels2, bitd, sse4);         \
+    MC_4TAP_PROTOTYPES(4tap_h, bitd, sse4);     \
+    MC_4TAP_PROTOTYPES(4tap_v, bitd, sse4);     \
+    MC_4TAP_PROTOTYPES(4tap_hv, bitd, sse4);    \
+
+MC_4TAP_PROTOTYPES_SSE4(8)
+MC_4TAP_PROTOTYPES_SSE4(10)
+MC_4TAP_PROTOTYPES_SSE4(12)
 
 #if HAVE_AVX2_EXTERNAL
 #define MC_8TAP_PROTOTYPES_AVX2(fname)              \
@@ -186,6 +219,10 @@ MC_8TAP_PROTOTYPES_AVX2(8tap_h);
 MC_8TAP_PROTOTYPES_AVX2(8tap_v);
 MC_8TAP_PROTOTYPES_AVX2(8tap_hv);
 PEL_PROTOTYPE(8tap_hv16, 8, avx2);
+
+MC_8TAP_PROTOTYPES_AVX2(4tap_h);
+MC_8TAP_PROTOTYPES_AVX2(4tap_v);
+MC_8TAP_PROTOTYPES_AVX2(4tap_hv);
 #endif
 
 #define mc_rep_func(name, bitd, step, W, opt) \
@@ -213,23 +250,6 @@ void ff_vvc_put_uni_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststrid
                                                           height, hf, vf, width);                               \
     }                                                                                                           \
 }
-#if 0
-#define mc_rep_bi_func(name, bitd, step, W, opt) \
-void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, const uint8_t *_src,    \
-                                                    ptrdiff_t _srcstride, const int16_t *_src2,                 \
-                                                   int height, intptr_t mx, intptr_t my, int width)             \
-{                                                                                                               \
-    int i;                                                                                                      \
-    uint8_t  *dst;                                                                                              \
-    for (i = 0; i < W ; i += step) {                                                                            \
-        const uint8_t *src  = _src + (i * ((bitd + 7) / 8));                                                    \
-        const int16_t *src2 = _src2 + i;                                                                        \
-        dst  = _dst + (i * ((bitd + 7) / 8));                                                                   \
-        ff_hevc_put_hevc_bi_##name##step##_##bitd##_##opt(dst, dststride, src, _srcstride, src2,                \
-                                                          height, mx, my, width);                               \
-    }                                                                                                           \
-}
-#endif
 
 #define mc_rep_funcs(name, bitd, step, W, opt)      \
     mc_rep_func(name, bitd, step, W, opt)           \
@@ -249,6 +269,9 @@ void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dst
     mc_rep_funcs(fname,12,  8, 16, sse4)        \
 
 MC_REP_FUNCS_SSE4(pixels)
+MC_REP_FUNCS_SSE4(4tap_h)
+MC_REP_FUNCS_SSE4(4tap_v)
+MC_REP_FUNCS_SSE4(4tap_hv)
 MC_REP_FUNCS_SSE4(8tap_h)
 MC_REP_FUNCS_SSE4(8tap_v)
 MC_REP_FUNCS_SSE4(8tap_hv)
@@ -270,6 +293,9 @@ MC_REP_FUNCS_AVX2(pixels)
 MC_REP_FUNCS_AVX2(8tap_h)
 MC_REP_FUNCS_AVX2(8tap_v)
 MC_REP_FUNCS_AVX2(8tap_hv)
+MC_REP_FUNCS_AVX2(4tap_h)
+MC_REP_FUNCS_AVX2(4tap_v)
+MC_REP_FUNCS_AVX2(4tap_hv)
 #endif
 
 #define AVG_BPC_FUNC(bpc, opt)                                                                      \
@@ -306,27 +332,35 @@ AVG_FUNCS(16, 12, avx2)
     c->inter.w_avg  = bf(w_avg, bd, opt);                               \
 } while (0)
 
-#define MC_8TAP_LINKS_AVX2(bd) do {                                             \
-        PEL_LINK(c->inter.put, LUMA, 4, 0, 0, pixels32, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 5, 0, 0, pixels64, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 6, 0, 0, pixels128, bd, avx2)              \
-        PEL_LINK(c->inter.put, LUMA, 4, 0, 1, 8tap_h32, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 5, 0, 1, 8tap_h64, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 6, 0, 1, 8tap_h128, bd, avx2)              \
-        PEL_LINK(c->inter.put, LUMA, 4, 1, 0, 8tap_v32, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 5, 1, 0, 8tap_v64, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 6, 1, 0, 8tap_v128, bd, avx2)              \
+#define MC_TAP_LINKS_AVX2(C,tap,bd) do {                                        \
+        PEL_LINK(c->inter.put, C, 4, 0, 0, pixels32, bd, avx2)                  \
+        PEL_LINK(c->inter.put, C, 5, 0, 0, pixels64, bd, avx2)                  \
+        PEL_LINK(c->inter.put, C, 6, 0, 0, pixels128, bd, avx2)                 \
+        PEL_LINK(c->inter.put, C, 4, 0, 1, tap##tap_h32, bd, avx2)              \
+        PEL_LINK(c->inter.put, C, 5, 0, 1, tap##tap_h64, bd, avx2)              \
+        PEL_LINK(c->inter.put, C, 6, 0, 1, tap##tap_h128, bd, avx2)             \
+        PEL_LINK(c->inter.put, C, 4, 1, 0, tap##tap_v32, bd, avx2)              \
+        PEL_LINK(c->inter.put, C, 5, 1, 0, tap##tap_v64, bd, avx2)              \
+        PEL_LINK(c->inter.put, C, 6, 1, 0, tap##tap_v128, bd, avx2)             \
     } while (0)
 
-#define MC_8TAP_LINKS_16BPC_AVX2(bd) do {                                       \
-        PEL_LINK(c->inter.put, LUMA, 3, 0, 0, pixels16, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 3, 0, 1, 8tap_h16, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 3, 1, 0, 8tap_v16, bd, avx2)               \
-        PEL_LINK(c->inter.put, LUMA, 3, 1, 1, 8tap_hv16, bd, avx2)              \
-        PEL_LINK(c->inter.put, LUMA, 4, 1, 1, 8tap_hv32, bd, avx2)              \
-        PEL_LINK(c->inter.put, LUMA, 5, 1, 1, 8tap_hv64, bd, avx2)              \
-        PEL_LINK(c->inter.put, LUMA, 6, 1, 1, 8tap_hv128, bd, avx2)             \
+#define MC_LINKS_AVX2(bd)                                                       \
+    MC_TAP_LINKS_AVX2(LUMA,   8, bd);                                           \
+    MC_TAP_LINKS_AVX2(CHROMA, 4, bd);                                           \
+
+#define MC_TAP_LINKS_16BPC_AVX2(C, tap, bd) do {                                \
+        PEL_LINK(c->inter.put, C, 3, 0, 0, pixels16, bd, avx2)                  \
+        PEL_LINK(c->inter.put, C, 3, 0, 1, tap##tap_h16, bd, avx2)              \
+        PEL_LINK(c->inter.put, C, 3, 1, 0, tap##tap_v16, bd, avx2)              \
+        PEL_LINK(c->inter.put, C, 3, 1, 1, tap##tap_hv16, bd, avx2)             \
+        PEL_LINK(c->inter.put, C, 4, 1, 1, tap##tap_hv32, bd, avx2)             \
+        PEL_LINK(c->inter.put, C, 5, 1, 1, tap##tap_hv64, bd, avx2)             \
+        PEL_LINK(c->inter.put, C, 6, 1, 1, tap##tap_hv128, bd, avx2)            \
     } while (0)
+
+#define MC_LINKS_16BPC_AVX2(bd)                                                 \
+    MC_TAP_LINKS_16BPC_AVX2(LUMA,   8, bd);                                     \
+    MC_TAP_LINKS_16BPC_AVX2(CHROMA, 4, bd);                                     \
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
@@ -334,27 +368,27 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 
     if (bd == 8) {
         if (EXTERNAL_SSE4(cpu_flags)) {
-            MC_8TAP_LINKS_SSE4(8);
+            MC_LINK_SSE4(8);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
-            MC_8TAP_LINKS_AVX2(8);
+            MC_LINKS_AVX2(8);
             //hevc avx2 8 bits hv still have issues, will need skip it
         }
     } else if (bd == 10) {
         if (EXTERNAL_SSE4(cpu_flags)) {
-            MC_8TAP_LINKS_SSE4(10);
+            MC_LINK_SSE4(10)
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
-            MC_8TAP_LINKS_AVX2(10);
-            MC_8TAP_LINKS_16BPC_AVX2(10);
+            MC_LINKS_AVX2(10);
+            MC_LINKS_16BPC_AVX2(10);
         }
     } else if (bd == 12) {
         if (EXTERNAL_SSE4(cpu_flags)) {
-            MC_8TAP_LINKS_SSE4(12);
+            MC_LINK_SSE4(12);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
-            MC_8TAP_LINKS_AVX2(12);
-            MC_8TAP_LINKS_16BPC_AVX2(12);
+            MC_LINKS_AVX2(12);
+            MC_LINKS_16BPC_AVX2(12);
         }
     }
 
