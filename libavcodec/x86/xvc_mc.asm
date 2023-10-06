@@ -52,6 +52,30 @@ SECTION .text
 %endif
 %endmacro
 
+%macro MC_4TAP_FILTER 4 ; bitdepth, filter, a, b,
+    vpbroadcastw   %3, [%2q + 0 * 2]  ; coeff 0, 1
+    vpbroadcastw   %4, [%2q + 1 * 2]  ; coeff 2, 3
+%if %1 != 8
+    pmovsxbw       %3, xmm%3
+    pmovsxbw       %4, xmm%4
+%endif
+%endmacro
+
+%macro MC_4TAP_HV_FILTER 1
+    vpbroadcastw  m12, [vfq + 0 * 2]  ; vf 0, 1
+    vpbroadcastw  m13, [vfq + 1 * 2]  ; vf 2, 3
+    vpbroadcastw  m14, [hfq + 0 * 2]  ; hf 0, 1
+    vpbroadcastw  m15, [hfq + 1 * 2]  ; hf 2, 3
+
+    pmovsxbw      m12, xm12
+    pmovsxbw      m13, xm13
+%if %1 != 8
+    pmovsxbw      m14, xm14
+    pmovsxbw      m15, xm15
+%endif
+    lea           r3srcq, [srcstrideq*3]
+%endmacro
+
 %macro MC_8TAP_SAVE_FILTER 5    ;offset, mm registers
     mova [rsp + %1 + 0*mmsize], %2
     mova [rsp + %1 + 1*mmsize], %3
@@ -84,6 +108,44 @@ SECTION .text
     MC_8TAP_SAVE_FILTER     %3 + 4*mmsize, m8, m9, m10, m11
 %endif
 
+%endmacro
+
+%macro MC_4TAP_LOAD 4
+%if (%1 == 8 && %4 <= 4)
+%define %%load movd
+%elif (%1 == 8 && %4 <= 8) || (%1 > 8 && %4 <= 4)
+%define %%load movq
+%else
+%define %%load movdqu
+%endif
+
+    %%load            m0, [%2q ]
+%ifnum %3
+    %%load            m1, [%2q+  %3]
+    %%load            m2, [%2q+2*%3]
+    %%load            m3, [%2q+3*%3]
+%else
+    %%load            m1, [%2q+  %3q]
+    %%load            m2, [%2q+2*%3q]
+    %%load            m3, [%2q+r3srcq]
+%endif
+%if %1 == 8
+%if %4 > 8
+    SBUTTERFLY        bw, 0, 1, 7
+    SBUTTERFLY        bw, 2, 3, 7
+%else
+    punpcklbw         m0, m1
+    punpcklbw         m2, m3
+%endif
+%else
+%if %4 > 4
+    SBUTTERFLY        wd, 0, 1, 7
+    SBUTTERFLY        wd, 2, 3, 7
+%else
+    punpcklwd         m0, m1
+    punpcklwd         m2, m3
+%endif
+%endif
 %endmacro
 
 %macro MC_8TAP_H_LOAD 4
@@ -267,6 +329,58 @@ SECTION .text
     psllw         m0, 14-%2
 %endmacro
 
+%macro MC_4TAP_COMPUTE 4-8 ; bitdepth, width, filter1, filter2, HV/m0, m2, m1, m3
+%if %0 == 8
+%define %%reg0 %5
+%define %%reg2 %6
+%define %%reg1 %7
+%define %%reg3 %8
+%else
+%define %%reg0 m0
+%define %%reg2 m2
+%define %%reg1 m1
+%define %%reg3 m3
+%endif
+%if %1 == 8
+%if cpuflag(avx2) && (%0 == 5)
+%if %2 > 16
+    vperm2i128    m10, m0, m1, q0301
+%endif
+    vinserti128    m0, m0, xm1, 1
+    mova           m1, m10
+%if %2 > 16
+    vperm2i128    m10, m2, m3, q0301
+%endif
+    vinserti128    m2, m2, xm3, 1
+    mova           m3, m10
+%endif
+    pmaddubsw      %%reg0, %3   ;x1*c1+x2*c2
+    pmaddubsw      %%reg2, %4   ;x3*c3+x4*c4
+    paddw          %%reg0, %%reg2
+%if %2 > 8
+    pmaddubsw      %%reg1, %3
+    pmaddubsw      %%reg3, %4
+    paddw          %%reg1, %%reg3
+%endif
+%else
+    pmaddwd        %%reg0, %3
+    pmaddwd        %%reg2, %4
+    paddd          %%reg0, %%reg2
+%if %2 > 4
+    pmaddwd        %%reg1, %3
+    pmaddwd        %%reg3, %4
+    paddd          %%reg1, %%reg3
+%if %1 != 8
+    psrad          %%reg1, %1-8
+%endif
+%endif
+%if %1 != 8
+    psrad          %%reg0, %1-8
+%endif
+    packssdw       %%reg0, %%reg1
+%endif
+%endmacro
+
 %macro MC_8TAP_HV_COMPUTE 4     ; width, bitdepth, filter
 
 %if %2 == 8
@@ -414,6 +528,220 @@ cglobal %1_put_uni_pixels%2_%3, 5, 5, 2, dst, dststride, src, srcstride,height
     add             srcq, srcstrideq             ; src += srcstride
     dec          heightd                         ; cmp height
     jnz               .loop                      ; height loop
+    RET
+%endmacro
+
+%macro PUT_4TAP 3
+%if cpuflag(avx2)
+%define XMM_REGS  11
+%else
+%define XMM_REGS  8
+%endif
+
+; ******************************
+; void %1_put_4tap_hX(int16_t *dst,
+;      const uint8_t *_src, ptrdiff_t _srcstride, int height, int8_t *hf, int8_t *vf, int width);
+; ******************************
+cglobal %1_put_4tap_h%2_%3, 5, 6, XMM_REGS, dst, src, srcstride, height, hf
+%assign %%stride ((%3 + 7)/8)
+    MC_4TAP_FILTER       %3, hf, m4, m5
+.loop:
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m4, m5, 1
+    PEL_10STORE%2      dstq, m0, m1
+    LOOP_END            dst, src, srcstride
+    RET
+
+; ******************************
+; void %1_put_uni_4tap_hX(uint8_t *dst, ptrdiff_t dststride,
+;      const uint8_t *_src, ptrdiff_t _srcstride, int height, int8_t *hf, int8_t *vf, int width);
+; ******************************
+cglobal %1_put_uni_4tap_h%2_%3, 6, 7, XMM_REGS, dst, dststride, src, srcstride, height, hf
+%assign %%stride ((%3 + 7)/8)
+    movdqa            m6, [scale_%3]
+    MC_4TAP_FILTER    %3, hf, m4, m5
+.loop:
+    MC_4TAP_LOAD      %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE   %3, %2, m4, m5
+    UNI_COMPUTE       %2, %3, m0, m1, m6
+    PEL_%3STORE%2   dstq, m0, m1
+    add             dstq, dststrideq             ; dst += dststride
+    add             srcq, srcstrideq             ; src += srcstride
+    dec          heightd                         ; cmp height
+    jnz               .loop                      ; height loop
+    RET
+
+; ******************************
+; void %1_put_4tap_v(int16_t *dst, ptrdiff_t dststride,
+;      const uint8_t *_src, ptrdiff_t _srcstride, int height, int8_t *hf, int8_t *vf, int width)
+; ******************************
+cglobal %1_put_4tap_v%2_%3, 4, 6, XMM_REGS, dst, src, srcstride, height, r3src, vf
+    movifnidn        vfq, vfmp
+    sub             srcq, srcstrideq
+    MC_4TAP_FILTER    %3, vf, m4, m5
+    lea           r3srcq, [srcstrideq*3]
+.loop:
+    MC_4TAP_LOAD      %3, srcq, srcstride, %2
+    MC_4TAP_COMPUTE   %3, %2, m4, m5, 1
+    PEL_10STORE%2     dstq, m0, m1
+    LOOP_END          dst, src, srcstride
+    RET
+
+; ******************************
+; void %1_put_uni_4tap_vX(uint8_t *dst, ptrdiff_t dststride,
+;      const uint8_t *_src, ptrdiff_t _srcstride, int height, int8_t *hf, int8_t *vf, int width);
+; ******************************
+cglobal %1_put_uni_4tap_v%2_%3, 5, 7, XMM_REGS, dst, dststride, src, srcstride, height, r3src, vf
+    movifnidn        vfq, vfmp
+    movdqa            m6, [scale_%3]
+    sub             srcq, srcstrideq
+    MC_4TAP_FILTER       %3, vf, m4, m5
+    lea           r3srcq, [srcstrideq*3]
+.loop:
+    MC_4TAP_LOAD      %3, srcq, srcstride, %2
+    MC_4TAP_COMPUTE   %3, %2, m4, m5
+    UNI_COMPUTE       %2, %3, m0, m1, m6
+    PEL_%3STORE%2   dstq, m0, m1
+    add             dstq, dststrideq             ; dst += dststride
+    add             srcq, srcstrideq             ; src += srcstride
+    dec          heightd                         ; cmp height
+    jnz               .loop                      ; height loop
+    RET
+%endmacro
+
+%macro PUT_4TAP_HV 3
+; ******************************
+; void put_4tap_hv(int16_t *dst, ptrdiff_t dststride,
+;      const uint8_t *_src, ptrdiff_t _srcstride, int height, int8_t *hf, int8_t *vf, int width)
+; ******************************
+cglobal %1_put_4tap_hv%2_%3, 6, 7, 16 , dst, src, srcstride, height, hf, vf, r3src
+%assign %%stride ((%3 + 7)/8)
+    sub                 srcq, srcstrideq
+    MC_4TAP_HV_FILTER    %3
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP              m8, m1
+%endif
+    SWAP              m4, m0
+    add             srcq, srcstrideq
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP              m9, m1
+%endif
+    SWAP              m5, m0
+    add             srcq, srcstrideq
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP             m10, m1
+%endif
+    SWAP              m6, m0
+    add             srcq, srcstrideq
+.loop:
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP             m11, m1
+%endif
+    SWAP              m7, m0
+    punpcklwd         m0, m4, m5
+    punpcklwd         m2, m6, m7
+%if %2 > 4
+    punpckhwd         m1, m4, m5
+    punpckhwd         m3, m6, m7
+%endif
+    MC_4TAP_COMPUTE      14, %2, m12, m13
+%if (%2 > 8 && (%3 == 8))
+    punpcklwd         m4, m8, m9
+    punpcklwd         m2, m10, m11
+    punpckhwd         m8, m8, m9
+    punpckhwd         m3, m10, m11
+    MC_4TAP_COMPUTE      14, %2, m12, m13, m4, m2, m8, m3
+%if cpuflag(avx2)
+    vinserti128       m2, m0, xm4, 1
+    vperm2i128        m3, m0, m4, q0301
+    PEL_10STORE%2     dstq, m2, m3
+%else
+    PEL_10STORE%2     dstq, m0, m4
+%endif
+%else
+    PEL_10STORE%2     dstq, m0, m1
+%endif
+    movdqa            m4, m5
+    movdqa            m5, m6
+    movdqa            m6, m7
+%if (%2 > 8 && (%3 == 8))
+    mova              m8, m9
+    mova              m9, m10
+    mova             m10, m11
+%endif
+    LOOP_END         dst, src, srcstride
+    RET
+
+cglobal %1_put_uni_4tap_hv%2_%3, 7, 8, 16 , dst, dststride, src, srcstride, height, hf, vf, r3src
+%assign %%stride ((%3 + 7)/8)
+    sub                srcq, srcstrideq
+    MC_4TAP_HV_FILTER    %3
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP                 m8, m1
+%endif
+    SWAP                 m4, m0
+    add                srcq, srcstrideq
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP                 m9, m1
+%endif
+    SWAP                 m5, m0
+    add                srcq, srcstrideq
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP                m10, m1
+%endif
+    SWAP                 m6, m0
+    add                srcq, srcstrideq
+.loop:
+    MC_4TAP_LOAD         %3, srcq-%%stride, %%stride, %2
+    MC_4TAP_COMPUTE      %3, %2, m14, m15
+%if (%2 > 8 && (%3 == 8))
+    SWAP                m11, m1
+%endif
+    mova                 m7, m0
+    punpcklwd            m0, m4, m5
+    punpcklwd            m2, m6, m7
+%if %2 > 4
+    punpckhwd            m1, m4, m5
+    punpckhwd            m3, m6, m7
+%endif
+    MC_4TAP_COMPUTE      14, %2, m12, m13
+%if (%2 > 8 && (%3 == 8))
+    punpcklwd            m4, m8, m9
+    punpcklwd            m2, m10, m11
+    punpckhwd            m8, m8, m9
+    punpckhwd            m3, m10, m11
+    MC_4TAP_COMPUTE      14, %2, m12, m13, m4, m2, m8, m3
+    UNI_COMPUTE          %2, %3, m0, m4, [scale_%3]
+%else
+    UNI_COMPUTE          %2, %3, m0, m1, [scale_%3]
+%endif
+    PEL_%3STORE%2      dstq, m0, m1
+    mova                 m4, m5
+    mova                 m5, m6
+    mova                 m6, m7
+%if (%2 > 8 && (%3 == 8))
+    mova                 m8, m9
+    mova                 m9, m10
+    mova                m10, m11
+%endif
+    add                dstq, dststrideq             ; dst += dststride
+    add                srcq, srcstrideq             ; src += srcstride
+    dec             heightd                         ; cmp height
+    jnz               .loop                         ; height loop
     RET
 %endmacro
 
