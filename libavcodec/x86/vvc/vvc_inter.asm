@@ -22,7 +22,7 @@
 %define MAX_PB_SIZE 128
 %include "libavcodec/x86/xvc_mc.asm"
 
-SECTION_RODATA 64
+SECTION_RODATA 32
 
 pw_0    times 2 dw   0
 pw_1    times 2 dw   1
