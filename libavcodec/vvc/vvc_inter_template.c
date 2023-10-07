@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-static void FUNC(put_vvc_pel_pixels)(int16_t *dst,
+static void FUNC(put_pixels)(int16_t *dst,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -38,7 +38,7 @@ static void FUNC(put_vvc_pel_pixels)(int16_t *dst,
     }
 }
 
-static void FUNC(put_vvc_pel_uni_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
      const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -54,7 +54,7 @@ static void FUNC(put_vvc_pel_uni_pixels)(uint8_t *_dst, const ptrdiff_t _dst_str
     }
 }
 
-static void FUNC(put_vvc_pel_uni_w_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_w_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
     const int denom, const int wx, const int _ox,  const int8_t *hf, const int8_t *vf,
     const int width)
@@ -94,7 +94,7 @@ static void FUNC(put_vvc_pel_uni_w_pixels)(uint8_t *_dst, const ptrdiff_t _dst_s
      filter[6] * src[x + 3 * stride] +                                         \
      filter[7] * src[x + 4 * stride])
 
-static void FUNC(put_vvc_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(put_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     const pixel *src           = (const pixel*)_src;
@@ -109,7 +109,7 @@ static void FUNC(put_vvc_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdif
     }
 }
 
-static void FUNC(put_vvc_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(put_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     const pixel *src           = (pixel*)_src;
@@ -124,7 +124,7 @@ static void FUNC(put_vvc_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdif
     }
 }
 
-static void FUNC(put_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(put_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     int16_t tmp_array[(MAX_PB_SIZE + LUMA_EXTRA) * MAX_PB_SIZE];
@@ -151,7 +151,7 @@ static void FUNC(put_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdi
     }
 }
 
-static void FUNC(put_vvc_luma_uni_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_luma_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -177,7 +177,7 @@ static void FUNC(put_vvc_luma_uni_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride
     }
 }
 
-static void FUNC(put_vvc_luma_uni_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_luma_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -204,7 +204,7 @@ static void FUNC(put_vvc_luma_uni_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride
     }
 }
 
-static void FUNC(put_vvc_luma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_luma_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -244,7 +244,7 @@ static void FUNC(put_vvc_luma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride
 
 }
 
-static void FUNC(put_vvc_luma_uni_w_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_luma_w_h)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, int height,
     const int denom, const int wx, const int _ox, const int8_t *hf, const int8_t *vf,
     const int width)
@@ -270,7 +270,7 @@ static void FUNC(put_vvc_luma_uni_w_h)(uint8_t *_dst,  const ptrdiff_t _dst_stri
     }
 }
 
-static void FUNC(put_vvc_luma_uni_w_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_luma_w_v)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
     const int denom, const int wx, const int _ox, const int8_t *hf, const int8_t *vf,
     const int width)
@@ -296,7 +296,7 @@ static void FUNC(put_vvc_luma_uni_w_v)(uint8_t *_dst,  const ptrdiff_t _dst_stri
     }
 }
 
-static void FUNC(put_vvc_luma_uni_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_luma_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height, const int denom,
     const int wx, const int _ox, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -342,7 +342,7 @@ static void FUNC(put_vvc_luma_uni_w_hv)(uint8_t *_dst,  const ptrdiff_t _dst_str
      filter[2] * src[x + stride] +                                             \
      filter[3] * src[x + 2 * stride])
 
-static void FUNC(put_vvc_chroma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(put_chroma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     const pixel *src            = (const pixel *)_src;
@@ -357,7 +357,7 @@ static void FUNC(put_vvc_chroma_h)(int16_t *dst, const uint8_t *_src, const ptrd
     }
 }
 
-static void FUNC(put_vvc_chroma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(put_chroma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     const pixel *src            = (const pixel *)_src;
@@ -372,7 +372,7 @@ static void FUNC(put_vvc_chroma_v)(int16_t *dst, const uint8_t *_src, const ptrd
     }
 }
 
-static void FUNC(put_vvc_chroma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(put_chroma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     int16_t tmp_array[(MAX_PB_SIZE + CHROMA_EXTRA) * MAX_PB_SIZE];
@@ -401,7 +401,7 @@ static void FUNC(put_vvc_chroma_hv)(int16_t *dst, const uint8_t *_src, const ptr
     }
 }
 
-static void FUNC(put_vvc_chroma_uni_h)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_chroma_h)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -425,7 +425,7 @@ static void FUNC(put_vvc_chroma_uni_h)(uint8_t *_dst, const ptrdiff_t _dst_strid
     }
 }
 
-static void FUNC(put_vvc_chroma_uni_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_chroma_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -449,7 +449,7 @@ static void FUNC(put_vvc_chroma_uni_v)(uint8_t *_dst, const ptrdiff_t _dst_strid
     }
 }
 
-static void FUNC(put_vvc_chroma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_chroma_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
@@ -487,7 +487,7 @@ static void FUNC(put_vvc_chroma_uni_hv)(uint8_t *_dst, const ptrdiff_t _dst_stri
     }
 }
 
-static void FUNC(put_vvc_chroma_uni_w_h)(uint8_t *_dst, ptrdiff_t _dst_stride,
+static void FUNC(put_uni_chroma_w_h)(uint8_t *_dst, ptrdiff_t _dst_stride,
     const uint8_t *_src, ptrdiff_t _src_stride, int height, int denom, int wx, int ox,
     const int8_t *hf, const int8_t *vf, int width)
 {
@@ -513,7 +513,7 @@ static void FUNC(put_vvc_chroma_uni_w_h)(uint8_t *_dst, ptrdiff_t _dst_stride,
     }
 }
 
-static void FUNC(put_vvc_chroma_uni_w_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_uni_chroma_w_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride, const int height,
     const int denom, const int wx, const int _ox, const int8_t *hf, const int8_t *vf,
     const int width)
@@ -540,7 +540,7 @@ static void FUNC(put_vvc_chroma_uni_w_v)(uint8_t *_dst, const ptrdiff_t _dst_str
     }
 }
 
-static void FUNC(put_vvc_chroma_uni_w_hv)(uint8_t *_dst, ptrdiff_t _dst_stride,
+static void FUNC(put_uni_chroma_w_hv)(uint8_t *_dst, ptrdiff_t _dst_stride,
      const uint8_t *_src, ptrdiff_t _src_stride,  int height, int denom, int wx, int ox,
      const int8_t *hf, const int8_t *vf, int width)
 {
@@ -614,7 +614,7 @@ static void FUNC(w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     }
 }
 
-static void FUNC(put_vvc_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
+static void FUNC(put_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const int width, const int height,
     const uint8_t *_inter, const ptrdiff_t _inter_stride, const int intra_weight)
 {
@@ -632,7 +632,7 @@ static void FUNC(put_vvc_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     }
 }
 
-static void FUNC(put_vvc_gpm)(uint8_t *_dst, ptrdiff_t dst_stride,
+static void FUNC(put_gpm)(uint8_t *_dst, ptrdiff_t dst_stride,
     const int width, const int height,
     const int16_t *src0, const int16_t *src1,
     const uint8_t *weights, const int step_x, const int step_y)
@@ -878,7 +878,7 @@ static void FUNC(apply_bdof)(uint8_t *_dst, const ptrdiff_t _dst_stride, int16_t
      filter[1] * src[x + stride])
 
 //8.5.3.2.2 Luma sample bilinear interpolation process
-static void FUNC(dmvr_vvc_luma)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(dmvr)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width)
 {
     const pixel *src            = (const pixel *)_src;
@@ -901,7 +901,7 @@ static void FUNC(dmvr_vvc_luma)(int16_t *dst, const uint8_t *_src, const ptrdiff
 }
 
 //8.5.3.2.2 Luma sample bilinear interpolation process
-static void FUNC(dmvr_vvc_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(dmvr_h)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width)
 {
     const pixel *src            = (const pixel*)_src;
@@ -919,7 +919,7 @@ static void FUNC(dmvr_vvc_luma_h)(int16_t *dst, const uint8_t *_src, const ptrdi
 }
 
 //8.5.3.2.2 Luma sample bilinear interpolation process
-static void FUNC(dmvr_vvc_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(dmvr_v)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width)
 {
     const pixel *src            = (pixel*)_src;
@@ -938,7 +938,7 @@ static void FUNC(dmvr_vvc_luma_v)(int16_t *dst, const uint8_t *_src, const ptrdi
 }
 
 //8.5.3.2.2 Luma sample bilinear interpolation process
-static void FUNC(dmvr_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
+static void FUNC(dmvr_hv)(int16_t *dst, const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const intptr_t mx, const intptr_t my, const int width)
 {
     int16_t tmp_array[(MAX_PB_SIZE + BILINEAR_EXTRA) * MAX_PB_SIZE];
@@ -976,20 +976,20 @@ static void FUNC(dmvr_vvc_luma_hv)(int16_t *dst, const uint8_t *_src, const ptrd
     } while (0)                                                                 \
 
 #define DIR_FUNCS(d, C, c)                                                      \
-        PEL_FUNC(put_##d, C, 0, 0, put_vvc_pel_##d##_pixels);                   \
-        PEL_FUNC(put_##d, C, 0, 1, put_vvc_##c##_##d##_h);                      \
-        PEL_FUNC(put_##d, C, 1, 0, put_vvc_##c##_##d##_v);                      \
-        PEL_FUNC(put_##d, C, 1, 1, put_vvc_##c##_##d##_hv);                     \
-        PEL_FUNC(put_##d##_w, C, 0, 0, put_vvc_pel_##d##_w_pixels);             \
-        PEL_FUNC(put_##d##_w, C, 0, 1, put_vvc_##c##_##d##_w_h);                \
-        PEL_FUNC(put_##d##_w, C, 1, 0, put_vvc_##c##_##d##_w_v);                \
-        PEL_FUNC(put_##d##_w, C, 1, 1, put_vvc_##c##_##d##_w_hv);
+        PEL_FUNC(put_##d, C, 0, 0, put_##d##_pixels);                           \
+        PEL_FUNC(put_##d, C, 0, 1, put_##d##_##c##_h);                          \
+        PEL_FUNC(put_##d, C, 1, 0, put_##d##_##c##_v);                          \
+        PEL_FUNC(put_##d, C, 1, 1, put_##d##_##c##_hv);                         \
+        PEL_FUNC(put_##d##_w, C, 0, 0, put_##d##_w_pixels);                     \
+        PEL_FUNC(put_##d##_w, C, 0, 1, put_##d##_##c##_w_h);                    \
+        PEL_FUNC(put_##d##_w, C, 1, 0, put_##d##_##c##_w_v);                    \
+        PEL_FUNC(put_##d##_w, C, 1, 1, put_##d##_##c##_w_hv);
 
 #define FUNCS(C, c)                                                             \
-        PEL_FUNC(put, C, 0, 0, put_vvc_pel_pixels);                             \
-        PEL_FUNC(put, C, 0, 1, put_vvc_##c##_h);                                \
-        PEL_FUNC(put, C, 1, 0, put_vvc_##c##_v);                                \
-        PEL_FUNC(put, C, 1, 1, put_vvc_##c##_hv);                               \
+        PEL_FUNC(put, C, 0, 0, put_pixels);                                     \
+        PEL_FUNC(put, C, 0, 1, put_##c##_h);                                    \
+        PEL_FUNC(put, C, 1, 0, put_##c##_v);                                    \
+        PEL_FUNC(put, C, 1, 1, put_##c##_hv);                                   \
         DIR_FUNCS(uni, C, c);                                                   \
 
 static void FUNC(ff_vvc_inter_dsp_init)(VVCInterDSPContext *const inter)
@@ -1000,13 +1000,13 @@ static void FUNC(ff_vvc_inter_dsp_init)(VVCInterDSPContext *const inter)
     inter->avg                  = FUNC(avg);
     inter->w_avg                = FUNC(w_avg);
 
-    inter->dmvr[0][0]           = FUNC(dmvr_vvc_luma);
-    inter->dmvr[0][1]           = FUNC(dmvr_vvc_luma_h);
-    inter->dmvr[1][0]           = FUNC(dmvr_vvc_luma_v);
-    inter->dmvr[1][1]           = FUNC(dmvr_vvc_luma_hv);
+    inter->dmvr[0][0]           = FUNC(dmvr);
+    inter->dmvr[0][1]           = FUNC(dmvr_h);
+    inter->dmvr[1][0]           = FUNC(dmvr_v);
+    inter->dmvr[1][1]           = FUNC(dmvr_hv);
 
-    inter->put_ciip             = FUNC(put_vvc_ciip);
-    inter->put_gpm              = FUNC(put_vvc_gpm);
+    inter->put_ciip             = FUNC(put_ciip);
+    inter->put_gpm              = FUNC(put_gpm);
 
     inter->fetch_samples        = FUNC(fetch_samples);
     inter->bdof_fetch_samples   = FUNC(bdof_fetch_samples);
