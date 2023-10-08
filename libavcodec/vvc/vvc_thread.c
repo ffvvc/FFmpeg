@@ -496,6 +496,8 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
                 ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, rs);
                 ff_vvc_deblock_horizontal(lc, x0, y0);
             }
+            if (fc->ps.sps->r->sps_sao_enabled_flag)
+                ff_vvc_sao_copy_ctb_to_hv(lc, t->rx, t->ry, t->ry == ft->ctu_height - 1);
         }
 
         set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_DEBLOCK_H);

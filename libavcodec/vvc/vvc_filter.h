@@ -57,6 +57,7 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0);
  */
 void ff_vvc_sao_filter(VVCLocalContext *lc, const int x0, const int y0);
 
+void ff_vvc_sao_copy_ctb_to_hv(VVCLocalContext* lc, int rx, int ry, int last_row);
 void ff_vvc_alf_copy_ctu_to_hv(VVCLocalContext* lc, int x0, int y0);
 
 /**
