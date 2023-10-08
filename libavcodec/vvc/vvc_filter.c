@@ -101,22 +101,57 @@ static void copy_vert(uint8_t *dst, const uint8_t *src, const int pixel_shift, c
 
 static void copy_ctb_to_hv(VVCFrameContext *fc, const uint8_t *src,
     const ptrdiff_t src_stride, const int x, const int y, const int width, const int height,
-    const int c_idx, const int x_ctb, const int y_ctb)
+    const int c_idx, const int x_ctb, const int y_ctb, const int top)
 {
     int ps = fc->ps.sps->pixel_shift;
     int w  = fc->ps.sps->width >> fc->ps.sps->hshift[c_idx];
     int h  = fc->ps.sps->height >> fc->ps.sps->vshift[c_idx];
 
-    /* copy horizontal edges */
-    memcpy(fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb) * w + x) << ps),
-        src, width << ps);
-    memcpy(fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb + 1) * w + x) << ps),
-        src + src_stride * (height - 1), width << ps);
+    if (top) {
+        /* top */
+        memcpy(fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb) * w + x) << ps),
+            src, width << ps);
+    } else {
+        /* bottom */
+        memcpy(fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb + 1) * w + x) << ps),
+            src + src_stride * (height - 1), width << ps);
 
-    /* copy vertical edges */
-    copy_vert(fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb) * h + y) << ps), src, ps, height, 1 << ps, src_stride);
+        /* copy vertical edges */
+        copy_vert(fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb) * h + y) << ps), src, ps, height, 1 << ps, src_stride);
+        copy_vert(fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb + 1) * h + y) << ps), src + ((width - 1) << ps), ps, height, 1 << ps, src_stride);
+    }
+}
 
-    copy_vert(fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb + 1) * h + y) << ps), src + ((width - 1) << ps), ps, height, 1 << ps, src_stride);
+static void sao_copy_ctb_to_hv(VVCLocalContext *lc, const int rx, const int ry, const int top)
+{
+    VVCFrameContext *fc     = lc->fc;
+    const int ctb_size_y    = fc->ps.sps->ctb_size_y;
+    const int x0            = rx << fc->ps.sps->ctb_log2_size_y;
+    const int y0            = ry << fc->ps.sps->ctb_log2_size_y;
+
+    for (int c_idx = 0; c_idx < (fc->ps.sps->r->sps_chroma_format_idc ? 3 : 1); c_idx++) {
+        const int x                = x0 >> fc->ps.sps->hshift[c_idx];
+        const int y                = y0 >> fc->ps.sps->vshift[c_idx];
+        const ptrdiff_t src_stride = fc->frame->linesize[c_idx];
+        const int ctb_size_h       = ctb_size_y >> fc->ps.sps->hshift[c_idx];
+        const int ctb_size_v       = ctb_size_y >> fc->ps.sps->vshift[c_idx];
+        const int width            = FFMIN(ctb_size_h, (fc->ps.sps->width  >> fc->ps.sps->hshift[c_idx]) - x);
+        const int height           = FFMIN(ctb_size_v, (fc->ps.sps->height >> fc->ps.sps->vshift[c_idx]) - y);
+        uint8_t *src               = &fc->frame->data[c_idx][y * src_stride + (x << fc->ps.sps->pixel_shift)];
+        copy_ctb_to_hv(fc, src, src_stride, x, y, width, height, c_idx, rx, ry, top);
+    }
+
+}
+
+void ff_vvc_sao_copy_ctb_to_hv(VVCLocalContext *lc, const int rx, const int ry, const int last_row)
+{
+    if (ry)
+        sao_copy_ctb_to_hv(lc, rx, ry - 1, 0);
+
+    sao_copy_ctb_to_hv(lc, rx, ry, 1);
+
+    if (last_row)
+        sao_copy_ctb_to_hv(lc, rx, ry, 0);
 }
 
 void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
@@ -193,7 +228,6 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
 
         switch (sao->type_idx[c_idx]) {
         case SAO_BAND:
-            copy_ctb_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx, x_ctb, y_ctb);
             fc->vvcdsp.sao.band_filter[tab](src, src, src_stride, src_stride,
                 sao->offset_val[c_idx], sao->band_position[c_idx], width, height);
             sao->type_idx[c_idx] = SAO_APPLIED;
@@ -287,9 +321,6 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                      src - (left_pixels << sh),
                      (width + left_pixels + right_pixels) << sh,
                      height, dst_stride, src_stride);
-
-            copy_ctb_to_hv(fc, src, src_stride, x0, y0, width, height, c_idx,
-                           x_ctb, y_ctb);
             fc->vvcdsp.sao.edge_filter[tab](src, dst, src_stride, sao->offset_val[c_idx],
                                             sao->eo_class[c_idx], width, height);
             fc->vvcdsp.sao.edge_restore[restore](src, dst,
