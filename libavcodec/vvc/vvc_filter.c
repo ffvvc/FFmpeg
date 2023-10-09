@@ -956,7 +956,7 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
     const uint8_t no_q[4] = { 0 } ;
 
     int ctb_log2_size_y = fc->ps.sps->ctb_log2_size_y;
-    int x_end, x_end2, y_end;
+    int x_end, y_end;
     int ctb_size = 1 << ctb_log2_size_y;
     int ctb = (x0 >> ctb_log2_size_y) +
         (y0 >> ctb_log2_size_y) * fc->ps.pps->ctb_width;
@@ -975,14 +975,12 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
         const int vs            = sps->vshift[c_idx];
         const int grid          = c_idx ? (CHROMA_GRID << vs) : LUMA_GRID;
 
-        x_end2 = x_end == fc->ps.sps->width ? x_end : x_end - (DEBLOCK_STEP << hs);
-
         for (y = y0; y < y_end; y += grid) {
             const uint8_t horizontal_ctu_edge = !(y % fc->ps.sps->ctb_size_y);
             if (!y)
                 continue;
 
-            for (x = x0 ? x0 - (DEBLOCK_STEP << hs) : 0; x < x_end2; x += (DEBLOCK_STEP << hs)) {
+            for (x = x0 ? x0: 0; x < x_end; x += (DEBLOCK_STEP << hs)) {
                 int32_t bs[4], beta[4], tc[4], all_zero_bs = 1;
                 uint8_t max_len_p[4], max_len_q[4];
 
@@ -992,7 +990,7 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
                     const int beta_offset = params->beta_offset[c_idx];
                     const int tc_offset = params->tc_offset[c_idx];
 
-                    bs[i] = (x + dx < x_end2 ) ? TAB_BS(fc->tab.horizontal_bs[c_idx], x + dx, y) : 0;
+                    bs[i] = (x + dx < x_end) ? TAB_BS(fc->tab.horizontal_bs[c_idx], x + dx, y) : 0;
                     if (bs[i]) {
                         src = &fc->frame->data[c_idx][(y >> vs) * fc->frame->linesize[c_idx] + (((x + dx)>> hs) << fc->ps.sps->pixel_shift)];
                         qp = get_qp(fc, src, x + dx, y, c_idx, 0);
