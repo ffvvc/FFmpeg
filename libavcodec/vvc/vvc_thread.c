@@ -237,8 +237,7 @@ static int is_deblock_h_ready(const VVCFrameContext *fc, const VVCTask *t)
 static int is_sao_ready(const VVCFrameContext *fc, const VVCTask *t)
 {
     av_assert0(t->type == VVC_TASK_TYPE_SAO);
-    return get_avail(fc->frame_thread, t->rx + 1, t->ry - 1, VVC_TASK_TYPE_SAO) &&
-        get_avail(fc->frame_thread, t->rx - 1, t->ry + 1, VVC_TASK_TYPE_DEBLOCK_H) &&
+    return get_avail(fc->frame_thread, t->rx - 1, t->ry + 1, VVC_TASK_TYPE_DEBLOCK_H) &&
         get_avail(fc->frame_thread, t->rx, t->ry + 1, VVC_TASK_TYPE_DEBLOCK_H) &&
         get_avail(fc->frame_thread, t->rx + 1, t->ry + 1, VVC_TASK_TYPE_DEBLOCK_H);
 }
@@ -246,7 +245,14 @@ static int is_sao_ready(const VVCFrameContext *fc, const VVCTask *t)
 static int is_alf_ready(const VVCFrameContext *fc, const VVCTask *t)
 {
     av_assert0(t->type == VVC_TASK_TYPE_ALF);
-    return 1;
+    return get_avail(fc->frame_thread, t->rx - 1, t->ry - 1, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx,     t->ry - 1, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx + 1, t->ry - 1, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx - 1, t->ry, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx + 1, t->ry, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx - 1, t->ry + 1, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx,     t->ry + 1, VVC_TASK_TYPE_SAO) &&
+        get_avail(fc->frame_thread, t->rx + 1, t->ry + 1, VVC_TASK_TYPE_SAO);
 }
 
 typedef int (*is_ready_func)(const VVCFrameContext *fc, const VVCTask *t);
@@ -515,27 +521,6 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     return 0;
 }
 
-static void add_alf_tasks(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
-{
-    VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
-    VVCTask *at = ft->tasks + ft->ctu_width * t->ry + t->rx;
-    if (t->ry > 0) {
-        VVCTask *top = at - ft->ctu_width;
-        if (t->rx > 0)
-            add_task(s, top - 1, VVC_TASK_TYPE_ALF);
-        if (t->rx == ft->ctu_width - 1)
-            add_task(s, top, VVC_TASK_TYPE_ALF);
-    }
-    if (t->ry == ft->ctu_height - 1) {
-        if (t->rx > 0)
-            add_task(s, at - 1, VVC_TASK_TYPE_ALF);
-        if (t->rx == ft->ctu_width - 1)
-            add_task(s, at, VVC_TASK_TYPE_ALF);
-    }
-
-}
-
 static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
@@ -557,7 +542,7 @@ static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 
         set_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_SAO);
 
-        add_alf_tasks(s, lc, t);
+        add_task(s, ft->tasks + rs, VVC_TASK_TYPE_ALF);
 
         rs++;
         t->rx++;
