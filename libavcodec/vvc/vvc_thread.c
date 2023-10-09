@@ -231,8 +231,7 @@ static int is_deblock_h_ready(const VVCFrameContext *fc, const VVCTask *t)
     const VVCFrameThread *ft = fc->frame_thread;
 
     av_assert0(t->type == VVC_TASK_TYPE_DEBLOCK_H);
-    return get_avail(ft, t->rx - 1, t->ry, VVC_TASK_TYPE_DEBLOCK_H) &&
-        get_avail(ft, t->rx, t->ry, VVC_TASK_TYPE_DEBLOCK_V);
+    return get_avail(ft, t->rx + 1, t->ry, VVC_TASK_TYPE_DEBLOCK_V);
 }
 
 static int is_sao_ready(const VVCFrameContext *fc, const VVCTask *t)
