@@ -230,14 +230,12 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
         case SAO_BAND:
             fc->vvcdsp.sao.band_filter[tab](src, src, src_stride, src_stride,
                 sao->offset_val[c_idx], sao->band_position[c_idx], width, height);
-            sao->type_idx[c_idx] = SAO_APPLIED;
             break;
         case SAO_EDGE:
         {
             int w = fc->ps.sps->width >> fc->ps.sps->hshift[c_idx];
             int h = fc->ps.sps->height >> fc->ps.sps->vshift[c_idx];
             int sh = fc->ps.sps->pixel_shift;
-            int left_pixels, right_pixels;
 
             dst_stride = 2*MAX_PB_SIZE + AV_INPUT_BUFFER_PADDING_SIZE;
             dst = lc->sao_buffer + dst_stride + AV_INPUT_BUFFER_PADDING_SIZE;
@@ -245,82 +243,55 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
             if (!edges[TOP]) {
                 int left = 1 - edges[LEFT];
                 int right = 1 - edges[RIGHT];
-                const uint8_t *src1[2];
+                const uint8_t *src1;
                 uint8_t *dst1;
-                int src_idx, pos;
+                int pos;
 
                 dst1 = dst - dst_stride - (left << sh);
-                src1[0] = src - src_stride - (left << sh);
-                src1[1] = fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb - 1) * w + x0 - left) << sh);
+                src1 = fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb - 1) * w + x0 - left) << sh);
                 pos = 0;
                 if (left) {
-                    src_idx = (CTB(fc->tab.sao, x_ctb-1, y_ctb-1).type_idx[c_idx] ==
-                               SAO_APPLIED);
-                    copy_pixel(dst1, src1[src_idx], sh);
+                    copy_pixel(dst1, src1, sh);
                     pos += (1 << sh);
                 }
-                src_idx = (CTB(fc->tab.sao, x_ctb, y_ctb-1).type_idx[c_idx] ==
-                           SAO_APPLIED);
-                memcpy(dst1 + pos, src1[src_idx] + pos, width << sh);
+                memcpy(dst1 + pos, src1 + pos, width << sh);
                 if (right) {
                     pos += width << sh;
-                    src_idx = (CTB(fc->tab.sao, x_ctb+1, y_ctb-1).type_idx[c_idx] ==
-                               SAO_APPLIED);
-                    copy_pixel(dst1 + pos, src1[src_idx] + pos, sh);
+                    copy_pixel(dst1 + pos, src1 + pos, sh);
                 }
             }
             if (!edges[BOTTOM]) {
                 int left = 1 - edges[LEFT];
                 int right = 1 - edges[RIGHT];
-                const uint8_t *src1[2];
+                const uint8_t *src1;
                 uint8_t *dst1;
-                int src_idx, pos;
+                int pos;
 
                 dst1 = dst + height * dst_stride - (left << sh);
-                src1[0] = src + height * src_stride - (left << sh);
-                src1[1] = fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb + 2) * w + x0 - left) << sh);
+                src1 = fc->tab.sao_pixel_buffer_h[c_idx] + (((2 * y_ctb + 2) * w + x0 - left) << sh);
                 pos = 0;
                 if (left) {
-                    src_idx = (CTB(fc->tab.sao, x_ctb-1, y_ctb+1).type_idx[c_idx] ==
-                               SAO_APPLIED);
-                    copy_pixel(dst1, src1[src_idx], sh);
+                    copy_pixel(dst1, src1, sh);
                     pos += (1 << sh);
                 }
-                src_idx = (CTB(fc->tab.sao, x_ctb, y_ctb+1).type_idx[c_idx] ==
-                           SAO_APPLIED);
-                memcpy(dst1 + pos, src1[src_idx] + pos, width << sh);
+                memcpy(dst1 + pos, src1 + pos, width << sh);
                 if (right) {
                     pos += width << sh;
-                    src_idx = (CTB(fc->tab.sao, x_ctb+1, y_ctb+1).type_idx[c_idx] ==
-                               SAO_APPLIED);
-                    copy_pixel(dst1 + pos, src1[src_idx] + pos, sh);
+                    copy_pixel(dst1 + pos, src1 + pos, sh);
                 }
             }
-            left_pixels = 0;
             if (!edges[LEFT]) {
-                if (CTB(fc->tab.sao, x_ctb-1, y_ctb).type_idx[c_idx] == SAO_APPLIED) {
-                    copy_vert(dst - (1 << sh),
-                              fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb - 1) * h + y0) << sh),
-                              sh, height, dst_stride, 1 << sh);
-                } else {
-                    left_pixels = 1;
-                }
+                copy_vert(dst - (1 << sh),
+                    fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb - 1) * h + y0) << sh),
+                    sh, height, dst_stride, 1 << sh);
             }
-            right_pixels = 0;
             if (!edges[RIGHT]) {
-                if (CTB(fc->tab.sao, x_ctb+1, y_ctb).type_idx[c_idx] == SAO_APPLIED) {
-                    copy_vert(dst + (width << sh),
-                              fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb + 2) * h + y0) << sh),
-                              sh, height, dst_stride, 1 << sh);
-                } else {
-                    right_pixels = 1;
-                }
+                copy_vert(dst + (width << sh),
+                    fc->tab.sao_pixel_buffer_v[c_idx] + (((2 * x_ctb + 2) * h + y0) << sh),
+                    sh, height, dst_stride, 1 << sh);
             }
 
-            copy_ctb(dst - (left_pixels << sh),
-                     src - (left_pixels << sh),
-                     (width + left_pixels + right_pixels) << sh,
-                     height, dst_stride, src_stride);
+            copy_ctb(dst, src,  width << sh, height, dst_stride, src_stride);
             fc->vvcdsp.sao.edge_filter[tab](src, dst, src_stride, sao->offset_val[c_idx],
                                             sao->eo_class[c_idx], width, height);
             fc->vvcdsp.sao.edge_restore[restore](src, dst,
@@ -331,7 +302,6 @@ void ff_vvc_sao_filter(VVCLocalContext *lc, int x, int y)
                                                 vert_edge,
                                                 horiz_edge,
                                                 diag_edge);
-            sao->type_idx[c_idx] = SAO_APPLIED;
             break;
         }
         }
