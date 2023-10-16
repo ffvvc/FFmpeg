@@ -25,6 +25,7 @@
 #include "libavcodec/codec_internal.h"
 #include "libavcodec/decode.h"
 #include "libavcodec/profiles.h"
+#include "libavcodec/refstruct.h"
 #include "libavcodec/vvc.h"
 
 #include "libavutil/cpu.h"
@@ -536,7 +537,7 @@ static void slices_free(VVCFrameContext *fc)
         for (int i = 0; i < fc->nb_slices_allocated; i++) {
             SliceContext *slice = fc->slices[i];
             if (slice) {
-                av_buffer_unref(&slice->sh.rref);
+                ff_refstruct_unref(&slice->sh.r);
                 eps_free(slice);
                 av_free(slice);
             }

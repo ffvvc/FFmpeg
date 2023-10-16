@@ -1172,7 +1172,7 @@ static void alf_get_coeff_and_clip(VVCLocalContext *lc, int16_t *coeff, int16_t 
         class_to_filt       = ff_vvc_alf_class_to_filt_map[alf->ctb_filt_set_idx_y];
     } else {
         const int id        = rsh->sh_alf_aps_id_luma[alf->ctb_filt_set_idx_y - 16];
-        const VVCALF *aps   = (VVCALF *)fc->ps.alf_list[id]->data;
+        const VVCALF *aps   = fc->ps.alf_list[id];
         coeff_set           = &aps->luma_coeff[0][0];
         clip_idx_set        = &aps->luma_clip_idx[0][0];
         class_to_filt       = ff_vvc_alf_aps_class_to_filt_map;
@@ -1213,9 +1213,9 @@ static void alf_filter_chroma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *
 {
     VVCFrameContext *fc             = lc->fc;
     const H266RawSliceHeader *rsh   = lc->sc->sh.r;
-    const VVCALF *aps               = (VVCALF *)fc->ps.alf_list[rsh->sh_alf_aps_id_chroma]->data;
+    const VVCALF *aps               = fc->ps.alf_list[rsh->sh_alf_aps_id_chroma];
     const int idx                   = alf->alf_ctb_filter_alt_idx[c_idx - 1];
-    const int16_t *coeff        = aps->chroma_coeff[idx];
+    const int16_t *coeff            = aps->chroma_coeff[idx];
     int16_t clip[ALF_NUM_COEFF_CHROMA];
 
     for (int i = 0; i < ALF_NUM_COEFF_CHROMA; i++)
@@ -1232,10 +1232,9 @@ static void alf_filter_cc(VVCLocalContext *lc, uint8_t *dst, const uint8_t *luma
     const H266RawSliceHeader *rsh   = lc->sc->sh.r;
     const int idx                   = c_idx - 1;
     const int cc_aps_id             = c_idx == CB ? rsh->sh_alf_cc_cb_aps_id : rsh->sh_alf_cc_cr_aps_id;
-    AVBufferRef *aps_buf            = fc->ps.alf_list[cc_aps_id];
+    const VVCALF *aps               = fc->ps.alf_list[cc_aps_id];
 
-    if (aps_buf) {
-        const VVCALF *aps    = (VVCALF *)aps_buf->data;
+    if (aps) {
         const int16_t *coeff = aps->cc_coeff[idx][alf->ctb_cc_idc[idx] - 1];
 
         fc->vvcdsp.alf.filter_cc(dst, dst_stride, luma, luma_stride, width, height, hs, vs, coeff, vb_pos);
