@@ -272,7 +272,6 @@ struct VVCFrameContext {
 } ;
 
 typedef struct VVCContext {
-    const AVClass *c;       // needed by private avoptions
     AVCodecContext *avctx;
 
     CodedBitstreamContext *cbc;

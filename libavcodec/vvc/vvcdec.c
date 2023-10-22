@@ -1076,27 +1076,12 @@ fail:
     return AVERROR(ENOMEM);
 }
 
-#define OFFSET(x) offsetof(VVCContext, x)
-#define PAR (AV_OPT_FLAG_DECODING_PARAM | AV_OPT_FLAG_VIDEO_PARAM)
-
-static const AVOption options[] = {
-    { NULL },
-};
-
-static const AVClass vvc_decoder_class = {
-    .class_name = "vvc decoder",
-    .item_name  = av_default_item_name,
-    .option     = options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
-
 const FFCodec ff_vvc_decoder = {
     .p.name                  = "vvc",
     .p.long_name             = NULL_IF_CONFIG_SMALL("VVC (Versatile Video Coding)"),
     .p.type                  = AVMEDIA_TYPE_VIDEO,
     .p.id                    = AV_CODEC_ID_VVC,
     .priv_data_size          = sizeof(VVCContext),
-    .p.priv_class            = &vvc_decoder_class,
     .init                    = vvc_decode_init,
     .close                   = vvc_decode_free,
     FF_CODEC_DECODE_CB(vvc_decode_frame),
