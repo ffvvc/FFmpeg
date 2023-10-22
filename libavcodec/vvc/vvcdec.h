@@ -153,7 +153,7 @@ typedef struct VVCFrame {
     AVBufferRef *tab_dmvr_mvf_buf;
     AVBufferRef *rpl_tab_buf;
     AVBufferRef *rpl_buf;
-    AVBufferRef *progress_buf;
+    struct FrameProgress *progress;             ///< RefStruct references
 
     /**
      * A sequence counter, so that old frames are output first

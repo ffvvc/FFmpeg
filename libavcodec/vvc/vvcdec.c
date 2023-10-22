@@ -650,7 +650,7 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
     if (ret < 0)
         return ret;
 
-    dst->progress_buf = av_buffer_ref(src->progress_buf);
+    ff_refstruct_replace(&dst->progress, src->progress);
 
     dst->tab_dmvr_mvf_buf = av_buffer_ref(src->tab_dmvr_mvf_buf);
     if (!dst->tab_dmvr_mvf_buf)
