@@ -24,6 +24,7 @@
 
 #include "libavutil/thread.h"
 #include "libavcodec/refstruct.h"
+#include "libavcodec/thread.h"
 
 #include "vvc_refs.h"
 
@@ -46,8 +47,7 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 
     frame->flags &= ~flags;
     if (!frame->flags) {
-        ff_thread_release_ext_buffer(&frame->tf);
-
+        av_frame_unref(frame->frame);
         ff_refstruct_unref(&frame->progress);
 
         av_buffer_unref(&frame->tab_dmvr_mvf_buf);
@@ -108,7 +108,7 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         if (frame->frame->buf[0])
             continue;
 
-        ret = ff_thread_get_ext_buffer(fc->avctx, &frame->tf,
+        ret = ff_thread_get_buffer(fc->avctx, frame->frame,
                                    AV_GET_BUFFER_FLAG_REF);
         if (ret < 0)
             return NULL;

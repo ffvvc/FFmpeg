@@ -139,7 +139,6 @@ typedef struct RefPicListTab {
 
 typedef struct VVCFrame {
     AVFrame *frame;
-    ThreadFrame tf;
 
     MvField  *tab_dmvr_mvf;
     RefPicListTab **rpl_tab;

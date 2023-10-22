@@ -646,7 +646,7 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
 {
     int ret;
 
-    ret = ff_thread_ref_frame(&dst->tf, &src->tf);
+    ret = av_frame_ref(dst->frame, src->frame);
     if (ret < 0)
         return ret;
 
@@ -708,7 +708,6 @@ static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx
         fc->DPB[j].frame = av_frame_alloc();
         if (!fc->DPB[j].frame)
             goto fail;
-        fc->DPB[j].tf.f = fc->DPB[j].frame;
     }
 
     return 0;
