@@ -525,8 +525,8 @@ static void vvc_smvd_ref_idx(const VVCFrameContext *fc, SliceContext *sc)
 static void eps_free(SliceContext *slice)
 {
     if (slice->eps) {
-        for (int j = 0; j < slice->nb_eps; j++)
-            av_free(slice->eps[j].parse_task);
+        for (int i = 0; i < slice->nb_eps; i++)
+            ff_vvc_parse_task_free(slice->eps[i].parse_task);
         av_freep(&slice->eps);
     }
 }
@@ -613,19 +613,15 @@ static int init_slice_context(SliceContext *sc, VVCFrameContext *fc, const H2645
         if (!sc->eps)
             return AVERROR(ENOMEM);
         sc->nb_eps = nb_eps;
-        for (int i = 0; i < sc->nb_eps; i++) {
-            EntryPoint *ep = sc->eps + i;
-            ep->parse_task = ff_vvc_task_alloc();
-            if (!ep->parse_task)
-                return AVERROR(ENOMEM);
-        }
     }
 
     init_get_bits8(&gb, slice->data, slice->data_size);
     for (int i = 0; i < sc->nb_eps; i++)
     {
         EntryPoint *ep = sc->eps + i;
-        ff_vvc_parse_task_init(ep->parse_task, VVC_TASK_TYPE_PARSE, fc, sc, ep, ctu_addr);
+        ep->parse_task = ff_vvc_parse_task_alloc(fc, sc, ep, ctu_addr);
+        if (!ep->parse_task)
+            return AVERROR(ENOMEM);
         ep->ctu_end = (i + 1 == sc->nb_eps ? sh->num_ctus_in_curr_slice : sh->entry_point_start_ctu[i]);
         ep_init_cabac_decoder(sc, i, nal, &gb);
         if (i + 1 < sc->nb_eps)
@@ -1021,7 +1017,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
 
     ff_cbs_fragment_free(&s->current_frame);
     vvc_decode_flush(avctx);
-    av_executor_free(&s->executor);
+    ff_vvc_executor_free(&s->executor);
     if (s->fcs) {
         for (i = 0; i < s->nb_fcs; i++)
             frame_context_free(s->fcs + i);
@@ -1038,13 +1034,6 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
 {
     VVCContext *s       = avctx->priv_data;
     int ret;
-    AVTaskCallbacks callbacks = {
-        s,
-        sizeof(VVCLocalContext),
-        ff_vvc_task_priority_higher,
-        ff_vvc_task_ready,
-        ff_vvc_task_run,
-    };
 
     s->avctx = avctx;
 
@@ -1063,7 +1052,10 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
             goto fail;
     }
 
-    s->executor = av_executor_alloc(&callbacks, s->nb_fcs);
+    s->executor = ff_vvc_executor_alloc(s, s->nb_fcs);
+    if (!s->executor)
+        goto fail;
+
     s->eos = 1;
     GDR_SET_RECOVERED(s);
     memset(&ff_vvc_default_scale_m, 16, sizeof(ff_vvc_default_scale_m));

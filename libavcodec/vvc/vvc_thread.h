@@ -25,48 +25,16 @@
 
 #include "vvcdec.h"
 
-typedef enum VVCTaskType {
-    VVC_TASK_TYPE_PARSE,
-    VVC_TASK_TYPE_INTER,
-    VVC_TASK_TYPE_RECON,
-    VVC_TASK_TYPE_LMCS,
-    VVC_TASK_TYPE_DEBLOCK_V,
-    VVC_TASK_TYPE_DEBLOCK_H,
-    VVC_TASK_TYPE_SAO,
-    VVC_TASK_TYPE_ALF,
-    VVC_TASK_TYPE_LAST
-} VVCTaskType;
-
-struct VVCTask {
-    union {
-        VVCTask *next;                //for executor debug only
-        AVTask task;
-    };
-
-    VVCTaskType type;
-
-    // ctu x, y in raster order
-    int rx, ry;
-    VVCFrameContext *fc;
-
-    // reconstruct task only
-    SliceContext *sc;
-    EntryPoint *ep;
-    int ctu_idx;                    //ctu idx in the current slice
-};
-
-void ff_vvc_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc);
-void ff_vvc_parse_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc,
+struct VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
     SliceContext *sc,  EntryPoint *ep, int ctu_addr);
-VVCTask* ff_vvc_task_alloc(void);
+void ff_vvc_parse_task_free(VVCTask *t);
 
-int ff_vvc_task_ready(const AVTask* t, void* user_data);
-int ff_vvc_task_priority_higher(const AVTask *a, const AVTask *b);
-int ff_vvc_task_run(AVTask *t, void *local_context, void *user_data);
+struct AVExecutor* ff_vvc_executor_alloc(VVCContext *s, int thread_count);
+void ff_vvc_executor_free(struct AVExecutor **e);
 
 int ff_vvc_frame_thread_init(VVCFrameContext *fc);
 void ff_vvc_frame_thread_free(VVCFrameContext *fc);
-void ff_vvc_frame_add_task(VVCContext *s, VVCTask *t);
+void ff_vvc_frame_add_task(VVCContext *s, struct VVCTask *t);
 int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
 
 #endif // AVCODEC_VVC_THREAD_H

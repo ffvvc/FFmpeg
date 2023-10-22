@@ -22,6 +22,7 @@
 
 #include <stdatomic.h>
 
+#include "libavutil/executor.h"
 #include "libavutil/thread.h"
 
 #include "vvc_thread.h"
@@ -30,6 +31,36 @@
 #include "vvc_inter.h"
 #include "vvc_intra.h"
 #include "vvc_refs.h"
+
+typedef enum VVCTaskType {
+    VVC_TASK_TYPE_PARSE,
+    VVC_TASK_TYPE_INTER,
+    VVC_TASK_TYPE_RECON,
+    VVC_TASK_TYPE_LMCS,
+    VVC_TASK_TYPE_DEBLOCK_V,
+    VVC_TASK_TYPE_DEBLOCK_H,
+    VVC_TASK_TYPE_SAO,
+    VVC_TASK_TYPE_ALF,
+    VVC_TASK_TYPE_LAST
+} VVCTaskType;
+
+struct VVCTask {
+    union {
+        VVCTask *next;                //for executor debug only
+        AVTask task;
+    };
+
+    VVCTaskType type;
+
+    // ctu x, y in raster order
+    int rx, ry;
+    VVCFrameContext *fc;
+
+    // reconstruct task only
+    SliceContext *sc;
+    EntryPoint *ep;
+    int ctu_idx;                    //ctu idx in the current slice
+};
 
 typedef struct VVCRowThread {
     VVCTask reconstruct_task;
@@ -83,30 +114,36 @@ static void set_avail(const VVCFrameThread *ft, const int rx, const int ry, cons
     atomic_fetch_or(avail, 1 << type);
 }
 
-void ff_vvc_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc)
+static void vvc_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc)
 {
     memset(task, 0, sizeof(*task));
     task->type           = type;
     task->fc             = fc;
 }
 
-void ff_vvc_parse_task_init(VVCTask *t, VVCTaskType type, VVCFrameContext *fc,
+VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
     SliceContext *sc, EntryPoint *ep, const int ctu_idx)
 {
     const VVCFrameThread *ft = fc->frame_thread;
     const int rs = sc->sh.ctb_addr_in_curr_slice[ctu_idx];
+    VVCTask *t = av_mallocz(sizeof(*t));
 
-    ff_vvc_task_init(t, type, fc);
+    if (!t)
+        return NULL;
+
+    vvc_task_init(t, VVC_TASK_TYPE_PARSE, fc);
     t->sc = sc;
     t->ep = ep;
     t->ctu_idx = ctu_idx;
     t->rx = rs % ft->ctu_width;
     t->ry = rs / ft->ctu_width;
+
+    return t;
 }
 
-VVCTask* ff_vvc_task_alloc(void)
+void ff_vvc_parse_task_free(VVCTask *t)
 {
-    return av_malloc(sizeof(VVCTask));
+    av_free(t);
 }
 
 static int check_colocation_ctu(const VVCFrameContext *fc, const VVCTask *t)
@@ -215,7 +252,7 @@ static int is_alf_ready(const VVCFrameContext *fc, const VVCTask *t)
 
 typedef int (*is_ready_func)(const VVCFrameContext *fc, const VVCTask *t);
 
-int ff_vvc_task_ready(const AVTask *_t, void *user_data)
+static int ff_vvc_task_ready(const AVTask *_t, void *user_data)
 {
     const VVCTask *t            = (const VVCTask*)_t;
     VVCFrameThread *ft          = t->fc->frame_thread;
@@ -244,7 +281,7 @@ int ff_vvc_task_ready(const AVTask *_t, void *user_data)
             return (a) < (b);               \
     } while (0)
 
-int ff_vvc_task_priority_higher(const AVTask *_a, const AVTask *_b)
+static int ff_vvc_task_priority_higher(const AVTask *_a, const AVTask *_b)
 {
     const VVCTask *a = (const VVCTask*)_a;
     const VVCTask *b = (const VVCTask*)_b;
@@ -591,7 +628,7 @@ const static char* task_name[] = {
 
 typedef int (*run_func)(VVCContext *s, VVCLocalContext *lc, VVCTask *t);
 
-int ff_vvc_task_run(AVTask *_t, void *local_context, void *user_data)
+static int ff_vvc_task_run(AVTask *_t, void *local_context, void *user_data)
 {
     VVCTask *t              = (VVCTask*)_t;
     VVCContext *s           = (VVCContext *)user_data;
@@ -634,6 +671,23 @@ int ff_vvc_task_run(AVTask *_t, void *local_context, void *user_data)
     finished_one_task(ft, type);
 
     return ret;
+}
+
+AVExecutor* ff_vvc_executor_alloc(VVCContext *s, int thread_count)
+{
+    AVTaskCallbacks callbacks = {
+        s,
+        sizeof(VVCLocalContext),
+        ff_vvc_task_priority_higher,
+        ff_vvc_task_ready,
+        ff_vvc_task_run,
+    };
+    return av_executor_alloc(&callbacks, s->nb_fcs);
+}
+
+void ff_vvc_executor_free(AVExecutor **e)
+{
+    av_executor_free(e);
 }
 
 void ff_vvc_frame_thread_free(VVCFrameContext *fc)
@@ -679,11 +733,11 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 
         for (int y = 0; y < ft->ctu_height; y++) {
             VVCRowThread *row = ft->rows + y;
-            ff_vvc_task_init(&row->deblock_v_task, VVC_TASK_TYPE_DEBLOCK_V, fc);
+            vvc_task_init(&row->deblock_v_task, VVC_TASK_TYPE_DEBLOCK_V, fc);
             row->deblock_v_task.ry = y;
-            ff_vvc_task_init(&row->sao_task, VVC_TASK_TYPE_SAO, fc);
+            vvc_task_init(&row->sao_task, VVC_TASK_TYPE_SAO, fc);
             row->sao_task.ry = y;
-            ff_vvc_task_init(&row->reconstruct_task, VVC_TASK_TYPE_RECON, fc);
+            vvc_task_init(&row->reconstruct_task, VVC_TASK_TYPE_RECON, fc);
             row->reconstruct_task.ry = y;
         }
 
@@ -692,7 +746,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
             goto fail;
         for (int x = 0; x < ft->ctu_width; x++) {
             VVCColThread *col = ft->cols + x;
-            ff_vvc_task_init(&col->deblock_h_task, VVC_TASK_TYPE_DEBLOCK_H, fc);
+            vvc_task_init(&col->deblock_h_task, VVC_TASK_TYPE_DEBLOCK_H, fc);
             col->deblock_h_task.rx = x;
         }
 
