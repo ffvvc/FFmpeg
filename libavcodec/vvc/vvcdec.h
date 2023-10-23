@@ -24,9 +24,6 @@
 #ifndef AVCODEC_VVCDEC_H
 #define AVCODEC_VVCDEC_H
 
-#include "libavcodec/cbs.h"
-#include "libavcodec/cbs_h266.h"
-#include "libavcodec/h2645_parse.h"
 #include "libavcodec/videodsp.h"
 #include "libavcodec/vvc.h"
 

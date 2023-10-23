@@ -23,6 +23,7 @@
 #ifndef AVCODEC_VVC_PS_H
 #define AVCODEC_VVC_PS_H
 
+#include "libavcodec/cbs_h266.h"
 #include "libavcodec/vvc.h"
 
 #define IS_IDR(s)  ((s)->vcl_unit_type == VVC_IDR_W_RADL || (s)->vcl_unit_type == VVC_IDR_N_LP)
