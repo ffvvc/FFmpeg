@@ -169,8 +169,8 @@ struct VVCFrameContext {
         uint8_t *horizontal_bs[VVC_MAX_SAMPLE_ARRAYS];
         uint8_t *vertical_bs[VVC_MAX_SAMPLE_ARRAYS];
         uint8_t *horizontal_p;                          ///< horizontal maxFilterLengthPs for luma
-        uint8_t *horizontal_q;                          ///< horizontal maxFilterLengthPs for luma
-        uint8_t *vertical_p;                            ///< vertical   maxFilterLengthQs for luma
+        uint8_t *horizontal_q;                          ///< horizontal maxFilterLengthQs for luma
+        uint8_t *vertical_p;                            ///< vertical   maxFilterLengthPs for luma
         uint8_t *vertical_q;                            ///< vertical   maxFilterLengthQs for luma
 
         uint8_t *sao_pixel_buffer_h[VVC_MAX_SAMPLE_ARRAYS];
