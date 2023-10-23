@@ -98,10 +98,6 @@
 #define PROF_BLOCK_SIZE         (AFFINE_MIN_BLOCK_SIZE + PROF_BORDER_EXT * 2)
 #define BDOF_BORDER_EXT         1
 
-#define BDOF_PADDED_SIZE        (16 + BDOF_BORDER_EXT * 2)
-#define BDOF_BLOCK_SIZE         4
-#define BDOF_GRADIENT_SIZE      (BDOF_BLOCK_SIZE + BDOF_BORDER_EXT * 2)
-
 /**
  * Value of the luma sample at position (x, y) in the 2D array tab.
  */
