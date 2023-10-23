@@ -2,6 +2,84 @@ The last version increases of all libraries were on 2023-02-09
 
 API changes, most recent first:
 
+2023-10-06 - xxxxxxxxxx - lavc 60.30.101 - avcodec.h
+  AVCodecContext.coded_side_data may now be used during decoding, to be set
+  by user before calling avcodec_open2() for initialization.
+
+2023-10-06 - xxxxxxxxxx - lavc 60.15.100 - avformat.h
+  Deprecate AVFormatContext.{nb_,}side_data, av_stream_add_side_data(),
+  av_stream_new_side_data(), and av_stream_get_side_data(). Side data fields
+  from AVFormatContext.codecpar should be used from now on.
+
+2023-10-06 - xxxxxxxxxx - lavc 60.30.100 - codec_par.h
+  Added {nb_,}coded_side_data to AVCodecParameters.
+  The AVCodecParameters helpers will copy it to and from its AVCodecContext
+  namesake.
+
+2023-10-06 - xxxxxxxxxx - lavc 60.29.100 - packet.h
+  Added av_packet_side_data_new(), av_packet_side_data_add(),
+  av_packet_side_data_get(), av_packet_side_data_remove, and
+  av_packet_side_data_free().
+
+2023-10-03 - xxxxxxxxxx - lavc 60.28.100 - codec_par.h defs.h
+  Move the definition of enum AVFieldOrder from codec_par.h to defs.h.
+
+2023-10-03 - xxxxxxxxxx - lavf 60.14.100 - avformat.h
+  Deprecate AVFMT_ALLOW_FLUSH without replacement. Users can always
+  flush any muxer by sending a NULL packet.
+
+2023-09-28 - xxxxxxxxxx - lavu 58.27.100 - pixfmt.h
+  Add AV_PIX_FMT_GBRAP14BE, AV_PIX_FMT_GBRAP14LE pixel formats.
+
+2023-09-28 - xxxxxxxxxx - lavu 58.26.100 - hwcontext_cuda.h
+  Add AV_CUDA_USE_CURRENT_CONTEXT.
+
+2023-09-19 - xxxxxxxxxx - lavu 58.25.100 - avutil.h
+  Make AV_TIME_BASE_Q compatible with C++.
+
+2023-09-xx - xxxxxxxxxx - lavf 60 - avformat.h
+  Deprecate AVFMT_FLAG_SHORTEST without replacement.
+
+2023-09-07 - xxxxxxxxxx - lavu 58.24.100 - imgutils.h
+  Add av_image_copy2(), a wrapper around the av_image_copy()
+  to overcome limitations of automatic conversions.
+
+2023-09-07 - xxxxxxxxxx - lavu 58.23.100 - fifo.h
+  Constify the AVFifo pointees in av_fifo_peek() and av_fifo_peek_to_cb().
+
+2023-09-07 - xxxxxxxxxx - lavu 58.22.100 - audio_fifo.h
+  Constify some pointees in av_audio_fifo_write(), av_audio_fifo_read(),
+  av_audio_fifo_peek() and av_audio_fifo_peek_at().
+
+2023-09-07 - xxxxxxxxxx - lavu 58.21.100 - samplefmt.h
+  Constify some pointees in av_samples_copy() and av_samples_set_silence().
+
+2023-09-07 - xxxxxxxxxx - lavu 58.20.100 - imgutils.h
+  Constify some pointees in av_image_copy(), av_image_copy_uc_from() and
+  av_image_fill_black().
+
+2023-09-07 - xxxxxxxxxx - lavf 60.12.100 - avio.h
+  Constify the buffer pointees in the write_packet and write_data_type
+  callbacks of AVIOContext on the next major bump.
+
+2023-09-07 - xxxxxxxxxx - lavc 60.26.100 - defs.h
+  Add AV_PROFILE_* and AV_LEVEL_* replacements in defs.h for the
+  defines from avcodec.h. The latter are deprecated.
+
+2023-09-06 - xxxxxxxxxx - lavc 60.25.101 - avcodec.h
+  AVCodecContext.rc_buffer_size may now be set by decoders.
+
+2023-09-02 - xxxxxxxxxx - lavu 58.19.100 - executor.h
+  Add AVExecutor API
+
+2023-09-xx - xxxxxxxxxx - lavc 60.25.100 - avfft.h
+  The entire header will be deprecated and removed in two major bumps.
+  For a replacement to av_dct, av_rdft, av_fft and av_mdct, use
+  the new API from libavutil/tx.h.
+
+2023-07-xx - xxxxxxxxxx - lavu 58.18.100 - tx.h
+  Add AV_TX_REAL_TO_REAL and AV_TX_REAL_TO_IMAGINARY
+
 2023-08-18 - xxxxxxxxxx - lavu 58.17.100 - channel_layout.h
   All AV_CHANNEL_LAYOUT_* macros are now compatible with C++ 17 and older.
 

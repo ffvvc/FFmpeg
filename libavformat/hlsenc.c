@@ -23,6 +23,7 @@
 #include "config.h"
 #include "config_components.h"
 #include <stdint.h>
+#include <time.h>
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -38,7 +39,7 @@
 #include "libavutil/time.h"
 #include "libavutil/time_internal.h"
 
-#include "libavcodec/avcodec.h"
+#include "libavcodec/defs.h"
 
 #include "avformat.h"
 #include "avio_internal.h"
@@ -50,6 +51,7 @@
 #include "internal.h"
 #include "mux.h"
 #include "os_support.h"
+#include "url.h"
 
 typedef enum {
     HLS_START_SEQUENCE_AS_START_NUMBER = 0,
@@ -368,12 +370,12 @@ static void write_codec_attr(AVStream *st, VariantStream *vs)
         }
     } else if (st->codecpar->codec_id == AV_CODEC_ID_HEVC) {
         uint8_t *data = st->codecpar->extradata;
-        int profile = FF_PROFILE_UNKNOWN;
-        int level = FF_LEVEL_UNKNOWN;
+        int profile = AV_PROFILE_UNKNOWN;
+        int level = AV_LEVEL_UNKNOWN;
 
-        if (st->codecpar->profile != FF_PROFILE_UNKNOWN)
+        if (st->codecpar->profile != AV_PROFILE_UNKNOWN)
             profile = st->codecpar->profile;
-        if (st->codecpar->level != FF_LEVEL_UNKNOWN)
+        if (st->codecpar->level != AV_LEVEL_UNKNOWN)
             level = st->codecpar->level;
 
         /* check the boundary of data which from current position is small than extradata_size */
@@ -406,8 +408,8 @@ static void write_codec_attr(AVStream *st, VariantStream *vs)
             data++;
         }
         if (st->codecpar->codec_tag == MKTAG('h','v','c','1') &&
-            profile != FF_PROFILE_UNKNOWN &&
-            level != FF_LEVEL_UNKNOWN) {
+            profile != AV_PROFILE_UNKNOWN &&
+            level != AV_LEVEL_UNKNOWN) {
             snprintf(attr, sizeof(attr), "%s.%d.4.L%d.B01", av_fourcc2str(st->codecpar->codec_tag), profile, level);
         } else
             goto fail;
@@ -1351,16 +1353,17 @@ static const char* get_relative_url(const char *master_url, const char *media_ur
 
 static int64_t get_stream_bit_rate(AVStream *stream)
 {
-    AVCPBProperties *props = (AVCPBProperties*)av_stream_get_side_data(
-        stream,
-        AV_PKT_DATA_CPB_PROPERTIES,
-        NULL
+    const AVPacketSideData *sd = av_packet_side_data_get(
+        stream->codecpar->coded_side_data, stream->codecpar->nb_coded_side_data,
+        AV_PKT_DATA_CPB_PROPERTIES
     );
 
     if (stream->codecpar->bit_rate)
         return stream->codecpar->bit_rate;
-    else if (props)
+    else if (sd) {
+        AVCPBProperties *props = (AVCPBProperties*)sd->data;
         return props->max_bitrate;
+    }
 
     return 0;
 }
@@ -3182,8 +3185,13 @@ const FFOutputFormat ff_hls_muxer = {
     .p.audio_codec    = AV_CODEC_ID_AAC,
     .p.video_codec    = AV_CODEC_ID_H264,
     .p.subtitle_codec = AV_CODEC_ID_WEBVTT,
+#if FF_API_ALLOW_FLUSH
     .p.flags          = AVFMT_NOFILE | AVFMT_GLOBALHEADER | AVFMT_ALLOW_FLUSH | AVFMT_NODIMENSIONS,
+#else
+    .p.flags          = AVFMT_NOFILE | AVFMT_GLOBALHEADER | AVFMT_NODIMENSIONS,
+#endif
     .p.priv_class     = &hls_class,
+    .flags_internal   = FF_FMT_ALLOW_FLUSH,
     .priv_data_size = sizeof(HLSContext),
     .init           = hls_init,
     .write_header   = hls_write_header,

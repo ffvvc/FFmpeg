@@ -47,7 +47,7 @@
 #include "libavutil/mastering_display_metadata.h"
 #include "libavutil/pixdesc.h"
 #include "libavutil/time_internal.h"
-#include "libavcodec/avcodec.h"
+#include "libavcodec/defs.h"
 #include "libavcodec/golomb.h"
 #include "libavcodec/h264.h"
 #include "libavcodec/packet_internal.h"
@@ -556,7 +556,9 @@ static void mxf_write_primer_pack(AVFormatContext *s)
         if (s->streams[i]->codecpar->codec_id == AV_CODEC_ID_H264 && !sc->avc_intra) {
             will_have_avc_tags = 1;
         }
-        if (av_stream_get_side_data(s->streams[i], AV_PKT_DATA_MASTERING_DISPLAY_METADATA, NULL)) {
+        if (av_packet_side_data_get(s->streams[i]->codecpar->coded_side_data,
+                                    s->streams[i]->codecpar->nb_coded_side_data,
+                                    AV_PKT_DATA_MASTERING_DISPLAY_METADATA)) {
             will_have_mastering_tags = 1;
         }
         if (s->streams[i]->codecpar->codec_id == AV_CODEC_ID_FFV1) {
@@ -1158,7 +1160,7 @@ static int64_t mxf_write_cdci_common(AVFormatContext *s, AVStream *st, const UID
     const MXFCodecUL *color_trc_ul;
     const MXFCodecUL *color_space_ul;
     int64_t pos = mxf_write_generic_desc(s, st, key);
-    uint8_t *side_data;
+    const AVPacketSideData *side_data;
 
     color_primaries_ul = mxf_get_codec_ul_by_id(ff_mxf_color_primaries_uls, st->codecpar->color_primaries);
     color_trc_ul       = mxf_get_codec_ul_by_id(ff_mxf_color_trc_uls, st->codecpar->color_trc);
@@ -1344,9 +1346,11 @@ static int64_t mxf_write_cdci_common(AVFormatContext *s, AVStream *st, const UID
     avio_write(pb, *sc->codec_ul, 16);
 
     // Mastering Display metadata
-    side_data = av_stream_get_side_data(st, AV_PKT_DATA_MASTERING_DISPLAY_METADATA, NULL);
+    side_data = av_packet_side_data_get(st->codecpar->coded_side_data,
+                                        st->codecpar->nb_coded_side_data,
+                                        AV_PKT_DATA_MASTERING_DISPLAY_METADATA);
     if (side_data) {
-        const AVMasteringDisplayMetadata *metadata = (const AVMasteringDisplayMetadata*)side_data;
+        const AVMasteringDisplayMetadata *metadata = (const AVMasteringDisplayMetadata*)side_data->data;
         if (metadata->has_primaries) {
             mxf_write_local_tag(s, 12, 0x8301);
             avio_wb16(pb, rescale_mastering_chroma(metadata->display_primaries[0][0]));
@@ -2111,12 +2115,12 @@ static const struct {
     int profile;
     UID codec_ul;
 } mxf_prores_codec_uls[] = {
-    { FF_PROFILE_PRORES_PROXY,    { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x01,0x00 } },
-    { FF_PROFILE_PRORES_LT,       { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x02,0x00 } },
-    { FF_PROFILE_PRORES_STANDARD, { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x03,0x00 } },
-    { FF_PROFILE_PRORES_HQ,       { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x04,0x00 } },
-    { FF_PROFILE_PRORES_4444,     { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x05,0x00 } },
-    { FF_PROFILE_PRORES_XQ,       { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x06,0x00 } },
+    { AV_PROFILE_PRORES_PROXY,    { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x01,0x00 } },
+    { AV_PROFILE_PRORES_LT,       { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x02,0x00 } },
+    { AV_PROFILE_PRORES_STANDARD, { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x03,0x00 } },
+    { AV_PROFILE_PRORES_HQ,       { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x04,0x00 } },
+    { AV_PROFILE_PRORES_4444,     { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x05,0x00 } },
+    { AV_PROFILE_PRORES_XQ,       { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x0d,0x04,0x01,0x02,0x02,0x03,0x06,0x06,0x00 } },
 };
 
 static int mxf_parse_prores_frame(AVFormatContext *s, AVStream *st, AVPacket *pkt)

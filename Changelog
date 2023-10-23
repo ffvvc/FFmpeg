@@ -30,6 +30,14 @@ version <next>:
 - support for the P_SKIP hinting to speed up libx264 encoding
 - Support HEVC,VP9,AV1 codec in enhanced flv format
 - apsnr and asisdr audio filters
+- OSQ demuxer and decoder
+- Support HEVC,VP9,AV1 codec fourcclist in enhanced rtmp protocol
+- CRI USM demuxer
+- ffmpeg CLI '-top' option deprecated in favor of the setfield filter
+- VAAPI AV1 encoder
+- ffprobe XML output schema changed to account for multiple
+  variable-fields elements within the same parent element
+- ffprobe -output_format option added as an alias of -of
 
 
 version 6.0:

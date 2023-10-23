@@ -101,6 +101,13 @@ FF_ENABLE_DEPRECATION_WARNINGS
         cfg->rc_algorithm = KVZ_LAMBDA;
     }
 
+    cfg->vui.fullrange   = avctx->color_range == AVCOL_RANGE_JPEG;
+    cfg->vui.colorprim   = avctx->color_primaries;
+    cfg->vui.transfer    = avctx->color_trc;
+    cfg->vui.colormatrix = avctx->colorspace;
+    if (avctx->chroma_sample_location != AVCHROMA_LOC_UNSPECIFIED)
+        cfg->vui.chroma_loc = avctx->chroma_sample_location - 1;
+
     if (ctx->kvz_params) {
         AVDictionary *dict = NULL;
         if (!av_dict_parse_string(&dict, ctx->kvz_params, "=", ",", 0)) {
@@ -221,9 +228,9 @@ static int libkvazaar_encode(AVCodecContext *avctx,
               frame->width / 2,
               0
             };
-            av_image_copy(dst, dst_linesizes,
-                          (const uint8_t **)frame->data, frame->linesize,
-                          frame->format, frame->width, frame->height);
+            av_image_copy2(dst, dst_linesizes,
+                           frame->data, frame->linesize,
+                           frame->format, frame->width, frame->height);
         }
 
         input_pic->pts = frame->pts;

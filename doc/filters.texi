@@ -16320,6 +16320,16 @@ Render frames with rounded corners. The value, given as a float ranging from
 square to fully circular. In other words, it gives the radius divided by half
 the smaller side length. Defaults to @code{0.0}.
 
+@item extra_opts
+Pass extra libplacebo internal configuration options. These can be specified
+as a list of @var{key}=@var{value} pairs separated by ':'. The following example
+shows how to configure a custom filter kernel ("EWA LanczosSharp") and use it
+to double the input image resolution:
+
+@example
+-vf "libplacebo=w=iw*2:h=ih*2:extra_opts='upscaler=custom\:upscaler_preset=ewa_lanczos\:upscaler_blur=0.9812505644269356'"
+@end example
+
 @item colorspace
 @item color_primaries
 @item color_trc
@@ -16827,6 +16837,7 @@ ffmpeg -init_hw_device vulkan -hwaccel vaapi -hwaccel_output_format vaapi ... -v
 @end example
 @end itemize
 
+@anchor{libvmaf}
 @section libvmaf
 
 Calulate the VMAF (Video Multi-Method Assessment Fusion) score for a
@@ -16847,29 +16858,8 @@ The filter has following options:
 A `|` delimited list of vmaf models. Each model can be configured with a number of parameters.
 Default value: @code{"version=vmaf_v0.6.1"}
 
-@item model_path
-Deprecated, use model='path=...'.
-
-@item enable_transform
-Deprecated, use model='enable_transform=true'.
-
-@item phone_model
-Deprecated, use model='enable_transform=true'.
-
-@item enable_conf_interval
-Deprecated, use model='enable_conf_interval=true'.
-
 @item feature
 A `|` delimited list of features. Each feature can be configured with a number of parameters.
-
-@item psnr
-Deprecated, use feature='name=psnr'.
-
-@item ssim
-Deprecated, use feature='name=ssim'.
-
-@item ms_ssim
-Deprecated, use feature='name=ms_ssim'.
 
 @item log_path
 Set the file path to be used to store log files.
@@ -16915,6 +16905,32 @@ ffmpeg -i distorted.mpg -i reference.mpg -lavfi libvmaf='feature=name=psnr|name=
 Example with options and different containers:
 @example
 ffmpeg -i distorted.mpg -i reference.mkv -lavfi "[0:v]settb=AVTB,setpts=PTS-STARTPTS[main];[1:v]settb=AVTB,setpts=PTS-STARTPTS[ref];[main][ref]libvmaf=log_fmt=json:log_path=output.json" -f null -
+@end example
+@end itemize
+
+@section libvmaf_cuda
+
+This is the CUDA variant of the @ref{libvmaf} filter. It only accepts CUDA frames.
+
+It requires Netflix's vmaf library (libvmaf) as a pre-requisite.
+After installing the library it can be enabled using:
+@code{./configure --enable-nonfree --enable-ffnvcodec --enable-libvmaf}.
+
+@subsection Examples
+@itemize
+
+@item
+Basic usage showing CUVID hardware decoding and CUDA scaling with @ref{scale_cuda}:
+@example
+ffmpeg \
+    -hwaccel cuda -hwaccel_output_format cuda -codec:v av1_cuvid -i dis.obu \
+    -hwaccel cuda -hwaccel_output_format cuda -codec:v av1_cuvid -i ref.obu \
+    -filter_complex "
+        [0:v]scale_cuda=format=yuv420p[ref]; \
+        [1:v]scale_cuda=format=yuv420p[dis]; \
+        [dis][ref]libvmaf_cuda=log_fmt=json:log_path=output.json
+    " \
+    -f null -
 @end example
 @end itemize
 
@@ -20859,6 +20875,7 @@ If the specified expression is not valid, it is kept at its current
 value.
 @end table
 
+@anchor{scale_cuda}
 @section scale_cuda
 
 Scale (resize) and convert (pixel format) the input video, using accelerated CUDA kernels.

@@ -26,6 +26,7 @@
 #include "libavformat/mux.h"
 #include "libavformat/version.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/frame.h"
 #include "libavutil/internal.h"
 #include "libavutil/opt.h"
 #include "libavutil/time.h"
@@ -801,6 +802,11 @@ const FFOutputFormat ff_pulse_muxer = {
     .get_output_timestamp = pulse_get_output_timestamp,
     .get_device_list      = pulse_get_device_list,
     .control_message      = pulse_control_message,
+#if FF_API_ALLOW_FLUSH
     .p.flags              = AVFMT_NOFILE | AVFMT_ALLOW_FLUSH,
+#else
+    .p.flags              = AVFMT_NOFILE,
+#endif
     .p.priv_class         = &pulse_muxer_class,
+    .flags_internal       = FF_FMT_ALLOW_FLUSH,
 };

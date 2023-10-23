@@ -45,7 +45,7 @@ typedef struct AVTaskCallbacks {
 
 /**
  * Alloc executor
- * @param callbacks callback strucutre for executor
+ * @param callbacks callback structure for executor
  * @param thread_count worker thread number
  * @return return the executor
  */

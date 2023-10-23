@@ -28,6 +28,7 @@
 #include "libavutil/avstring.h"
 #include "libavutil/bprint.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/emms.h"
 #include "libavutil/fifo.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/mem.h"
@@ -36,12 +37,14 @@
 #include "avcodec.h"
 #include "avcodec_internal.h"
 #include "bsf.h"
+#include "codec_desc.h"
 #include "codec_internal.h"
 #include "decode.h"
 #include "encode.h"
 #include "frame_thread_encoder.h"
 #include "hwconfig.h"
 #include "internal.h"
+#include "refstruct.h"
 #include "thread.h"
 
 /**
@@ -457,7 +460,7 @@ av_cold int avcodec_close(AVCodecContext *avctx)
         av_frame_free(&avci->in_frame);
         av_frame_free(&avci->recon_frame);
 
-        av_buffer_unref(&avci->pool);
+        ff_refstruct_unref(&avci->pool);
 
         ff_hwaccel_uninit(avctx);
 

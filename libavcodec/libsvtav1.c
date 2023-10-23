@@ -236,10 +236,10 @@ static int config_enc_params(EbSvtAv1EncConfiguration *param,
     }
 #endif
 
-    if (avctx->profile != FF_PROFILE_UNKNOWN)
+    if (avctx->profile != AV_PROFILE_UNKNOWN)
         param->profile = avctx->profile;
 
-    if (avctx->level != FF_LEVEL_UNKNOWN)
+    if (avctx->level != AV_LEVEL_UNKNOWN)
         param->level = avctx->level;
 
     // gop_size == 1 case is handled when encoding each frame by setting
@@ -253,8 +253,13 @@ static int config_enc_params(EbSvtAv1EncConfiguration *param,
     // In order for SVT-AV1 to force keyframes by setting pic_type to
     // EB_AV1_KEY_PICTURE on any frame, force_key_frames has to be set. Note
     // that this does not force all frames to be keyframes (it only forces a
-    // keyframe with pic_type is set to EB_AV1_KEY_PICTURE).
-    param->force_key_frames = 1;
+    // keyframe with pic_type is set to EB_AV1_KEY_PICTURE). As of now, SVT-AV1
+    // does not support arbitrary keyframe requests by setting pic_type to
+    // EB_AV1_KEY_PICTURE, so it is done only when gop_size == 1.
+    // FIXME: When SVT-AV1 supports arbitrary keyframe requests, this code needs
+    // to be updated to set force_key_frames accordingly.
+    if (avctx->gop_size == 1)
+        param->force_key_frames = 1;
 
     if (avctx->framerate.num > 0 && avctx->framerate.den > 0) {
         param->frame_rate_numerator   = avctx->framerate.num;
@@ -310,12 +315,12 @@ FF_ENABLE_DEPRECATION_WARNINGS
     }
 
     if ((param->encoder_color_format == EB_YUV422 || param->encoder_bit_depth > 10)
-         && param->profile != FF_PROFILE_AV1_PROFESSIONAL ) {
+         && param->profile != AV_PROFILE_AV1_PROFESSIONAL ) {
         av_log(avctx, AV_LOG_WARNING, "Forcing Professional profile\n");
-        param->profile = FF_PROFILE_AV1_PROFESSIONAL;
-    } else if (param->encoder_color_format == EB_YUV444 && param->profile != FF_PROFILE_AV1_HIGH) {
+        param->profile = AV_PROFILE_AV1_PROFESSIONAL;
+    } else if (param->encoder_color_format == EB_YUV444 && param->profile != AV_PROFILE_AV1_HIGH) {
         av_log(avctx, AV_LOG_WARNING, "Forcing High profile\n");
-        param->profile = FF_PROFILE_AV1_HIGH;
+        param->profile = AV_PROFILE_AV1_HIGH;
     }
 
     avctx->bit_rate       = param->rate_control_mode > 0 ?
@@ -325,7 +330,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
                             FFMAX(avctx->bit_rate, avctx->rc_max_rate) / 1000LL;
 
     if (avctx->bit_rate || avctx->rc_max_rate || avctx->rc_buffer_size) {
-        AVCPBProperties *cpb_props = ff_add_cpb_side_data(avctx);
+        AVCPBProperties *cpb_props = ff_encode_add_cpb_side_data(avctx);
         if (!cpb_props)
             return AVERROR(ENOMEM);
 

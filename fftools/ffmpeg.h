@@ -57,6 +57,8 @@
 #define FFMPEG_OPT_QPHIST 1
 #define FFMPEG_OPT_ADRIFT_THRESHOLD 1
 #define FFMPEG_OPT_ENC_TIME_BASE_NUM 1
+#define FFMPEG_OPT_TOP 1
+#define FFMPEG_OPT_FORCE_KF_SOURCE_NO_DROP 1
 
 enum VideoSyncMethod {
     VSYNC_AUTO = -1,
@@ -218,8 +220,10 @@ typedef struct OptionsContext {
     int        nb_inter_matrices;
     SpecifierOpt *chroma_intra_matrices;
     int        nb_chroma_intra_matrices;
+#if FFMPEG_OPT_TOP
     SpecifierOpt *top_field_first;
     int        nb_top_field_first;
+#endif
     SpecifierOpt *metadata_map;
     int        nb_metadata_map;
     SpecifierOpt *presets;
@@ -298,6 +302,9 @@ typedef struct OutputFilter {
 
     /* pts of the last frame received from this filter, in AV_TIME_BASE_Q */
     int64_t last_pts;
+
+    uint64_t nb_frames_dup;
+    uint64_t nb_frames_drop;
 } OutputFilter;
 
 typedef struct FilterGraph {
@@ -344,7 +351,9 @@ typedef struct InputStream {
 
     AVDictionary *decoder_opts;
     AVRational framerate;               /* framerate forced with -r */
+#if FFMPEG_OPT_TOP
     int top_field_first;
+#endif
 
     int autorotate;
 
@@ -479,7 +488,9 @@ typedef enum {
 
 enum {
     KF_FORCE_SOURCE         = 1,
+#if FFMPEG_OPT_FORCE_KF_SOURCE_NO_DROP
     KF_FORCE_SOURCE_NO_DROP = 2,
+#endif
 };
 
 typedef struct KeyframeForceCtx {
@@ -523,16 +534,10 @@ typedef struct OutputStream {
     /* dts of the last packet sent to the muxing queue, in AV_TIME_BASE_Q */
     int64_t last_mux_dts;
 
-    // the timebase of the packets sent to the muxer
-    AVRational mux_timebase;
     AVRational enc_timebase;
 
     Encoder *enc;
     AVCodecContext *enc_ctx;
-
-    uint64_t nb_frames_dup;
-    uint64_t nb_frames_drop;
-    int64_t last_dropped;
 
     /* video only */
     AVRational frame_rate;
@@ -540,7 +545,9 @@ typedef struct OutputStream {
     enum VideoSyncMethod vsync_method;
     int is_cfr;
     int force_fps;
+#if FFMPEG_OPT_TOP
     int top_field_first;
+#endif
 #if FFMPEG_ROTATION_METADATA
     int rotate_overridden;
 #endif
@@ -577,8 +584,6 @@ typedef struct OutputStream {
     // The encoder and the bitstream filters have been initialized and the stream
     // parameters are set in the AVStream.
     int initialized;
-
-    int inputs_done;
 
     const char *attachment_filename;
 
@@ -761,6 +766,9 @@ void fg_free(FilterGraph **pfg);
  */
 int fg_transcode_step(FilterGraph *graph, InputStream **best_ist);
 
+void fg_send_command(FilterGraph *fg, double time, const char *target,
+                     const char *command, const char *arg, int all_filters);
+
 /**
  * Get and encode new output from specified filtergraph, without causing
  * activity.
@@ -809,7 +817,7 @@ int dec_packet(InputStream *ist, const AVPacket *pkt, int no_eof);
 int enc_alloc(Encoder **penc, const AVCodec *codec);
 void enc_free(Encoder **penc);
 
-int enc_open(OutputStream *ost, AVFrame *frame);
+int enc_open(OutputStream *ost, const AVFrame *frame);
 int enc_subtitle(OutputFile *of, OutputStream *ost, const AVSubtitle *sub);
 int enc_frame(OutputStream *ost, AVFrame *frame);
 int enc_flush(void);
@@ -823,7 +831,7 @@ int enc_flush(void);
 int of_stream_init(OutputFile *of, OutputStream *ost);
 int of_write_trailer(OutputFile *of);
 int of_open(const OptionsContext *o, const char *filename);
-void of_close(OutputFile **pof);
+void of_free(OutputFile **pof);
 
 void of_enc_stats_close(void);
 
@@ -930,7 +938,9 @@ static inline int err_merge(int err0, int err1)
 extern const char * const opt_name_codec_names[];
 extern const char * const opt_name_codec_tags[];
 extern const char * const opt_name_frame_rates[];
+#if FFMPEG_OPT_TOP
 extern const char * const opt_name_top_field_first[];
+#endif
 
 static inline void pkt_move(void *dst, void *src)
 {
