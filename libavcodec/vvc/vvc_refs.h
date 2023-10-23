@@ -25,9 +25,9 @@
 
 #include "vvcdec.h"
 
-int ff_vvc_output_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *out, int no_output_of_prior_pics_flag, int flush);
+int ff_vvc_output_frame(VVCContext *s, VVCFrameContext *fc, struct AVFrame *out, int no_output_of_prior_pics_flag, int flush);
 void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc);
-int ff_vvc_set_new_ref(VVCContext *s, VVCFrameContext *fc, AVFrame **frame);
+int ff_vvc_set_new_ref(VVCContext *s, VVCFrameContext *fc, struct AVFrame **frame);
 const RefPicList *ff_vvc_get_ref_list(const VVCFrameContext *fc, const VVCFrame *ref, int x0, int y0);
 int ff_vvc_frame_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc);
 int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc);

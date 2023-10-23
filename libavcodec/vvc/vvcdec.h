@@ -27,7 +27,6 @@
 #include "libavcodec/cbs.h"
 #include "libavcodec/cbs_h266.h"
 #include "libavcodec/h2645_parse.h"
-#include "libavcodec/threadframe.h"
 #include "libavcodec/videodsp.h"
 #include "libavcodec/vvc.h"
 
@@ -137,7 +136,7 @@ typedef struct RefPicListTab {
 } RefPicListTab;
 
 typedef struct VVCFrame {
-    AVFrame *frame;
+    struct AVFrame *frame;
 
     MvField  *tab_dmvr_mvf;
     RefPicListTab **rpl_tab;
@@ -173,13 +172,13 @@ struct SliceContext {
 };
 
 struct VVCFrameContext {
-    AVCodecContext *avctx;
+    struct AVCodecContext *avctx;
 
     // +1 for the current frame
     VVCFrame DPB[VVC_MAX_DPB_SIZE + 1];
 
-    AVFrame *frame;
-    AVFrame *output_frame;
+    struct AVFrame *frame;
+    struct AVFrame *output_frame;
     VVCFrameParamSets ps;
 
     SliceContext  **slices;
@@ -270,7 +269,7 @@ struct VVCFrameContext {
 } ;
 
 typedef struct VVCContext {
-    AVCodecContext *avctx;
+    struct AVCodecContext *avctx;
 
     CodedBitstreamContext *cbc;
     CodedBitstreamFragment current_frame;
