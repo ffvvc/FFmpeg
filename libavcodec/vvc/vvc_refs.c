@@ -44,7 +44,7 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 
     frame->flags &= ~flags;
     if (!frame->flags) {
-        ff_thread_release_ext_buffer(fc->avctx, &frame->tf);
+        ff_thread_release_ext_buffer(&frame->tf);
 
         av_buffer_unref(&frame->progress_buf);
 
