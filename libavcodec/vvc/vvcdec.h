@@ -36,74 +36,11 @@
 #define CR                      2
 #define JCBCR                   3
 
-#define MAX_CTU_SIZE            128
-
-#define MAX_CU_SIZE             MAX_CTU_SIZE
-#define MIN_CU_SIZE             4
-#define MIN_CU_LOG2             2
-#define MAX_CU_DEPTH            7
-
-#define MIN_PU_SIZE             4
-#define MIN_PU_LOG2             2
-
-#define MAX_TB_SIZE             64
 #define MIN_TU_LOG2             2                       ///< MinTbLog2SizeY
-#define MIN_TU_SIZE             4
-#define MAX_TUS_IN_CU           64
-
-#define MAX_PARTS_IN_CTU        ((MAX_CTU_SIZE >> MIN_CU_LOG2) * (MAX_CTU_SIZE >> MIN_CU_LOG2))
-
-#define MAX_CONTROL_POINTS      3
-
-#define MRG_MAX_NUM_CANDS       6
-#define MAX_NUM_HMVP_CANDS      5
+#define MIN_PU_LOG2             2
 
 #define L0                      0
 #define L1                      1
-
-#define CHROMA_EXTRA_BEFORE     1
-#define CHROMA_EXTRA_AFTER      2
-#define CHROMA_EXTRA            3
-#define LUMA_EXTRA_BEFORE       3
-#define LUMA_EXTRA_AFTER        4
-#define LUMA_EXTRA              7
-#define BILINEAR_EXTRA_BEFORE   0
-#define BILINEAR_EXTRA_AFTER    1
-#define BILINEAR_EXTRA          1
-
-#define MAX_QP                  63
-#define DEFAULT_INTRA_TC_OFFSET 2
-
-#define SAO_PADDING_SIZE        1
-
-#define ALF_PADDING_SIZE        8
-#define ALF_BLOCK_SIZE          4
-
-#define ALF_BORDER_LUMA         3
-#define ALF_BORDER_CHROMA       2
-
-#define ALF_VB_POS_ABOVE_LUMA   4
-#define ALF_VB_POS_ABOVE_CHROMA 2
-
-#define ALF_GRADIENT_STEP       2
-#define ALF_GRADIENT_BORDER     2
-#define ALF_GRADIENT_SIZE       ((MAX_CU_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP)
-#define ALF_NUM_DIR             4
-
-#define MAX_PB_SIZE             128
-#define EDGE_EMU_BUFFER_STRIDE  (MAX_PB_SIZE + 32)
-
-#define AFFINE_MIN_BLOCK_SIZE   4
-#define PROF_BORDER_EXT         1
-#define PROF_BLOCK_SIZE         (AFFINE_MIN_BLOCK_SIZE + PROF_BORDER_EXT * 2)
-#define BDOF_BORDER_EXT         1
-
-/**
- * Value of the luma sample at position (x, y) in the 2D array tab.
- */
-#define SAMPLE(tab, x, y) ((tab)[(y) * s->sps->width + (x)])
-#define SAMPLE_CTB(tab, x, y) ((tab)[(y) * min_cb_width + (x)])
-#define CTB(tab, x, y) ((tab)[(y) * fc->ps.pps->ctb_width + (x)])
 
 typedef struct VVCLocalContext VVCLocalContext;
 typedef struct SliceContext SliceContext;

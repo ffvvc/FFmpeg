@@ -32,6 +32,8 @@
 #define BOTTOM      3
 #define MAX_EDGES   4
 
+#define DEFAULT_INTRA_TC_OFFSET 2
+
 //Table 43 Derivation of threshold variables beta' and tc' from input Q
 static const uint16_t tctable[66] = {
       0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,

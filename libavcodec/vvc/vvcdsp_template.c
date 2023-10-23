@@ -23,12 +23,7 @@
 #include "libavcodec/bit_depth_template.c"
 
 #include "vvcdec.h"
-
 #include "vvc_data.h"
-
-#define BDOF_PADDED_SIZE        (16 + BDOF_BORDER_EXT * 2)
-#define BDOF_BLOCK_SIZE         4
-#define BDOF_GRADIENT_SIZE      (BDOF_BLOCK_SIZE + BDOF_BORDER_EXT * 2)
 
 #include "vvc_inter_template.c"
 #include "vvc_intra_template.c"
