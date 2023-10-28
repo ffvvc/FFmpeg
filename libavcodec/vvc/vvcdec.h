@@ -109,6 +109,7 @@ struct VVCFrameContext {
 
     struct AVFrame *frame;
     struct AVFrame *output_frame;
+
     VVCFrameParamSets ps;
 
     SliceContext  **slices;

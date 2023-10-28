@@ -24,7 +24,6 @@
 #include "libavcodec/decode.h"
 #include "libavcodec/profiles.h"
 #include "libavcodec/refstruct.h"
-#include "libavcodec/vvc.h"
 
 #include "libavutil/cpu.h"
 
