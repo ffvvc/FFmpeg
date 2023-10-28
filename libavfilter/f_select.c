@@ -82,7 +82,9 @@ static const char *const var_names[] = {
     "prev_selected_n",   ///< number of the last selected frame
 
     "key",               ///< tell if the frame is a key frame
+#if FF_API_FRAME_PKT
     "pos",               ///< original position in the file of the frame
+#endif
 
     "scene",
 
@@ -294,7 +296,6 @@ static double get_scene_score(AVFilterContext *ctx, AVFrame *frame)
             count += select->width[plane] * select->height[plane];
         }
 
-        emms_c();
         mafd = (double)sad / count / (1ULL << (select->bitdepth - 8));
         diff = fabs(mafd - select->prev_mafd);
         ret  = av_clipf(FFMIN(mafd, diff) / 100., 0, 1);

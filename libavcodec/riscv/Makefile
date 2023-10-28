@@ -1,5 +1,7 @@
 OBJS-$(CONFIG_AAC_DECODER) += riscv/aacpsdsp_init.o
 RVV-OBJS-$(CONFIG_AAC_DECODER) += riscv/aacpsdsp_rvv.o
+OBJS-$(CONFIG_AC3DSP) += riscv/ac3dsp_init.o \
+                         riscv/ac3dsp_rvb.o
 OBJS-$(CONFIG_ALAC_DECODER) += riscv/alacdsp_init.o
 RVV-OBJS-$(CONFIG_ALAC_DECODER) += riscv/alacdsp_rvv.o
 OBJS-$(CONFIG_AUDIODSP) += riscv/audiodsp_init.o \
@@ -8,6 +10,8 @@ RVV-OBJS-$(CONFIG_AUDIODSP) += riscv/audiodsp_rvv.o
 OBJS-$(CONFIG_BSWAPDSP) += riscv/bswapdsp_init.o \
                            riscv/bswapdsp_rvb.o
 RVV-OBJS-$(CONFIG_BSWAPDSP) += riscv/bswapdsp_rvv.o
+OBJS-$(CONFIG_EXR_DECODER) += riscv/exrdsp_init.o
+RVV-OBJS-$(CONFIG_EXR_DECODER) += riscv/exrdsp_rvv.o
 OBJS-$(CONFIG_FMTCONVERT) += riscv/fmtconvert_init.o
 RVV-OBJS-$(CONFIG_FMTCONVERT) += riscv/fmtconvert_rvv.o
 OBJS-$(CONFIG_G722DSP) += riscv/g722dsp_init.o

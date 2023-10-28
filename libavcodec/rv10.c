@@ -158,28 +158,14 @@ static int rv10_decode_picture_header(MpegEncContext *s)
 
 static int rv20_decode_picture_header(RVDecContext *rv, int whole_size)
 {
+    static const enum AVPictureType pict_types[] =
+        { AV_PICTURE_TYPE_I, AV_PICTURE_TYPE_I /* hmm ... */,
+          AV_PICTURE_TYPE_P, AV_PICTURE_TYPE_B };
     MpegEncContext *s = &rv->m;
-    int seq, mb_pos, i, ret;
+    int seq, mb_pos, ret;
     int rpr_max;
 
-    i = get_bits(&s->gb, 2);
-    switch (i) {
-    case 0:
-        s->pict_type = AV_PICTURE_TYPE_I;
-        break;
-    case 1:
-        s->pict_type = AV_PICTURE_TYPE_I;
-        break;                                  // hmm ...
-    case 2:
-        s->pict_type = AV_PICTURE_TYPE_P;
-        break;
-    case 3:
-        s->pict_type = AV_PICTURE_TYPE_B;
-        break;
-    default:
-        av_log(s->avctx, AV_LOG_ERROR, "unknown frame type\n");
-        return AVERROR_INVALIDDATA;
-    }
+    s->pict_type = pict_types[get_bits(&s->gb, 2)];
 
     if (s->low_delay && s->pict_type == AV_PICTURE_TYPE_B) {
         av_log(s->avctx, AV_LOG_ERROR, "low delay B\n");
@@ -334,8 +320,8 @@ static av_cold void rv10_build_vlc(VLC *vlc, const uint16_t len_count[15],
         for (unsigned tmp = nb_lens + len_count[i]; nb_lens < tmp; nb_lens++)
             lens[nb_lens] = i + 2;
     av_assert1(nb_lens == nb_syms);
-    ff_init_vlc_from_lengths(vlc, DC_VLC_BITS, nb_lens, lens, 1,
-                             syms, 2, 2, 0, INIT_VLC_STATIC_OVERLONG, NULL);
+    ff_vlc_init_from_lengths(vlc, DC_VLC_BITS, nb_lens, lens, 1,
+                             syms, 2, 2, 0, VLC_INIT_STATIC_OVERLONG, NULL);
 }
 
 static av_cold void rv10_init_static(void)
@@ -420,7 +406,6 @@ static av_cold int rv10_decode_init(AVCodecContext *avctx)
 
     avctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
-    ff_mpv_idct_init(s);
     if ((ret = ff_mpv_common_init(s)) < 0)
         return ret;
 
@@ -477,7 +462,7 @@ static int rv10_decode_packet(AVCodecContext *avctx, const uint8_t *buf,
     if ((s->mb_x == 0 && s->mb_y == 0) || !s->current_picture_ptr) {
         // FIXME write parser so we always have complete frames?
         if (s->current_picture_ptr) {
-            ff_er_frame_end(&s->er);
+            ff_er_frame_end(&s->er, NULL);
             ff_mpv_frame_end(s);
             s->mb_x = s->mb_y = s->resync_mb_x = s->resync_mb_y = 0;
         }
@@ -649,7 +634,7 @@ static int rv10_decode_frame(AVCodecContext *avctx, AVFrame *pict,
     }
 
     if (s->current_picture_ptr && s->mb_y >= s->mb_height) {
-        ff_er_frame_end(&s->er);
+        ff_er_frame_end(&s->er, NULL);
         ff_mpv_frame_end(s);
 
         if (s->pict_type == AV_PICTURE_TYPE_B || s->low_delay) {

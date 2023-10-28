@@ -31,6 +31,7 @@
 #include <inttypes.h>
 
 #include "libavutil/attributes.h"
+#include "libavutil/emms.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
 #include "libavutil/mem_internal.h"
@@ -75,7 +76,6 @@ typedef struct Mpeg1Context {
     unsigned aspect_ratio_info;
     AVRational save_aspect;
     int save_width, save_height, save_progressive_seq;
-    int rc_buffer_size;
     AVRational frame_rate_ext;  /* MPEG-2 specific framerate modificator */
     unsigned frame_rate_index;
     int sync;                   /* Did we reach a sync point like a GOP/SEQ/KEYFrame? */
@@ -1057,9 +1057,6 @@ static av_cold int mpeg_decode_init(AVCodecContext *avctx)
         avctx->coded_width = avctx->coded_height = 0; // do not trust dimensions from input
     ff_mpv_decode_init(s2, avctx);
 
-    /* we need some permutation to store matrices,
-     * until the decoder sets the real permutation. */
-    ff_mpv_idct_init(s2);
     ff_mpeg12_init_vlcs();
 
     s2->chroma_format              = 1;
@@ -1092,18 +1089,6 @@ static int mpeg_decode_update_thread_context(AVCodecContext *avctx,
     return 0;
 }
 #endif
-
-static void quant_matrix_rebuild(uint16_t *matrix, const uint8_t *old_perm,
-                                 const uint8_t *new_perm)
-{
-    uint16_t temp_matrix[64];
-    int i;
-
-    memcpy(temp_matrix, matrix, 64 * sizeof(uint16_t));
-
-    for (i = 0; i < 64; i++)
-        matrix[new_perm[i]] = temp_matrix[old_perm[i]];
-}
 
 static const enum AVPixelFormat mpeg1_hwaccel_pixfmt_list_420[] = {
 #if CONFIG_MPEG1_NVDEC_HWACCEL
@@ -1168,7 +1153,7 @@ static enum AVPixelFormat mpeg_get_pixelformat(AVCodecContext *avctx)
     else
         pix_fmts = mpeg12_pixfmt_list_444;
 
-    return ff_thread_get_format(avctx, pix_fmts);
+    return ff_get_format(avctx, pix_fmts);
 }
 
 /* Call this function when we know all parameters.
@@ -1177,7 +1162,6 @@ static int mpeg_decode_postinit(AVCodecContext *avctx)
 {
     Mpeg1Context *s1  = avctx->priv_data;
     MpegEncContext *s = &s1->mpeg_enc_ctx;
-    uint8_t old_permutation[64];
     int ret;
 
     if (avctx->codec_id == AV_CODEC_ID_MPEG1VIDEO) {
@@ -1248,7 +1232,8 @@ static int mpeg_decode_postinit(AVCodecContext *avctx)
         if (ret < 0)
             return ret;
 
-        if (avctx->codec_id == AV_CODEC_ID_MPEG2VIDEO && s->bit_rate) {
+        if (avctx->codec_id == AV_CODEC_ID_MPEG2VIDEO && s->bit_rate &&
+            (s->bit_rate != 0x3FFFF*400)) {
             avctx->rc_max_rate = s->bit_rate;
         } else if (avctx->codec_id == AV_CODEC_ID_MPEG1VIDEO && s->bit_rate &&
                    (s->bit_rate != 0x3FFFF*400 || s->vbv_delay != 0xFFFF)) {
@@ -1296,18 +1281,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
         avctx->pix_fmt = mpeg_get_pixelformat(avctx);
 
-        /* Quantization matrices may need reordering
-         * if DCT permutation is changed. */
-        memcpy(old_permutation, s->idsp.idct_permutation, 64 * sizeof(uint8_t));
-
-        ff_mpv_idct_init(s);
         if ((ret = ff_mpv_common_init(s)) < 0)
             return ret;
-
-        quant_matrix_rebuild(s->intra_matrix,        old_permutation, s->idsp.idct_permutation);
-        quant_matrix_rebuild(s->inter_matrix,        old_permutation, s->idsp.idct_permutation);
-        quant_matrix_rebuild(s->chroma_intra_matrix, old_permutation, s->idsp.idct_permutation);
-        quant_matrix_rebuild(s->chroma_inter_matrix, old_permutation, s->idsp.idct_permutation);
 
         s1->mpeg_enc_ctx_allocated = 1;
     }
@@ -1351,11 +1326,6 @@ static int mpeg1_decode_picture(AVCodecContext *avctx, const uint8_t *buf,
         s->mpeg_f_code[1][0] = f_code;
         s->mpeg_f_code[1][1] = f_code;
     }
-    s->current_picture.f->pict_type = s->pict_type;
-    if (s->pict_type == AV_PICTURE_TYPE_I)
-        s->current_picture.f->flags |= AV_FRAME_FLAG_KEY;
-    else
-        s->current_picture.f->flags &= ~AV_FRAME_FLAG_KEY;
 
     if (avctx->debug & FF_DEBUG_PICT_INFO)
         av_log(avctx, AV_LOG_DEBUG,
@@ -1371,7 +1341,6 @@ static void mpeg_decode_sequence_extension(Mpeg1Context *s1)
     MpegEncContext *s = &s1->mpeg_enc_ctx;
     int horiz_size_ext, vert_size_ext;
     int bit_rate_ext;
-    AVCPBProperties *cpb_props;
 
     skip_bits(&s->gb, 1); /* profile and level esc*/
     s->avctx->profile       = get_bits(&s->gb, 3);
@@ -1391,7 +1360,7 @@ static void mpeg_decode_sequence_extension(Mpeg1Context *s1)
     bit_rate_ext = get_bits(&s->gb, 12);  /* XXX: handle it */
     s->bit_rate += (bit_rate_ext << 18) * 400LL;
     check_marker(s->avctx, &s->gb, "after bit rate extension");
-    s1->rc_buffer_size += get_bits(&s->gb, 8) * 1024 * 16 << 10;
+    s->avctx->rc_buffer_size += get_bits(&s->gb, 8) * 1024 * 16 << 10;
 
     s->low_delay = get_bits1(&s->gb);
     if (s->avctx->flags & AV_CODEC_FLAG_LOW_DELAY)
@@ -1403,17 +1372,11 @@ static void mpeg_decode_sequence_extension(Mpeg1Context *s1)
     ff_dlog(s->avctx, "sequence extension\n");
     s->codec_id = s->avctx->codec_id = AV_CODEC_ID_MPEG2VIDEO;
 
-    if (cpb_props = ff_add_cpb_side_data(s->avctx)) {
-        cpb_props->buffer_size = s1->rc_buffer_size;
-        if (s->bit_rate != 0x3FFFF*400)
-            cpb_props->max_bitrate = s->bit_rate;
-    }
-
     if (s->avctx->debug & FF_DEBUG_PICT_INFO)
         av_log(s->avctx, AV_LOG_DEBUG,
                "profile: %d, level: %d ps: %d cf:%d vbv buffer: %d, bitrate:%"PRId64"\n",
                s->avctx->profile, s->avctx->level, s->progressive_sequence, s->chroma_format,
-               s1->rc_buffer_size, s->bit_rate);
+               s->avctx->rc_buffer_size, s->bit_rate);
 }
 
 static void mpeg_decode_sequence_display_extension(Mpeg1Context *s1)
@@ -1536,11 +1499,6 @@ static int mpeg_decode_picture_coding_extension(Mpeg1Context *s1)
                 s->pict_type = AV_PICTURE_TYPE_P;
         } else
             s->pict_type = AV_PICTURE_TYPE_B;
-        s->current_picture.f->pict_type = s->pict_type;
-        if (s->pict_type == AV_PICTURE_TYPE_I)
-            s->current_picture.f->flags |= AV_FRAME_FLAG_KEY;
-        else
-            s->current_picture.f->flags &= ~AV_FRAME_FLAG_KEY;
     }
 
     s->intra_dc_precision         = get_bits(&s->gb, 2);
@@ -2039,7 +1997,7 @@ static int slice_end(AVCodecContext *avctx, AVFrame *pict)
     if (/* s->mb_y << field_pic == s->mb_height && */ !s->first_field && !s1->first_slice) {
         /* end of image */
 
-        ff_er_frame_end(&s->er);
+        ff_er_frame_end(&s->er, NULL);
 
         ff_mpv_frame_end(s);
 
@@ -2103,7 +2061,7 @@ static int mpeg1_decode_sequence(AVCodecContext *avctx,
         return AVERROR_INVALIDDATA;
     }
 
-    s1->rc_buffer_size = get_bits(&s->gb, 10) * 1024 * 16;
+    s->avctx->rc_buffer_size = get_bits(&s->gb, 10) * 1024 * 16;
     skip_bits(&s->gb, 1);
 
     /* get matrix */
@@ -2151,7 +2109,7 @@ static int mpeg1_decode_sequence(AVCodecContext *avctx,
 
     if (s->avctx->debug & FF_DEBUG_PICT_INFO)
         av_log(s->avctx, AV_LOG_DEBUG, "vbv buffer: %d, bitrate:%"PRId64", aspect_ratio_info: %d \n",
-               s1->rc_buffer_size, s->bit_rate, s1->aspect_ratio_info);
+               s->avctx->rc_buffer_size, s->bit_rate, s1->aspect_ratio_info);
 
     return 0;
 }
@@ -2175,7 +2133,6 @@ static int vcr2_init_sequence(AVCodecContext *avctx)
 
     avctx->pix_fmt = mpeg_get_pixelformat(avctx);
 
-    ff_mpv_idct_init(s);
     if ((ret = ff_mpv_common_init(s)) < 0)
         return ret;
     s1->mpeg_enc_ctx_allocated = 1;
@@ -3080,7 +3037,6 @@ static av_cold int ipu_decode_init(AVCodecContext *avctx)
     avctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
     ff_mpv_decode_init(m, avctx);
-    ff_mpv_idct_init(m);
     ff_mpeg12_init_vlcs();
 
     for (int i = 0; i < 64; i++) {

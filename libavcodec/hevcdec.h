@@ -417,10 +417,10 @@ typedef struct HEVCFrame {
 
     AVBufferRef *tab_mvf_buf;
     AVBufferRef *rpl_tab_buf;
-    AVBufferRef *rpl_buf;
+    RefPicListTab *rpl;            ///< RefStruct reference
+    int nb_rpl_elems;
 
-    AVBufferRef *hwaccel_priv_buf;
-    void *hwaccel_picture_private;
+    void *hwaccel_picture_private; ///< RefStruct reference
 
     /**
      * A sequence counter, so that old frames are output first
@@ -596,6 +596,8 @@ typedef struct HEVCContext {
     int nal_length_size;    ///< Number of bytes used for nal length (1, 2 or 4)
     int nuh_layer_id;
 
+    int film_grain_warning_shown;
+
     AVBufferRef *rpu_buf;       ///< 0 or 1 Dolby Vision RPUs.
     DOVIContext dovi_ctx;       ///< Dolby Vision decoding context
 } HEVCContext;
@@ -688,7 +690,7 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *frame, int flush);
 
 void ff_hevc_bump_frame(HEVCContext *s);
 
-void ff_hevc_unref_frame(HEVCContext *s, HEVCFrame *frame, int flags);
+void ff_hevc_unref_frame(HEVCFrame *frame, int flags);
 
 void ff_hevc_set_neighbour_available(HEVCLocalContext *lc, int x0, int y0,
                                      int nPbW, int nPbH);

@@ -214,7 +214,7 @@ OBJS-$(CONFIG_BM3D_FILTER)                   += vf_bm3d.o framesync.o
 OBJS-$(CONFIG_BOXBLUR_FILTER)                += vf_boxblur.o boxblur.o
 OBJS-$(CONFIG_BOXBLUR_OPENCL_FILTER)         += vf_avgblur_opencl.o opencl.o \
                                                 opencl/avgblur.o boxblur.o
-OBJS-$(CONFIG_BWDIF_FILTER)                  += vf_bwdif.o yadif_common.o
+OBJS-$(CONFIG_BWDIF_FILTER)                  += vf_bwdif.o bwdifdsp.o yadif_common.o
 OBJS-$(CONFIG_BWDIF_CUDA_FILTER)             += vf_bwdif_cuda.o vf_bwdif_cuda.ptx.o \
                                                 yadif_common.o
 OBJS-$(CONFIG_BWDIF_VULKAN_FILTER)           += vf_bwdif_vulkan.o yadif_common.o vulkan.o vulkan_filter.o
@@ -363,6 +363,7 @@ OBJS-$(CONFIG_LENSCORRECTION_FILTER)         += vf_lenscorrection.o
 OBJS-$(CONFIG_LENSFUN_FILTER)                += vf_lensfun.o
 OBJS-$(CONFIG_LIBPLACEBO_FILTER)             += vf_libplacebo.o vulkan.o vulkan_filter.o
 OBJS-$(CONFIG_LIBVMAF_FILTER)                += vf_libvmaf.o framesync.o
+OBJS-$(CONFIG_LIBVMAF_CUDA_FILTER)           += vf_libvmaf.o framesync.o
 OBJS-$(CONFIG_LIMITDIFF_FILTER)              += vf_limitdiff.o framesync.o
 OBJS-$(CONFIG_LIMITER_FILTER)                += vf_limiter.o
 OBJS-$(CONFIG_LOOP_FILTER)                   += f_loop.o
@@ -394,8 +395,7 @@ OBJS-$(CONFIG_MULTIPLY_FILTER)               += vf_multiply.o
 OBJS-$(CONFIG_NEGATE_FILTER)                 += vf_negate.o
 OBJS-$(CONFIG_NLMEANS_FILTER)                += vf_nlmeans.o
 OBJS-$(CONFIG_NLMEANS_OPENCL_FILTER)         += vf_nlmeans_opencl.o opencl.o opencl/nlmeans.o
-OBJS-$(CONFIG_NLMEANS_VULKAN_FILTER)         += vf_nlmeans_vulkan.o vulkan.o vulkan_filter.o \
-                                                vulkan/prefix_sum.o
+OBJS-$(CONFIG_NLMEANS_VULKAN_FILTER)         += vf_nlmeans_vulkan.o vulkan.o vulkan_filter.o
 OBJS-$(CONFIG_NNEDI_FILTER)                  += vf_nnedi.o
 OBJS-$(CONFIG_NOFORMAT_FILTER)               += vf_format.o
 OBJS-$(CONFIG_NOISE_FILTER)                  += vf_noise.o

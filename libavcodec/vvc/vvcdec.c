@@ -20,11 +20,10 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "config_components.h"
-
 #include "libavcodec/codec_internal.h"
 #include "libavcodec/decode.h"
 #include "libavcodec/profiles.h"
+#include "libavcodec/refstruct.h"
 #include "libavcodec/vvc.h"
 
 #include "libavutil/cpu.h"
@@ -524,8 +523,8 @@ static void vvc_smvd_ref_idx(const VVCFrameContext *fc, SliceContext *sc)
 static void eps_free(SliceContext *slice)
 {
     if (slice->eps) {
-        for (int j = 0; j < slice->nb_eps; j++)
-            av_free(slice->eps[j].parse_task);
+        for (int i = 0; i < slice->nb_eps; i++)
+            ff_vvc_parse_task_free(slice->eps[i].parse_task);
         av_freep(&slice->eps);
     }
 }
@@ -536,7 +535,7 @@ static void slices_free(VVCFrameContext *fc)
         for (int i = 0; i < fc->nb_slices_allocated; i++) {
             SliceContext *slice = fc->slices[i];
             if (slice) {
-                av_buffer_unref(&slice->sh.rref);
+                ff_refstruct_unref(&slice->sh.r);
                 eps_free(slice);
                 av_free(slice);
             }
@@ -612,19 +611,15 @@ static int init_slice_context(SliceContext *sc, VVCFrameContext *fc, const H2645
         if (!sc->eps)
             return AVERROR(ENOMEM);
         sc->nb_eps = nb_eps;
-        for (int i = 0; i < sc->nb_eps; i++) {
-            EntryPoint *ep = sc->eps + i;
-            ep->parse_task = ff_vvc_task_alloc();
-            if (!ep->parse_task)
-                return AVERROR(ENOMEM);
-        }
     }
 
     init_get_bits8(&gb, slice->data, slice->data_size);
     for (int i = 0; i < sc->nb_eps; i++)
     {
         EntryPoint *ep = sc->eps + i;
-        ff_vvc_parse_task_init(ep->parse_task, VVC_TASK_TYPE_PARSE, fc, sc, ep, ctu_addr);
+        ep->parse_task = ff_vvc_parse_task_alloc(fc, sc, ep, ctu_addr);
+        if (!ep->parse_task)
+            return AVERROR(ENOMEM);
         ep->ctu_end = (i + 1 == sc->nb_eps ? sh->num_ctus_in_curr_slice : sh->entry_point_start_ctu[i]);
         ep_init_cabac_decoder(sc, i, nal, &gb);
         if (i + 1 < sc->nb_eps)
@@ -645,11 +640,11 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
 {
     int ret;
 
-    ret = ff_thread_ref_frame(&dst->tf, &src->tf);
+    ret = av_frame_ref(dst->frame, src->frame);
     if (ret < 0)
         return ret;
 
-    dst->progress_buf = av_buffer_ref(src->progress_buf);
+    ff_refstruct_replace(&dst->progress, src->progress);
 
     dst->tab_dmvr_mvf_buf = av_buffer_ref(src->tab_dmvr_mvf_buf);
     if (!dst->tab_dmvr_mvf_buf)
@@ -707,7 +702,6 @@ static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx
         fc->DPB[j].frame = av_frame_alloc();
         if (!fc->DPB[j].frame)
             goto fail;
-        fc->DPB[j].tf.f = fc->DPB[j].frame;
     }
 
     return 0;
@@ -1021,7 +1015,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
 
     ff_cbs_fragment_free(&s->current_frame);
     vvc_decode_flush(avctx);
-    av_executor_free(&s->executor);
+    ff_vvc_executor_free(&s->executor);
     if (s->fcs) {
         for (i = 0; i < s->nb_fcs; i++)
             frame_context_free(s->fcs + i);
@@ -1038,13 +1032,6 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
 {
     VVCContext *s       = avctx->priv_data;
     int ret;
-    AVTaskCallbacks callbacks = {
-        s,
-        sizeof(VVCLocalContext),
-        ff_vvc_task_priority_higher,
-        ff_vvc_task_ready,
-        ff_vvc_task_run,
-    };
 
     s->avctx = avctx;
 
@@ -1063,7 +1050,10 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
             goto fail;
     }
 
-    s->executor = av_executor_alloc(&callbacks, s->nb_fcs);
+    s->executor = ff_vvc_executor_alloc(s, s->nb_fcs);
+    if (!s->executor)
+        goto fail;
+
     s->eos = 1;
     GDR_SET_RECOVERED(s);
     memset(&ff_vvc_default_scale_m, 16, sizeof(ff_vvc_default_scale_m));
@@ -1075,27 +1065,12 @@ fail:
     return AVERROR(ENOMEM);
 }
 
-#define OFFSET(x) offsetof(VVCContext, x)
-#define PAR (AV_OPT_FLAG_DECODING_PARAM | AV_OPT_FLAG_VIDEO_PARAM)
-
-static const AVOption options[] = {
-    { NULL },
-};
-
-static const AVClass vvc_decoder_class = {
-    .class_name = "vvc decoder",
-    .item_name  = av_default_item_name,
-    .option     = options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
-
 const FFCodec ff_vvc_decoder = {
     .p.name                  = "vvc",
     .p.long_name             = NULL_IF_CONFIG_SMALL("VVC (Versatile Video Coding)"),
     .p.type                  = AVMEDIA_TYPE_VIDEO,
     .p.id                    = AV_CODEC_ID_VVC,
     .priv_data_size          = sizeof(VVCContext),
-    .p.priv_class            = &vvc_decoder_class,
     .init                    = vvc_decode_init,
     .close                   = vvc_decode_free,
     FF_CODEC_DECODE_CB(vvc_decode_frame),

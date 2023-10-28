@@ -563,7 +563,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
             sei->payloads[0].payload_size = sei_size;
             sei->payloads[0].payload      = sei_data;
-            sei->payloads[0].payload_type = 4;
+            sei->payloads[0].payload_type = SEI_TYPE_USER_DATA_REGISTERED_ITU_T_T35;
             sei->num_payloads = 1;
         }
     }
@@ -726,7 +726,36 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
     pkt->flags |= AV_PKT_FLAG_KEY*pic_out.b_keyframe;
     if (ret) {
-        ff_side_data_set_encoder_stats(pkt, (pic_out.i_qpplus1 - 1) * FF_QP2LAMBDA, NULL, 0, pict_type);
+        int error_count = 0;
+        int64_t *errors = NULL;
+        int64_t sse[3] = {0};
+
+        if (ctx->flags & AV_CODEC_FLAG_PSNR) {
+            const AVPixFmtDescriptor *pix_desc = av_pix_fmt_desc_get(ctx->pix_fmt);
+            double scale[3] = { 1,
+                (double)(1 << pix_desc->log2_chroma_h) * (1 << pix_desc->log2_chroma_w),
+                (double)(1 << pix_desc->log2_chroma_h) * (1 << pix_desc->log2_chroma_w),
+            };
+
+            error_count = pix_desc->nb_components;
+
+            for (int i = 0; i < pix_desc->nb_components; ++i) {
+                double max_value = (double)(1 << pix_desc->comp[i].depth) - 1.0;
+                double plane_size = ctx->width * (double)ctx->height / scale[i];
+
+                /* psnr = 10 * log10(max_value * max_value / mse) */
+                double mse = (max_value * max_value) / pow(10, pic_out.prop.f_psnr[i] / 10.0);
+
+                /* SSE = MSE * width * height / scale -> because of possible chroma downsampling */
+                sse[i] = (int64_t)floor(mse * plane_size + .5);
+            };
+
+            errors = sse;
+        }
+
+        ff_side_data_set_encoder_stats(pkt, (pic_out.i_qpplus1 - 1) * FF_QP2LAMBDA,
+                                       errors, error_count, pict_type);
+
         if (wallclock)
             ff_side_data_set_prft(pkt, wallclock);
     }
@@ -1048,22 +1077,22 @@ static av_cold int X264_init(AVCodecContext *avctx)
     /* Allow specifying the x264 profile through AVCodecContext. */
     if (!x4->profile)
         switch (avctx->profile) {
-        case FF_PROFILE_H264_BASELINE:
+        case AV_PROFILE_H264_BASELINE:
             x4->profile = "baseline";
             break;
-        case FF_PROFILE_H264_HIGH:
+        case AV_PROFILE_H264_HIGH:
             x4->profile = "high";
             break;
-        case FF_PROFILE_H264_HIGH_10:
+        case AV_PROFILE_H264_HIGH_10:
             x4->profile = "high10";
             break;
-        case FF_PROFILE_H264_HIGH_422:
+        case AV_PROFILE_H264_HIGH_422:
             x4->profile = "high422";
             break;
-        case FF_PROFILE_H264_HIGH_444:
+        case AV_PROFILE_H264_HIGH_444:
             x4->profile = "high444";
             break;
-        case FF_PROFILE_H264_MAIN:
+        case AV_PROFILE_H264_MAIN:
             x4->profile = "main";
             break;
         default:
@@ -1190,7 +1219,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
     }
 
     x4->params.analyse.b_mb_info = x4->mb_info;
-    x4->params.analyse.b_fast_pskip = 1;
 
     // update AVCodecContext with x264 parameters
     avctx->has_b_frames = x4->params.i_bframe ?
@@ -1231,7 +1259,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
         avctx->extradata_size = p - avctx->extradata;
     }
 
-    cpb_props = ff_add_cpb_side_data(avctx);
+    cpb_props = ff_encode_add_cpb_side_data(avctx);
     if (!cpb_props)
         return AVERROR(ENOMEM);
     cpb_props->buffer_size = x4->params.rc.i_vbv_buffer_size * 1000;

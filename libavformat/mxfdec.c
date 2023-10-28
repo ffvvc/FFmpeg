@@ -45,12 +45,14 @@
  */
 
 #include <inttypes.h>
+#include <time.h>
 
 #include "libavutil/aes.h"
 #include "libavutil/avstring.h"
 #include "libavutil/mastering_display_metadata.h"
 #include "libavutil/mathematics.h"
 #include "libavcodec/bytestream.h"
+#include "libavcodec/defs.h"
 #include "libavcodec/internal.h"
 #include "libavutil/channel_layout.h"
 #include "libavutil/dict_internal.h"
@@ -100,7 +102,6 @@ typedef struct MXFPartition {
     uint64_t previous_partition;
     int index_sid;
     int body_sid;
-    int64_t this_partition;
     int64_t essence_offset;         ///< absolute offset of essence
     int64_t essence_length;
     int32_t kag_size;
@@ -457,12 +458,15 @@ static int mxf_read_sync(AVIOContext *pb, const uint8_t *key, unsigned size)
     return i == size;
 }
 
-static int klv_read_packet(KLVPacket *klv, AVIOContext *pb)
+static int klv_read_packet(MXFContext *mxf, KLVPacket *klv, AVIOContext *pb)
 {
     int64_t length, pos;
     if (!mxf_read_sync(pb, mxf_klv_key, 4))
         return AVERROR_INVALIDDATA;
     klv->offset = avio_tell(pb) - 4;
+    if (klv->offset < mxf->run_in)
+        return AVERROR_INVALIDDATA;
+
     memcpy(klv->key, mxf_klv_key, 4);
     avio_read(pb, klv->key + 4, 12);
     length = klv_decode_ber_length(pb);
@@ -725,9 +729,12 @@ static int mxf_read_partition_pack(void *arg, AVIOContext *pb, int tag, int size
     UID op;
     uint64_t footer_partition;
     uint32_t nb_essence_containers;
+    uint64_t this_partition;
 
     if (mxf->partitions_count >= INT_MAX / 2)
         return AVERROR_INVALIDDATA;
+
+    av_assert0(klv_offset >= mxf->run_in);
 
     tmp_part = av_realloc_array(mxf->partitions, mxf->partitions_count + 1, sizeof(*mxf->partitions));
     if (!tmp_part)
@@ -771,7 +778,13 @@ static int mxf_read_partition_pack(void *arg, AVIOContext *pb, int tag, int size
     partition->complete = uid[14] > 2;
     avio_skip(pb, 4);
     partition->kag_size = avio_rb32(pb);
-    partition->this_partition = avio_rb64(pb);
+    this_partition = avio_rb64(pb);
+    if (this_partition != klv_offset - mxf->run_in) {
+        av_log(mxf->fc, AV_LOG_ERROR,
+               "this_partition %"PRId64" mismatches %"PRId64"\n",
+               this_partition, klv_offset - mxf->run_in);
+        return AVERROR_INVALIDDATA;
+    }
     partition->previous_partition = avio_rb64(pb);
     footer_partition = avio_rb64(pb);
     partition->header_byte_count = avio_rb64(pb);
@@ -791,8 +804,8 @@ static int mxf_read_partition_pack(void *arg, AVIOContext *pb, int tag, int size
         av_dict_set(&s->metadata, "operational_pattern_ul", str, 0);
     }
 
-    if (partition->this_partition &&
-        partition->previous_partition == partition->this_partition) {
+    if (this_partition &&
+        partition->previous_partition == this_partition) {
         av_log(mxf->fc, AV_LOG_ERROR,
                "PreviousPartition equal to ThisPartition %"PRIx64"\n",
                partition->previous_partition);
@@ -800,11 +813,11 @@ static int mxf_read_partition_pack(void *arg, AVIOContext *pb, int tag, int size
         if (!mxf->parsing_backward && mxf->last_forward_partition > 1) {
             MXFPartition *prev =
                 mxf->partitions + mxf->last_forward_partition - 2;
-            partition->previous_partition = prev->this_partition;
+            partition->previous_partition = prev->pack_ofs - mxf->run_in;
         }
         /* if no previous body partition are found point to the header
          * partition */
-        if (partition->previous_partition == partition->this_partition)
+        if (partition->previous_partition == this_partition)
             partition->previous_partition = 0;
         av_log(mxf->fc, AV_LOG_ERROR,
                "Overriding PreviousPartition with %"PRIx64"\n",
@@ -826,7 +839,7 @@ static int mxf_read_partition_pack(void *arg, AVIOContext *pb, int tag, int size
             "PartitionPack: ThisPartition = 0x%"PRIX64
             ", PreviousPartition = 0x%"PRIX64", "
             "FooterPartition = 0x%"PRIX64", IndexSID = %i, BodySID = %i\n",
-            partition->this_partition,
+            this_partition,
             partition->previous_partition, footer_partition,
             partition->index_sid, partition->body_sid);
 
@@ -900,7 +913,7 @@ static uint64_t partition_score(MXFPartition *p)
         score = 3;
     else
         score = 1;
-    return (score << 60) | ((uint64_t)p->this_partition >> 4);
+    return (score << 60) | ((uint64_t)p->pack_ofs >> 4);
 }
 
 static int mxf_add_metadata_set(MXFContext *mxf, MXFMetadataSet **metadata_set)
@@ -1402,8 +1415,8 @@ static int mxf_read_generic_descriptor(void *arg, AVIOContext *pb, int tag, int 
         }
         if (IS_KLV_KEY(uid, mxf_jp2k_rsiz)) {
             uint32_t rsiz = avio_rb16(pb);
-            if (rsiz == FF_PROFILE_JPEG2000_DCINEMA_2K ||
-                rsiz == FF_PROFILE_JPEG2000_DCINEMA_4K)
+            if (rsiz == AV_PROFILE_JPEG2000_DCINEMA_2K ||
+                rsiz == AV_PROFILE_JPEG2000_DCINEMA_4K)
                 descriptor->pix_fmt = AV_PIX_FMT_XYZ12;
         }
         if (IS_KLV_KEY(uid, mxf_mastering_display_prefix)) {
@@ -1542,11 +1555,11 @@ static int mxf_read_tagged_value(void *arg, AVIOContext *pb, int tag, int size, 
  * Match an uid independently of the version byte and up to len common bytes
  * Returns: boolean
  */
-static int mxf_match_uid(const UID key, const UID uid, int len)
+static int mxf_match_uid(const UID key, const uint8_t uid_prefix[], int len)
 {
     int i;
     for (i = 0; i < len; i++) {
-        if (i != 7 && key[i] != uid[i])
+        if (i != 7 && key[i] != uid_prefix[i])
             return 0;
     }
     return 1;
@@ -2577,10 +2590,13 @@ static int parse_mca_labels(MXFContext *mxf, MXFTrack *source_track, MXFDescript
 
     if (service_type != AV_AUDIO_SERVICE_TYPE_NB && service_type != AV_AUDIO_SERVICE_TYPE_MAIN && !ambigous_service_type) {
         enum AVAudioServiceType *ast;
-        uint8_t* side_data = av_stream_new_side_data(st, AV_PKT_DATA_AUDIO_SERVICE_TYPE, sizeof(*ast));
+        AVPacketSideData *side_data = av_packet_side_data_new(&st->codecpar->coded_side_data,
+                                                              &st->codecpar->nb_coded_side_data,
+                                                              AV_PKT_DATA_AUDIO_SERVICE_TYPE,
+                                                              sizeof(*ast), 0);
         if (!side_data)
             return AVERROR(ENOMEM);
-        ast = (enum AVAudioServiceType*)side_data;
+        ast = (enum AVAudioServiceType*)side_data->data;
         *ast = service_type;
     }
 
@@ -2980,19 +2996,21 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             st->codecpar->color_trc       = mxf_get_codec_ul(ff_mxf_color_trc_uls, &descriptor->color_trc_ul)->id;
             st->codecpar->color_space     = mxf_get_codec_ul(ff_mxf_color_space_uls, &descriptor->color_space_ul)->id;
             if (descriptor->mastering) {
-                ret = av_stream_add_side_data(st, AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
-                                              (uint8_t *)descriptor->mastering,
-                                              sizeof(*descriptor->mastering));
-                if (ret < 0)
+                if (!av_packet_side_data_add(&st->codecpar->coded_side_data, &st->codecpar->nb_coded_side_data,
+                                             AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
+                                             (uint8_t *)descriptor->mastering, sizeof(*descriptor->mastering), 0)) {
+                    ret = AVERROR(ENOMEM);
                     goto fail_and_free;
+                }
                 descriptor->mastering = NULL;
             }
             if (descriptor->coll) {
-                ret = av_stream_add_side_data(st, AV_PKT_DATA_CONTENT_LIGHT_LEVEL,
-                                              (uint8_t *)descriptor->coll,
-                                              descriptor->coll_size);
-                if (ret < 0)
+                if (!av_packet_side_data_add(&st->codecpar->coded_side_data, &st->codecpar->nb_coded_side_data,
+                                             AV_PKT_DATA_CONTENT_LIGHT_LEVEL,
+                                             (uint8_t *)descriptor->coll, descriptor->coll_size, 0)) {
+                    ret = AVERROR(ENOMEM);
                     goto fail_and_free;
+                }
                 descriptor->coll = NULL;
             }
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
@@ -3420,7 +3438,7 @@ static int mxf_seek_to_previous_partition(MXFContext *mxf)
     /* Make sure this is actually a PartitionPack, and if so parse it.
      * See deadlock2.mxf
      */
-    if ((ret = klv_read_packet(&klv, pb)) < 0) {
+    if ((ret = klv_read_packet(mxf, &klv, pb)) < 0) {
         av_log(mxf->fc, AV_LOG_ERROR, "failed to read PartitionPack KLV\n");
         return ret;
     }
@@ -3537,14 +3555,14 @@ static void mxf_compute_essence_containers(AVFormatContext *s)
 
             /* essence container spans to the next partition */
             if (x < mxf->partitions_count - 1)
-                p->essence_length = mxf->partitions[x+1].this_partition - p->essence_offset;
+                p->essence_length = mxf->partitions[x+1].pack_ofs - mxf->run_in - p->essence_offset;
 
             if (p->essence_length < 0) {
                 /* next ThisPartition < essence_offset */
                 p->essence_length = 0;
                 av_log(mxf->fc, AV_LOG_ERROR,
                        "partition %i: bad ThisPartition = %"PRIX64"\n",
-                       x+1, mxf->partitions[x+1].this_partition);
+                       x+1, mxf->partitions[x+1].pack_ofs - mxf->run_in);
             }
         }
     }
@@ -3697,7 +3715,7 @@ static void mxf_read_random_index_pack(AVFormatContext *s)
     if (length < min_rip_length || length > max_rip_length)
         goto end;
     avio_seek(s->pb, file_size - length, SEEK_SET);
-    if (klv_read_packet(&klv, s->pb) < 0 ||
+    if (klv_read_packet(mxf, &klv, s->pb) < 0 ||
         !IS_KLV_KEY(klv.key, ff_mxf_random_index_pack_key))
         goto end;
     if (klv.next_klv != file_size || klv.length <= 4 || (klv.length - 4) % 12) {
@@ -3744,7 +3762,7 @@ static int mxf_read_header(AVFormatContext *s)
     while (!avio_feof(s->pb)) {
         const MXFMetadataReadTableEntry *metadata;
 
-        ret = klv_read_packet(&klv, s->pb);
+        ret = klv_read_packet(mxf, &klv, s->pb);
         if (ret < 0 || IS_KLV_KEY(klv.key, ff_mxf_random_index_pack_key)) {
             if (ret >= 0 && avio_size(s->pb) > klv.next_klv)
                 av_log(s, AV_LOG_WARNING, "data after the RandomIndexPack, assuming end of file\n");
@@ -3996,7 +4014,7 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
 
         if (pos < mxf->current_klv_data.next_klv - mxf->current_klv_data.length || pos >= mxf->current_klv_data.next_klv) {
             mxf->current_klv_data = (KLVPacket){{0}};
-            ret = klv_read_packet(&klv, s->pb);
+            ret = klv_read_packet(mxf, &klv, s->pb);
             if (ret < 0)
                 break;
             max_data_size = klv.length;

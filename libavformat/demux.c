@@ -1200,7 +1200,7 @@ static int parse_packet(AVFormatContext *s, AVPacket *pkt,
                                      st->time_base,
                                      AV_ROUND_DOWN);
             }
-        } else if ((s->iformat->flags & AVFMT_NOTIMESTAMPS) && st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+        } else if (st->codecpar->codec_id == AV_CODEC_ID_GIF) {
             if (st->time_base.num > 0 && st->time_base.den > 0 &&
                 sti->parser->duration) {
                 out_pkt->duration = sti->parser->duration;
@@ -1409,9 +1409,10 @@ FF_ENABLE_DEPRECATION_WARNINGS
             sti->skip_samples = 0;
         }
 
+#if FF_API_AVSTREAM_SIDE_DATA
         if (sti->inject_global_side_data) {
-            for (int i = 0; i < st->nb_side_data; i++) {
-                const AVPacketSideData *const src_sd = &st->side_data[i];
+            for (int i = 0; i < st->codecpar->nb_coded_side_data; i++) {
+                const AVPacketSideData *const src_sd = &st->codecpar->coded_side_data[i];
                 uint8_t *dst_data;
 
                 if (av_packet_get_side_data(pkt, src_sd->type, NULL))
@@ -1427,6 +1428,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
             }
             sti->inject_global_side_data = 0;
         }
+#endif
     }
 
     if (!si->metafree) {
@@ -2431,19 +2433,6 @@ static int extract_extradata(FFFormatContext *si, AVStream *st, const AVPacket *
     return 0;
 }
 
-static int add_coded_side_data(AVStream *st, AVCodecContext *avctx)
-{
-    for (int i = 0; i < avctx->nb_coded_side_data; i++) {
-        const AVPacketSideData *const sd_src = &avctx->coded_side_data[i];
-        uint8_t *dst_data;
-        dst_data = av_stream_new_side_data(st, sd_src->type, sd_src->size);
-        if (!dst_data)
-            return AVERROR(ENOMEM);
-        memcpy(dst_data, sd_src->data, sd_src->size);
-    }
-    return 0;
-}
-
 int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
 {
     FFFormatContext *const si = ffformatcontext(ic);
@@ -2533,7 +2522,7 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
             if (codec && !avctx->codec)
                 if (avcodec_open2(avctx, codec, options ? &options[i] : &thread_opt) < 0)
                     av_log(ic, AV_LOG_WARNING,
-                           "Failed to open codec in %s\n",__FUNCTION__);
+                           "Failed to open codec in %s\n", __func__);
         }
         if (!options)
             av_dict_free(&thread_opt);
@@ -2790,7 +2779,7 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
                         av_dict_set(&opts, "codec_whitelist", ic->codec_whitelist, 0);
                     if (avcodec_open2(avctx, codec, (options && stream_index < orig_nb_streams) ? &options[stream_index] : &opts) < 0)
                         av_log(ic, AV_LOG_WARNING,
-                               "Failed to open codec in %s\n",__FUNCTION__);
+                               "Failed to open codec in %s\n", __func__);
                     av_dict_free(&opts);
                 }
             }
@@ -2971,12 +2960,53 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
             ret = avcodec_parameters_from_context(st->codecpar, sti->avctx);
             if (ret < 0)
                 goto find_stream_info_err;
-            ret = add_coded_side_data(st, sti->avctx);
-            if (ret < 0)
-                goto find_stream_info_err;
+
+            if (sti->avctx->rc_buffer_size > 0 || sti->avctx->rc_max_rate > 0 ||
+                sti->avctx->rc_min_rate) {
+                size_t cpb_size;
+                AVCPBProperties *props = av_cpb_properties_alloc(&cpb_size);
+                if (props) {
+                    if (sti->avctx->rc_buffer_size > 0)
+                        props->buffer_size = sti->avctx->rc_buffer_size;
+                    if (sti->avctx->rc_min_rate > 0)
+                        props->min_bitrate = sti->avctx->rc_min_rate;
+                    if (sti->avctx->rc_max_rate > 0)
+                        props->max_bitrate = sti->avctx->rc_max_rate;
+                    if (!av_packet_side_data_add(&st->codecpar->coded_side_data,
+                                                 &st->codecpar->nb_coded_side_data,
+                                                 AV_PKT_DATA_CPB_PROPERTIES,
+                                                 (uint8_t *)props, cpb_size, 0))
+                        av_free(props);
+                }
+            }
         }
 
         sti->avctx_inited = 0;
+#if FF_API_AVSTREAM_SIDE_DATA
+FF_DISABLE_DEPRECATION_WARNINGS
+        if (st->codecpar->nb_coded_side_data > 0) {
+            av_assert0(!st->side_data && !st->nb_side_data);
+            st->side_data = av_calloc(st->codecpar->nb_coded_side_data, sizeof(*st->side_data));
+            if (!st->side_data) {
+                ret = AVERROR(ENOMEM);
+                goto find_stream_info_err;
+            }
+
+            for (int j = 0; j < st->codecpar->nb_coded_side_data; j++) {
+                uint8_t *data = av_memdup(st->codecpar->coded_side_data[j].data,
+                                          st->codecpar->coded_side_data[j].size);
+                if (!data) {
+                    ret = AVERROR(ENOMEM);
+                    goto find_stream_info_err;
+                }
+                st->side_data[j].type = st->codecpar->coded_side_data[j].type;
+                st->side_data[j].size = st->codecpar->coded_side_data[j].size;
+                st->side_data[j].data = data;
+                st->nb_side_data++;
+            }
+        }
+FF_ENABLE_DEPRECATION_WARNINGS
+#endif
     }
 
 find_stream_info_err:

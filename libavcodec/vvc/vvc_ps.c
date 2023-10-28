@@ -22,35 +22,10 @@
  */
 #include "libavcodec/cbs_h266.h"
 #include "libavutil/imgutils.h"
+#include "libavcodec/refstruct.h"
 #include "vvc_data.h"
 #include "vvc_ps.h"
 #include "vvcdec.h"
-
-
-typedef void (*free_fn)(uint8_t *data);
-
-static void ps_free(void *opaque, uint8_t *data)
-{
-    free_fn free = (free_fn)opaque;
-
-    free(data);
-    av_freep(&data);
-}
-
-static AVBufferRef* ps_alloc(size_t size, free_fn free)
-{
-    AVBufferRef *buf;
-    uint8_t *data = av_mallocz(size);
-
-    if (!data)
-        return NULL;
-
-    buf = av_buffer_create(data, size, ps_free, free, 0);
-    if (!buf)
-        av_freep(&data);
-
-    return buf;
-}
 
 static int sps_map_pixel_format(VVCSPS *sps, void *log_ctx)
 {
@@ -218,56 +193,47 @@ static int sps_derive(VVCSPS *sps, void *log_ctx)
     return 0;
 }
 
-static void sps_free(uint8_t *data)
+static void sps_free(FFRefStructOpaque opaque, void *obj)
 {
-    VVCSPS *sps = (VVCSPS*)data;
-    av_buffer_unref(&sps->rref);
+    VVCSPS *sps = (VVCSPS*)obj;
+    ff_refstruct_unref(&sps->r);
 }
 
-static AVBufferRef *sps_alloc(const H266RawSPS *rsps, AVBufferRef *rsps_buf, void *log_ctx)
+static const VVCSPS *sps_alloc(const H266RawSPS *rsps, void *log_ctx)
 {
     int ret;
-    VVCSPS *sps;
-    AVBufferRef *sps_buf = ps_alloc(sizeof(*sps), sps_free);
+    VVCSPS *sps = ff_refstruct_alloc_ext(sizeof(*sps), 0, NULL, sps_free);
 
-    if (!sps_buf)
-        return NULL;
-    sps = (VVCSPS *)sps_buf->data;
-
-    ret = av_buffer_replace(&sps->rref, rsps_buf);
-    if (ret < 0)
-        goto fail;
-    sps->r = rsps;
+    ff_refstruct_replace(&sps->r, rsps);
 
     ret = sps_derive(sps, log_ctx);
     if (ret < 0)
         goto fail;
 
-    return sps_buf;
+    return sps;
 
 fail:
-    av_buffer_unref(&sps_buf);
+    ff_refstruct_unref(&sps);
     return NULL;
 }
 
-static int decode_sps(VVCParamSets *ps,
-    const H266RawSPS *rsps, AVBufferRef *rsps_buf, void *log_ctx)
+static int decode_sps(VVCParamSets *ps, const H266RawSPS *rsps, void *log_ctx)
 {
-    int ret;
-    const int sps_id = rsps->sps_seq_parameter_set_id;
-    AVBufferRef *sps_buf = ps->sps_list[sps_id];
+    const int sps_id        = rsps->sps_seq_parameter_set_id;
+    const VVCSPS *old_sps   = ps->sps_list[sps_id];
+    const VVCSPS *sps;
 
-    if (sps_buf && ((VVCSPS *)sps_buf->data)->r == rsps)
+    if (old_sps && old_sps->r == rsps)
         return 0;
 
-    sps_buf = sps_alloc(rsps, rsps_buf, log_ctx);
-    if (!sps_buf)
+    sps = sps_alloc(rsps, log_ctx);
+    if (!sps)
         return AVERROR(ENOMEM);
 
-    ret = av_buffer_replace(&ps->sps_list[sps_id], sps_buf);
+    ff_refstruct_replace(&ps->sps_list[sps_id], sps);
+    ff_refstruct_unref(&sps);
 
-    av_buffer_unref(&sps_buf);
-    return ret;
+    return 0;
 }
 
 static void pps_chroma_qp_offset(VVCPPS *pps)
@@ -484,11 +450,11 @@ static int pps_derive(VVCPPS *pps, const VVCSPS *sps)
     return 0;
 }
 
-static void pps_free(uint8_t *data)
+static void pps_free(FFRefStructOpaque opaque, void *obj)
 {
-    VVCPPS *pps = (VVCPPS *)data;
+    VVCPPS *pps = (VVCPPS *)obj;
 
-    av_buffer_unref(&pps->rref);
+    ff_refstruct_unref(&pps->r);
 
     av_freep(&pps->col_bd);
     av_freep(&pps->row_bd);
@@ -497,52 +463,45 @@ static void pps_free(uint8_t *data)
     av_freep(&pps->ctb_addr_in_slice);
 }
 
-static AVBufferRef *pps_alloc(const H266RawPPS *rpps, AVBufferRef *rpps_buf, const VVCSPS *sps)
+static const VVCPPS *pps_alloc(const H266RawPPS *rpps, const VVCSPS *sps)
 {
     int ret;
-    AVBufferRef *pps_buf;
-    VVCPPS *pps;
+    VVCPPS *pps = ff_refstruct_alloc_ext(sizeof(*pps), 0, NULL, pps_free);
 
-    pps_buf = ps_alloc(sizeof(*pps), pps_free);
-    if (!pps_buf)
+    if (!pps)
         return NULL;
-    pps = (VVCPPS *)pps_buf->data;
 
-    ret = av_buffer_replace(&pps->rref, rpps_buf);
-    if (ret < 0)
-        goto fail;
-    pps->r = rpps;
+    ff_refstruct_replace(&pps->r, rpps);
 
     ret = pps_derive(pps, sps);
     if (ret < 0)
         goto fail;
 
-    return pps_buf;
+    return pps;
 
 fail:
-    av_buffer_unref(&pps_buf);
+    ff_refstruct_unref(&pps);
     return NULL;
 }
 
-static int decode_pps(VVCParamSets *ps,
-    const H266RawPPS *rpps, AVBufferRef *rpps_buf)
+static int decode_pps(VVCParamSets *ps, const H266RawPPS *rpps)
 {
-    AVBufferRef *pps_buf;
-    int ret = 0;
-    const int pps_id = rpps->pps_pic_parameter_set_id;
-    const int sps_id = rpps->pps_seq_parameter_set_id;
+    int ret                 = 0;
+    const int pps_id        = rpps->pps_pic_parameter_set_id;
+    const int sps_id        = rpps->pps_seq_parameter_set_id;
+    const VVCPPS *old_pps   = ps->pps_list[pps_id];
+    const VVCPPS *pps;
 
-    pps_buf = ps->pps_list[pps_id];
-    if (pps_buf && ((VVCPPS*)pps_buf->data)->r == rpps)
+    if (old_pps && old_pps->r == rpps)
         return 0;
 
-    pps_buf = pps_alloc(rpps, rpps_buf, (VVCSPS*)(ps->sps_list[sps_id]->data));
-    if (!pps_buf)
+    pps = pps_alloc(rpps, ps->sps_list[sps_id]);
+    if (!pps)
         return AVERROR(ENOMEM);
 
-    ret = av_buffer_replace(&ps->pps_list[pps_id], pps_buf);
+    ff_refstruct_replace(&ps->pps_list[pps_id], pps);
+    ff_refstruct_unref(&pps);
 
-    av_buffer_unref(&pps_buf);
     return ret;
 }
 
@@ -551,27 +510,24 @@ static int decode_ps(VVCParamSets *ps, const CodedBitstreamH266Context *h266, vo
     const H266RawPictureHeader *ph = h266->ph;
     const H266RawPPS *rpps;
     const H266RawSPS *rsps;
-    AVBufferRef *rsps_buf, *rpps_buf;
     int ret;
 
     if (!ph)
         return AVERROR_INVALIDDATA;
 
-    rpps     = h266->pps[ph->ph_pic_parameter_set_id];
-    rpps_buf = h266->pps_ref[ph->ph_pic_parameter_set_id];
-    if (!rpps || !rpps_buf)
+    rpps = h266->pps[ph->ph_pic_parameter_set_id];
+    if (!rpps)
         return AVERROR_INVALIDDATA;
 
-    rsps     = h266->sps[rpps->pps_seq_parameter_set_id];
-    rsps_buf = h266->sps_ref[rpps->pps_seq_parameter_set_id];
-    if (!rsps || !rsps_buf)
+    rsps = h266->sps[rpps->pps_seq_parameter_set_id];
+    if (!rsps)
         return AVERROR_INVALIDDATA;
 
-    ret = decode_sps(ps, rsps, rsps_buf, log_ctx);
+    ret = decode_sps(ps, rsps, log_ctx);
     if (ret < 0)
         return ret;
 
-    ret = decode_pps(ps, rpps, rpps_buf);
+    ret = decode_pps(ps, rpps);
     if (ret < 0)
         return ret;
 
@@ -639,9 +595,8 @@ static av_always_inline uint16_t lmcs_derive_lut_sample(uint16_t sample,
 }
 
 //8.8.2.2 Inverse mapping process for a luma sample
-static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H266RawSPS *sps)
+static int lmcs_derive_lut(VVCLMCS *lmcs, const H266RawAPS *rlmcs, const H266RawSPS *sps)
 {
-    const H266RawAPS *rlmcs;
     const int bit_depth = (sps->sps_bitdepth_minus8 + 8);
     const int max       = (1 << bit_depth);
     const int org_cw    = max / LMCS_MAX_BIN_SIZE;
@@ -655,10 +610,8 @@ static int lmcs_derive_lut(VVCLMCS *lmcs, const AVBufferRef *lmcs_buf, const H26
     if (bit_depth > LMCS_MAX_BIT_DEPTH)
         return AVERROR_PATCHWELCOME;
 
-    if (!lmcs_buf)
+    if (!rlmcs)
         return AVERROR_INVALIDDATA;
-    rlmcs = (const H266RawAPS *)lmcs_buf->data;
-
 
     lmcs->min_bin_idx = rlmcs->lmcs_min_bin_idx;
     lmcs->max_bin_idx = LMCS_MAX_BIN_SIZE - 1 - rlmcs->lmcs_min_bin_idx;
@@ -733,7 +686,7 @@ static int ph_derive(VVCPH *ph, const H266RawSPS *sps, const H266RawPPS *pps, co
     return 0;
 }
 
-static int decode_ph(VVCFrameParamSets *fps, const H266RawPictureHeader *rph, AVBufferRef *rph_ref,
+static int decode_ph(VVCFrameParamSets *fps, const H266RawPictureHeader *rph, void *rph_ref,
     const int poc_tid0, const int is_clvss)
 {
     int ret;
@@ -741,30 +694,11 @@ static int decode_ph(VVCFrameParamSets *fps, const H266RawPictureHeader *rph, AV
     const H266RawSPS *sps = fps->sps->r;
     const H266RawPPS *pps = fps->pps->r;
 
-    ret = av_buffer_replace(&ph->rref, rph_ref);
-    if (ret < 0)
-        return ret;
     ph->r = rph;
-
+    ff_refstruct_replace(&ph->rref, rph_ref);
     ret = ph_derive(ph, sps, pps, poc_tid0, is_clvss);
     if (ret < 0)
         return ret;
-
-    return 0;
-}
-
-static int decode_scaling_list(VVCFrameParamSets *fps, AVBufferRef *sl_buf)
-{
-    int ret;
-
-    if (!sl_buf)
-        return AVERROR_INVALIDDATA;
-
-    ret = av_buffer_replace(&fps->sl_buf, sl_buf);
-    if (ret < 0)
-        return  ret;
-
-    fps->sl = (const VVCScalingList*)sl_buf->data;
 
     return 0;
 }
@@ -783,25 +717,15 @@ static int decode_frame_ps(VVCFrameParamSets *fps, const VVCParamSets *ps,
     if (!rpps)
         return AVERROR_INVALIDDATA;
 
-    ret = av_buffer_replace(&fps->sps_buf, ps->sps_list[rpps->pps_seq_parameter_set_id]);
-    if (ret < 0)
-        return ret;
-    fps->sps = (VVCSPS *)fps->sps_buf->data;
-
-    ret = av_buffer_replace(&fps->pps_buf, ps->pps_list[rpps->pps_pic_parameter_set_id]);
-    if (ret < 0)
-        return ret;
-    fps->pps = (VVCPPS *)fps->pps_buf->data;
+    ff_refstruct_replace(&fps->sps, ps->sps_list[rpps->pps_seq_parameter_set_id]);
+    ff_refstruct_replace(&fps->pps, ps->pps_list[rpps->pps_pic_parameter_set_id]);
 
     ret = decode_ph(fps, ph, h266->ph_ref, poc_tid0, is_clvss);
     if (ret < 0)
         return ret;
 
-    if (ph->ph_explicit_scaling_list_enabled_flag) {
-        ret = decode_scaling_list(fps, ps->scaling_list[ph->ph_scaling_list_aps_id]);
-        if (ret < 0)
-            return ret;
-    }
+    if (ph->ph_explicit_scaling_list_enabled_flag)
+        ff_refstruct_replace(&fps->sl, ps->scaling_list[ph->ph_scaling_list_aps_id]);
 
     if (ph->ph_lmcs_enabled_flag) {
         ret = lmcs_derive_lut(&fps->lmcs, ps->lmcs_list[ph->ph_lmcs_aps_id], fps->sps->r);
@@ -809,11 +733,9 @@ static int decode_frame_ps(VVCFrameParamSets *fps, const VVCParamSets *ps,
             return ret;
     }
 
-    for (int i = 0; i < FF_ARRAY_ELEMS(fps->alf_list); i++) {
-        ret = av_buffer_replace(&fps->alf_list[i], ps->alf_list[i]);
-        if (ret < 0)
-            return ret;
-    }
+    for (int i = 0; i < FF_ARRAY_ELEMS(fps->alf_list); i++)
+        ff_refstruct_replace(&fps->alf_list[i], ps->alf_list[i]);
+
     return 0;
 }
 
@@ -853,12 +775,12 @@ int ff_vvc_decode_frame_ps(VVCFrameParamSets *fps, struct VVCContext *s)
 
 void ff_vvc_frame_ps_free(VVCFrameParamSets *fps)
 {
-    av_buffer_unref(&fps->sps_buf);
-    av_buffer_unref(&fps->pps_buf);
-    av_buffer_unref(&fps->ph.rref);
-    av_buffer_unref(&fps->sl_buf);
+    ff_refstruct_unref(&fps->sps);
+    ff_refstruct_unref(&fps->pps);
+    ff_refstruct_unref(&fps->ph.rref);
+    ff_refstruct_unref(&fps->sl);
     for (int i = 0; i < FF_ARRAY_ELEMS(fps->alf_list); i++)
-        av_buffer_unref(&fps->alf_list[i]);
+        ff_refstruct_unref(&fps->alf_list[i]);
 }
 
 void ff_vvc_ps_uninit(VVCParamSets *ps)
@@ -866,17 +788,15 @@ void ff_vvc_ps_uninit(VVCParamSets *ps)
     int i;
 
     for (i = 0; i < FF_ARRAY_ELEMS(ps->scaling_list); i++)
-        av_buffer_unref(&ps->scaling_list[i]);
+        ff_refstruct_unref(&ps->scaling_list[i]);
     for (i = 0; i < FF_ARRAY_ELEMS(ps->lmcs_list); i++)
-        av_buffer_unref(&ps->lmcs_list[i]);
+        ff_refstruct_unref(&ps->lmcs_list[i]);
     for (i = 0; i < FF_ARRAY_ELEMS(ps->alf_list); i++)
-        av_buffer_unref(&ps->alf_list[i]);
-    for (i = 0; i < FF_ARRAY_ELEMS(ps->vps_list); i++)
-        av_buffer_unref(&ps->vps_list[i]);
+        ff_refstruct_unref(&ps->alf_list[i]);
     for (i = 0; i < FF_ARRAY_ELEMS(ps->sps_list); i++)
-        av_buffer_unref(&ps->sps_list[i]);
+        ff_refstruct_unref(&ps->sps_list[i]);
     for (i = 0; i < FF_ARRAY_ELEMS(ps->pps_list); i++)
-        av_buffer_unref(&ps->pps_list[i]);
+        ff_refstruct_unref(&ps->pps_list[i]);
 }
 
 enum {
@@ -903,10 +823,8 @@ static void alf_coeff_cc(int16_t *coeff,
     }
 }
 
-static void alf_luma(VVCALF *alf)
+static void alf_luma(VVCALF *alf, const H266RawAPS *aps)
 {
-    const H266RawAPS *aps = (const H266RawAPS *)alf->rref->data;
-
     if (!aps->alf_luma_filter_signal_flag)
         return;
 
@@ -921,11 +839,8 @@ static void alf_luma(VVCALF *alf)
     }
 }
 
-static void alf_chroma(VVCALF *alf)
+static void alf_chroma(VVCALF *alf, const H266RawAPS *aps)
 {
-    const H266RawAPS *aps = (const H266RawAPS *)alf->rref->data;
-
-
     if (!aps->alf_chroma_filter_signal_flag)
         return;
 
@@ -940,9 +855,8 @@ static void alf_chroma(VVCALF *alf)
     }
 }
 
-static void alf_cc(VVCALF *alf)
+static void alf_cc(VVCALF *alf, const H266RawAPS *aps)
 {
-    const H266RawAPS *aps  = (const H266RawAPS *)alf->rref->data;
     const uint8_t (*abs[])[ALF_NUM_COEFF_CC] =
         { aps->alf_cc_cb_mapped_coeff_abs, aps->alf_cc_cr_mapped_coeff_abs };
     const uint8_t (*sign[])[ALF_NUM_COEFF_CC] =
@@ -960,55 +874,24 @@ static void alf_cc(VVCALF *alf)
     }
 }
 
-static void alf_derive(VVCALF *alf)
+static void alf_derive(VVCALF *alf, const H266RawAPS *aps)
 {
-    alf_luma(alf);
-    alf_chroma(alf);
-    alf_cc(alf);
+    alf_luma(alf, aps);
+    alf_chroma(alf, aps);
+    alf_cc(alf, aps);
 }
 
-static void alf_free(uint8_t *data)
+static int aps_decode_alf(const VVCALF **alf, const H266RawAPS *aps)
 {
-    VVCALF *alf = (VVCALF*)data;
-
-    av_buffer_unref(&alf->rref);
-}
-
-static AVBufferRef *alf_alloc(AVBufferRef *aps_buf)
-{
-    int ret;
-    VVCALF *alf;
-    AVBufferRef *buf = ps_alloc(sizeof(*alf), alf_free);
-    if (!buf)
-        return NULL;
-
-    alf = (VVCALF *)buf->data;
-    ret = av_buffer_replace(&alf->rref, aps_buf);
-    if (ret < 0)
-        goto fail;
-
-    alf_derive(alf);
-
-    return buf;
-
-fail:
-    av_buffer_unref(&buf);
-    return buf;
-}
-
-static int aps_decode_alf(AVBufferRef **alf_buf, AVBufferRef *aps_buf)
-{
-    int ret;
-    AVBufferRef *buf = alf_alloc(aps_buf);
-
-    if (!buf)
+    VVCALF *a = ff_refstruct_allocz(sizeof(*a));
+    if (!a)
         return AVERROR(ENOMEM);
 
-    ret = av_buffer_replace(alf_buf, buf);
+    alf_derive(a, aps);
+    ff_refstruct_replace(alf, a);
+    ff_refstruct_unref(&a);
 
-    av_buffer_unref(&buf);
-    return ret;
-
+    return 0;
 }
 
 static int is_luma_list(const int id)
@@ -1022,10 +905,8 @@ static int derive_matrix_size(const int id)
 }
 
 // 7.4.3.20 Scaling list data semantics
-static int scaling_derive(VVCScalingList *sl)
+static void scaling_derive(VVCScalingList *sl, const H266RawAPS *aps)
 {
-    const H266RawAPS *aps = (const H266RawAPS *)sl->rref->data;
-
     for (int id = 0; id < SL_MAX_ID; id++) {
         const int matrix_size   = derive_matrix_size(id);
         const int log2_size     = log2(matrix_size);
@@ -1084,73 +965,38 @@ static int scaling_derive(VVCScalingList *sl)
             sl->scaling_matrix_rec[id][off] = (pred[off] + scaling_list[i]) & 255;
         }
     }
+}
+
+static int aps_decode_scaling(const VVCScalingList **scaling, const H266RawAPS *aps)
+{
+    VVCScalingList *sl = ff_refstruct_allocz(sizeof(*sl));
+    if (!sl)
+        return AVERROR(ENOMEM);
+
+    scaling_derive(sl, aps);
+    ff_refstruct_replace(scaling, sl);
+    ff_refstruct_unref(&sl);
 
     return 0;
 }
 
-static void scaling_free(uint8_t *data)
-{
-    VVCScalingList *sl = (VVCScalingList*)data;
-
-    av_buffer_unref(&sl->rref);
-}
-
-static AVBufferRef *scaling_alloc(AVBufferRef *aps_buf)
-{
-    int ret;
-    VVCScalingList *sl;
-    AVBufferRef *buf = ps_alloc(sizeof(*sl), scaling_free);
-
-    if (!buf)
-        return NULL;
-    sl = (VVCScalingList *)buf->data;
-
-    ret = av_buffer_replace(&sl->rref, aps_buf);
-    if (ret < 0)
-        goto fail;
-
-    ret = scaling_derive(sl);
-    if (ret < 0)
-        goto fail;
-
-    return buf;
-
-fail:
-    av_buffer_unref(&buf);
-    return buf;
-}
-
-static int aps_decode_scaling(AVBufferRef **sl_buf, AVBufferRef *aps_buf)
-{
-    int ret;
-    AVBufferRef *buf = scaling_alloc(aps_buf);
-    if (!buf)
-        return AVERROR(ENOMEM);
-
-    ret = av_buffer_replace(sl_buf, buf);
-
-    av_buffer_unref(&buf);
-    return ret;
-}
-
 int ff_vvc_decode_aps(VVCParamSets *ps, const CodedBitstreamUnit *unit)
 {
-    AVBufferRef *aps_buf                    = unit->content_ref;
-    const H266RawAPS *aps                   = unit->content;
-    int ret                                 = 0;
+    const H266RawAPS *aps = unit->content_ref;
+    int ret               = 0;
 
-    if (!aps_buf || !aps)
+    if (!aps)
         return AVERROR_INVALIDDATA;
 
     switch (aps->aps_params_type) {
         case APS_ALF:
-            ret = aps_decode_alf(&ps->alf_list[aps->aps_adaptation_parameter_set_id], aps_buf);
+            ret = aps_decode_alf(&ps->alf_list[aps->aps_adaptation_parameter_set_id], aps);
             break;
         case APS_LMCS:
-            ret = av_buffer_replace(&ps->lmcs_list[aps->aps_adaptation_parameter_set_id], aps_buf);
+            ff_refstruct_replace(&ps->lmcs_list[aps->aps_adaptation_parameter_set_id], aps);
             break;
         case APS_SCALING:
-            ret = aps_decode_scaling(&ps->scaling_list[aps->aps_adaptation_parameter_set_id], aps_buf);
+            ret = aps_decode_scaling(&ps->scaling_list[aps->aps_adaptation_parameter_set_id], aps);
             break;
     }
 
@@ -1293,10 +1139,7 @@ int ff_vvc_decode_sh(VVCSH *sh, const VVCFrameParamSets *fps, const CodedBitstre
     if (!fps->sps || !fps->pps)
         return AVERROR_INVALIDDATA;
 
-    ret = av_buffer_replace(&sh->rref, unit->content_ref);
-    if (ret < 0)
-        return ret;
-    sh->r = (const H266RawSliceHeader *)unit->content;
+    ff_refstruct_replace(&sh->r, unit->content_ref);
 
     ret = sh_derive(sh, fps);
     if (ret < 0)

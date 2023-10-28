@@ -181,7 +181,6 @@ include $(SRC_PATH)/tests/fate/enc_external.mak
 # Must be included after lavf-video.mak
 include $(SRC_PATH)/tests/fate/ffmpeg.mak
 include $(SRC_PATH)/tests/fate/ffprobe.mak
-include $(SRC_PATH)/tests/fate/fft.mak
 include $(SRC_PATH)/tests/fate/fifo-muxer.mak
 include $(SRC_PATH)/tests/fate/filter-audio.mak
 # Must be included after vcodec.mak
@@ -201,6 +200,7 @@ include $(SRC_PATH)/tests/fate/image.mak
 include $(SRC_PATH)/tests/fate/imf.mak
 include $(SRC_PATH)/tests/fate/indeo.mak
 include $(SRC_PATH)/tests/fate/jpeg2000.mak
+include $(SRC_PATH)/tests/fate/jxl.mak
 include $(SRC_PATH)/tests/fate/libavcodec.mak
 include $(SRC_PATH)/tests/fate/libavdevice.mak
 include $(SRC_PATH)/tests/fate/libavformat.mak

@@ -285,10 +285,9 @@ static void set_pps(const PPS *pps, const SPS *sps,
 
 static int vk_h264_create_params(AVCodecContext *avctx, AVBufferRef **buf)
 {
-    VkResult ret;
+    int err;
     FFVulkanDecodeContext *dec = avctx->internal->hwaccel_priv_data;
-    FFVulkanDecodeShared *ctx = (FFVulkanDecodeShared *)dec->shared_ref->data;
-    FFVulkanFunctions *vk = &ctx->s.vkfn;
+    FFVulkanDecodeShared *ctx = dec->shared_ctx;
     const H264Context *h = avctx->priv_data;
 
     /* SPS */
@@ -319,15 +318,10 @@ static int vk_h264_create_params(AVCodecContext *avctx, AVBufferRef **buf)
         .videoSessionParametersTemplate = NULL,
     };
 
-    AVBufferRef *tmp;
-    VkVideoSessionParametersKHR *par = av_malloc(sizeof(*par));
-    if (!par)
-        return AVERROR(ENOMEM);
-
     /* SPS list */
     for (int i = 0; i < FF_ARRAY_ELEMS(h->ps.sps_list); i++) {
         if (h->ps.sps_list[i]) {
-            const SPS *sps_l = (const SPS *)h->ps.sps_list[i]->data;
+            const SPS *sps_l = h->ps.sps_list[i];
             int idx = h264_params_info.stdSPSCount;
             set_sps(sps_l, &vksps_scaling[idx], &vksps_vui_header[idx], &vksps_vui[idx], &vksps[idx]);
             h264_params_info.stdSPSCount++;
@@ -337,7 +331,7 @@ static int vk_h264_create_params(AVCodecContext *avctx, AVBufferRef **buf)
     /* PPS list */
     for (int i = 0; i < FF_ARRAY_ELEMS(h->ps.pps_list); i++) {
         if (h->ps.pps_list[i]) {
-            const PPS *pps_l = (const PPS *)h->ps.pps_list[i]->data;
+            const PPS *pps_l = h->ps.pps_list[i];
             int idx = h264_params_info.stdPPSCount;
             set_pps(pps_l, pps_l->sps, &vkpps_scaling[idx], &vkpps[idx]);
             h264_params_info.stdPPSCount++;
@@ -347,26 +341,12 @@ static int vk_h264_create_params(AVCodecContext *avctx, AVBufferRef **buf)
     h264_params.maxStdSPSCount = h264_params_info.stdSPSCount;
     h264_params.maxStdPPSCount = h264_params_info.stdPPSCount;
 
-    /* Create session parameters */
-    ret = vk->CreateVideoSessionParametersKHR(ctx->s.hwctx->act_dev, &session_params_create,
-                                              ctx->s.hwctx->alloc, par);
-    if (ret != VK_SUCCESS) {
-        av_log(avctx, AV_LOG_ERROR, "Unable to create Vulkan video session parameters: %s!\n",
-               ff_vk_ret2str(ret));
-        return AVERROR_EXTERNAL;
-    }
-
-    tmp = av_buffer_create((uint8_t *)par, sizeof(*par), ff_vk_decode_free_params,
-                           ctx, 0);
-    if (!tmp) {
-        ff_vk_decode_free_params(ctx, (uint8_t *)par);
-        return AVERROR(ENOMEM);
-    }
+    err = ff_vk_decode_create_params(buf, avctx, ctx, &session_params_create);
+    if (err < 0)
+        return err;
 
     av_log(avctx, AV_LOG_DEBUG, "Created frame parameters: %i SPS %i PPS\n",
            h264_params_info.stdSPSCount, h264_params_info.stdPPSCount);
-
-    *buf = tmp;
 
     return 0;
 }
@@ -550,16 +530,13 @@ static int vk_h264_end_frame(AVCodecContext *avctx)
     return ff_vk_decode_frame(avctx, pic->f, vp, rav, rvp);
 }
 
-static void vk_h264_free_frame_priv(void *_hwctx, uint8_t *data)
+static void vk_h264_free_frame_priv(FFRefStructOpaque _hwctx, void *data)
 {
-    AVHWDeviceContext *hwctx = _hwctx;
-    H264VulkanDecodePicture *hp = (H264VulkanDecodePicture *)data;
+    AVHWDeviceContext *hwctx = _hwctx.nc;
+    H264VulkanDecodePicture *hp = data;
 
     /* Free frame resources, this also destroys the session parameters. */
     ff_vk_decode_free_frame(hwctx, &hp->vp);
-
-    /* Free frame context */
-    av_free(hp);
 }
 
 const FFHWAccel ff_h264_vulkan_hwaccel = {

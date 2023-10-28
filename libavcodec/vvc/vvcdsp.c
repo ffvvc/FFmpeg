@@ -93,6 +93,14 @@ typedef struct IntraEdgeParams {
     uint16_t filtered_top_array[3 * MAX_TB_SIZE + 3];
 } IntraEdgeParams;
 
+#define PROF_BORDER_EXT         1
+#define PROF_BLOCK_SIZE         (AFFINE_MIN_BLOCK_SIZE + PROF_BORDER_EXT * 2)
+#define BDOF_BORDER_EXT         1
+
+#define BDOF_PADDED_SIZE        (16 + BDOF_BORDER_EXT * 2)
+#define BDOF_BLOCK_SIZE         4
+#define BDOF_GRADIENT_SIZE      (BDOF_BLOCK_SIZE + BDOF_BORDER_EXT * 2)
+
 #define BIT_DEPTH 8
 #include "vvcdsp_template.c"
 #undef BIT_DEPTH

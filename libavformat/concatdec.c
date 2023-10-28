@@ -194,7 +194,6 @@ static int copy_stream_props(AVStream *st, AVStream *source_st)
     avpriv_set_pts_info(st, 64, source_st->time_base.num, source_st->time_base.den);
 
     av_dict_copy(&st->metadata, source_st->metadata, 0);
-    ff_stream_side_data_copy(st, source_st);
     return 0;
 }
 
@@ -667,7 +666,9 @@ static int concat_read_header(AVFormatContext *avf)
         else
             time = cat->files[i].start_time;
         if (cat->files[i].user_duration == AV_NOPTS_VALUE) {
-            if (cat->files[i].inpoint == AV_NOPTS_VALUE || cat->files[i].outpoint == AV_NOPTS_VALUE)
+            if (cat->files[i].inpoint == AV_NOPTS_VALUE || cat->files[i].outpoint == AV_NOPTS_VALUE ||
+                cat->files[i].outpoint - (uint64_t)cat->files[i].inpoint != av_sat_sub64(cat->files[i].outpoint, cat->files[i].inpoint)
+            )
                 break;
             cat->files[i].user_duration = cat->files[i].outpoint - cat->files[i].inpoint;
         }

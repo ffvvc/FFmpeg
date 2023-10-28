@@ -19,6 +19,7 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#include "libavutil/frame.h"
 
 #include "vvc_data.h"
 #include "vvc_inter.h"

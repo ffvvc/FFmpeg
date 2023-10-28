@@ -2219,7 +2219,7 @@ static void alf_params(VVCLocalContext *lc, const int rx, const int ry)
             const uint8_t alf_enabled_flag =
                 c_idx == CB ? sh->sh_alf_cb_enabled_flag : sh->sh_alf_cr_enabled_flag;
             if (alf_enabled_flag) {
-                const VVCALF *aps = (VVCALF*)fc->ps.alf_list[sh->sh_alf_aps_id_chroma]->data;
+                const VVCALF *aps = fc->ps.alf_list[sh->sh_alf_aps_id_chroma];
                 alf->ctb_flag[c_idx] = ff_vvc_alf_ctb_flag(lc, rx, ry, c_idx);
                 alf->alf_ctb_filter_alt_idx[c_idx - 1] = 0;
                 if (alf->ctb_flag[c_idx] && aps->num_chroma_filters > 1)
@@ -2233,7 +2233,7 @@ static void alf_params(VVCLocalContext *lc, const int rx, const int ry)
         for (int i = 0; i < 2; i++) {
             alf->ctb_cc_idc[i] = 0;
             if (cc_enabled[i]) {
-                const VVCALF *aps = (VVCALF*)fc->ps.alf_list[cc_aps_id[i]]->data;
+                const VVCALF *aps = fc->ps.alf_list[cc_aps_id[i]];
                 alf->ctb_cc_idc[i] = ff_vvc_alf_ctb_cc_idc(lc, rx, ry, i, aps->num_cc_filters[i]);
             }
         }

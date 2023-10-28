@@ -97,10 +97,6 @@
 
 #include "libswresample/swresample.h"
 
-#include "libavfilter/avfilter.h"
-#include "libavfilter/buffersrc.h"
-#include "libavfilter/buffersink.h"
-
 #include "cmdutils.h"
 #include "ffmpeg.h"
 #include "sync_queue.h"
@@ -312,7 +308,7 @@ static int read_key(void)
         return n;
     }
 #elif HAVE_KBHIT
-#    if HAVE_PEEKNAMEDPIPE
+#    if HAVE_PEEKNAMEDPIPE && HAVE_GETSTDHANDLE
     static int is_pipe;
     static HANDLE input_handle;
     DWORD dw, nchars;
@@ -362,9 +358,8 @@ static void ffmpeg_cleanup(int ret)
         fg_free(&filtergraphs[i]);
     av_freep(&filtergraphs);
 
-    /* close files */
     for (i = 0; i < nb_output_files; i++)
-        of_close(&output_files[i]);
+        of_free(&output_files[i]);
 
     for (i = 0; i < nb_input_files; i++)
         ifile_close(&input_files[i]);
@@ -541,7 +536,7 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
             av_bprintf(&buf_script, "stream_%d_%d_q=%.1f\n",
                        ost->file_index, ost->index, q);
         }
-        if (!vid && ost->type == AVMEDIA_TYPE_VIDEO) {
+        if (!vid && ost->type == AVMEDIA_TYPE_VIDEO && ost->filter) {
             float fps;
             uint64_t frame_number = atomic_load(&ost->packets_written);
 
@@ -555,8 +550,8 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
             if (is_last_report)
                 av_bprintf(&buf, "L");
 
-            nb_frames_dup  = ost->nb_frames_dup;
-            nb_frames_drop = ost->nb_frames_drop;
+            nb_frames_dup  = ost->filter->nb_frames_dup;
+            nb_frames_drop = ost->filter->nb_frames_drop;
 
             vid = 1;
         }
@@ -571,9 +566,6 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
                     pts -= copy_ts_first_pts;
             }
         }
-
-        if (is_last_report)
-            nb_frames_drop += ost->last_dropped;
     }
 
     us    = FFABS64U(pts) % AV_TIME_BASE;
@@ -814,7 +806,6 @@ static int process_input_packet(InputStream *ist, const AVPacket *pkt, int no_eo
     int64_t dts_est = AV_NOPTS_VALUE;
     int ret = 0;
     int eof_reached = 0;
-    int duration_exceeded;
 
     if (ist->decoding_needed) {
         ret = dec_packet(ist, pkt, no_eof);
@@ -829,7 +820,6 @@ static int process_input_packet(InputStream *ist, const AVPacket *pkt, int no_eo
         dts_est = pd->dts_est;
     }
 
-    duration_exceeded = 0;
     if (f->recording_time != INT64_MAX) {
         int64_t start_time = 0;
         if (copy_ts) {
@@ -837,18 +827,13 @@ static int process_input_packet(InputStream *ist, const AVPacket *pkt, int no_eo
             start_time += start_at_zero ? 0 : f->start_time_effective;
         }
         if (dts_est >= f->recording_time + start_time)
-            duration_exceeded = 1;
+            pkt = NULL;
     }
 
     for (int oidx = 0; oidx < ist->nb_outputs; oidx++) {
         OutputStream *ost = ist->outputs[oidx];
         if (ost->enc || (!pkt && no_eof))
             continue;
-
-        if (duration_exceeded) {
-            close_output_stream(ost);
-            continue;
-        }
 
         ret = of_streamcopy(ost, pkt, dts_est);
         if (ret < 0)
@@ -956,7 +941,7 @@ static int choose_output(OutputStream **post)
                    INT64_MIN : ost->last_mux_dts;
         }
 
-        if (!ost->initialized && !ost->inputs_done && !ost->finished) {
+        if (!ost->initialized && !ost->finished) {
             ost_min = ost;
             break;
         }
@@ -985,7 +970,7 @@ static void set_tty_echo(int on)
 
 static int check_keyboard_interaction(int64_t cur_time)
 {
-    int i, ret, key;
+    int i, key;
     static int64_t last_time;
     if (received_nb_signals)
         return AVERROR_EXIT;
@@ -1018,23 +1003,9 @@ static int check_keyboard_interaction(int64_t cur_time)
             (n = sscanf(buf, "%63[^ ] %lf %255[^ ] %255[^\n]", target, &time, command, arg)) >= 3) {
             av_log(NULL, AV_LOG_DEBUG, "Processing command target:%s time:%f command:%s arg:%s",
                    target, time, command, arg);
-            for (i = 0; i < nb_filtergraphs; i++) {
-                FilterGraph *fg = filtergraphs[i];
-                if (fg->graph) {
-                    if (time < 0) {
-                        ret = avfilter_graph_send_command(fg->graph, target, command, arg, buf, sizeof(buf),
-                                                          key == 'c' ? AVFILTER_CMD_FLAG_ONE : 0);
-                        fprintf(stderr, "Command reply for stream %d: ret:%d res:\n%s", i, ret, buf);
-                    } else if (key == 'c') {
-                        fprintf(stderr, "Queuing commands only on filters supporting the specific command is unsupported\n");
-                        ret = AVERROR_PATCHWELCOME;
-                    } else {
-                        ret = avfilter_graph_queue_command(fg->graph, target, command, arg, 0, time);
-                        if (ret < 0)
-                            fprintf(stderr, "Queuing command failed with error %s\n", av_err2str(ret));
-                    }
-                }
-            }
+            for (i = 0; i < nb_filtergraphs; i++)
+                fg_send_command(filtergraphs[i], time, target, command, arg,
+                                key == 'C');
         } else {
             av_log(NULL, AV_LOG_ERROR,
                    "Parse error, at least 3 arguments were expected, "
@@ -1124,7 +1095,7 @@ static int process_input(int file_index)
             for (int oidx = 0; oidx < ist->nb_outputs; oidx++) {
                 OutputStream *ost = ist->outputs[oidx];
                 OutputFile    *of = output_files[ost->file_index];
-                close_output_stream(ost);
+
                 ret = of_output_packet(of, ost, NULL);
                 if (ret < 0)
                     return ret;
@@ -1222,6 +1193,7 @@ static int transcode(int *err_rate_exceeded)
         if (ret == AVERROR(EAGAIN)) {
             reset_eagain();
             av_usleep(10000);
+            ret = 0;
             continue;
         } else if (ret < 0) {
             av_log(NULL, AV_LOG_VERBOSE, "No more output streams to write to, finishing.\n");

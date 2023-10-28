@@ -19,12 +19,12 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-
+#include "libavutil/frame.h"
 #include "libavcodec/bit_depth_template.c"
 
 #include "vvcdec.h"
-
 #include "vvc_data.h"
+
 #include "vvc_inter_template.c"
 #include "vvc_intra_template.c"
 #include "vvc_filter_template.c"

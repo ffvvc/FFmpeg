@@ -23,6 +23,8 @@
 #include <stdatomic.h>
 
 #include "libavutil/thread.h"
+#include "libavcodec/refstruct.h"
+#include "libavcodec/thread.h"
 
 #include "vvc_refs.h"
 
@@ -34,6 +36,7 @@
 typedef struct FrameProgress {
     atomic_int progress[VVC_PROGRESS_LAST];
     AVMutex lock;
+    uint8_t has_lock;
 } FrameProgress;
 
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
@@ -44,9 +47,8 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 
     frame->flags &= ~flags;
     if (!frame->flags) {
-        ff_thread_release_ext_buffer(fc->avctx, &frame->tf);
-
-        av_buffer_unref(&frame->progress_buf);
+        av_frame_unref(frame->frame);
+        ff_refstruct_unref(&frame->progress);
 
         av_buffer_unref(&frame->tab_dmvr_mvf_buf);
         frame->tab_dmvr_mvf = NULL;
@@ -77,30 +79,24 @@ void ff_vvc_clear_refs(VVCFrameContext *fc)
             VVC_FRAME_FLAG_SHORT_REF | VVC_FRAME_FLAG_LONG_REF);
 }
 
-static void free_progress(void *opaque, uint8_t *data)
+static void free_progress(FFRefStructOpaque unused, void *obj)
 {
-    ff_mutex_destroy(&((FrameProgress*)data)->lock);
-    av_free(data);
+    FrameProgress *p = (FrameProgress *)obj;
+
+    if (p->has_lock)
+        ff_mutex_destroy(&p->lock);
 }
 
-static AVBufferRef *alloc_progress(void)
+static FrameProgress *alloc_progress(void)
 {
-    int ret;
-    AVBufferRef *buf;
-    FrameProgress *p = av_mallocz(sizeof(FrameProgress));
+    FrameProgress *p = ff_refstruct_alloc_ext(sizeof(*p), 0, NULL, free_progress);
 
-    if (!p)
-        return NULL;
-
-    ret = ff_mutex_init(&p->lock, NULL);
-    if (ret) {
-        av_free(p);
-        return NULL;
+    if (p) {
+        p->has_lock = !ff_mutex_init(&p->lock, NULL);
+        if (!p->has_lock)
+            ff_refstruct_unref(&p);
     }
-    buf = av_buffer_create((void*)p, sizeof(*p), free_progress, NULL, 0);
-    if (!buf)
-        free_progress(NULL, (void*)p);
-    return buf;
+    return p;
 }
 
 static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
@@ -112,7 +108,7 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         if (frame->frame->buf[0])
             continue;
 
-        ret = ff_thread_get_ext_buffer(fc->avctx, &frame->tf,
+        ret = ff_thread_get_buffer(fc->avctx, frame->frame,
                                    AV_GET_BUFFER_FLAG_REF);
         if (ret < 0)
             return NULL;
@@ -137,8 +133,8 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
             frame->rpl_tab[j] = (RefPicListTab *)frame->rpl_buf->data;
 
 
-        frame->progress_buf = alloc_progress();
-        if (!frame->progress_buf)
+        frame->progress = alloc_progress();
+        if (!frame->progress)
             goto fail;
 
         return frame;
@@ -502,7 +498,7 @@ void ff_vvc_report_frame_finished(VVCFrame *frame)
 
 void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
-    FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
+    FrameProgress *p = frame->progress;
 
     ff_mutex_lock(&p->lock);
 
@@ -515,7 +511,7 @@ void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
     int ready ;
-    FrameProgress *p = (FrameProgress*)frame->progress_buf->data;
+    FrameProgress *p = frame->progress;
 
     ff_mutex_lock(&p->lock);
 
