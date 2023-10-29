@@ -252,7 +252,7 @@ static int is_alf_ready(const VVCFrameContext *fc, const VVCTask *t)
 
 typedef int (*is_ready_func)(const VVCFrameContext *fc, const VVCTask *t);
 
-static int ff_vvc_task_ready(const AVTask *_t, void *user_data)
+static int task_ready(const AVTask *_t, void *user_data)
 {
     const VVCTask *t            = (const VVCTask*)_t;
     VVCFrameThread *ft          = t->fc->frame_thread;
@@ -281,7 +281,7 @@ static int ff_vvc_task_ready(const AVTask *_t, void *user_data)
             return (a) < (b);               \
     } while (0)
 
-static int ff_vvc_task_priority_higher(const AVTask *_a, const AVTask *_b)
+static int task_priority_higher(const AVTask *_a, const AVTask *_b)
 {
     const VVCTask *a = (const VVCTask*)_a;
     const VVCTask *b = (const VVCTask*)_b;
@@ -628,7 +628,7 @@ const static char* task_name[] = {
 
 typedef int (*run_func)(VVCContext *s, VVCLocalContext *lc, VVCTask *t);
 
-static int ff_vvc_task_run(AVTask *_t, void *local_context, void *user_data)
+static int task_run(AVTask *_t, void *local_context, void *user_data)
 {
     VVCTask *t              = (VVCTask*)_t;
     VVCContext *s           = (VVCContext *)user_data;
@@ -678,9 +678,9 @@ AVExecutor* ff_vvc_executor_alloc(VVCContext *s, int thread_count)
     AVTaskCallbacks callbacks = {
         s,
         sizeof(VVCLocalContext),
-        ff_vvc_task_priority_higher,
-        ff_vvc_task_ready,
-        ff_vvc_task_run,
+        task_priority_higher,
+        task_ready,
+        task_run,
     };
     return av_executor_alloc(&callbacks, s->nb_fcs);
 }
