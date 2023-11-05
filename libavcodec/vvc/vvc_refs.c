@@ -53,9 +53,9 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
         av_buffer_unref(&frame->tab_dmvr_mvf_buf);
         frame->tab_dmvr_mvf = NULL;
 
-        av_buffer_unref(&frame->rpl_buf);
-        av_buffer_unref(&frame->rpl_tab_buf);
-        frame->rpl_tab    = NULL;
+        ff_refstruct_unref(&frame->rpl);
+        frame->nb_rpl_elems = 0;
+        ff_refstruct_unref(&frame->rpl_tab);
 
         frame->collocated_ref = NULL;
     }
@@ -113,9 +113,10 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         if (ret < 0)
             return NULL;
 
-        frame->rpl_buf = av_buffer_allocz(s->current_frame.nb_units * sizeof(RefPicListTab));
-        if (!frame->rpl_buf)
+        frame->rpl = ff_refstruct_allocz(s->current_frame.nb_units * sizeof(RefPicListTab));
+        if (!frame->rpl)
             goto fail;
+        frame->nb_rpl_elems = s->current_frame.nb_units;
 
         frame->tab_dmvr_mvf_buf = av_buffer_pool_get(fc->tab_dmvr_mvf_pool);
         if (!frame->tab_dmvr_mvf_buf)
@@ -124,14 +125,12 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         //fixme: remove this
         memset(frame->tab_dmvr_mvf, 0, frame->tab_dmvr_mvf_buf->size);
 
-        frame->rpl_tab_buf = av_buffer_pool_get(fc->rpl_tab_pool);
-        if (!frame->rpl_tab_buf)
+        frame->rpl_tab = ff_refstruct_pool_get(fc->rpl_tab_pool);
+        if (!frame->rpl_tab)
             goto fail;
-        frame->rpl_tab   = (RefPicListTab **)frame->rpl_tab_buf->data;
         frame->ctb_count = pps->ctb_width * pps->ctb_height;
         for (j = 0; j < frame->ctb_count; j++)
-            frame->rpl_tab[j] = (RefPicListTab *)frame->rpl_buf->data;
-
+            frame->rpl_tab[j] = frame->rpl;
 
         frame->progress = alloc_progress();
         if (!frame->progress)
@@ -375,15 +374,15 @@ static int init_slice_rpl(const VVCFrameContext *fc, SliceContext *sc)
     VVCFrame *frame = fc->ref;
     const VVCSH *sh = &sc->sh;
 
-    if (sc->slice_idx >= frame->rpl_buf->size / sizeof(RefPicListTab))
+    if (sc->slice_idx >= frame->nb_rpl_elems)
         return AVERROR_INVALIDDATA;
 
     for (int i = 0; i < sh->num_ctus_in_curr_slice; i++) {
         const int rs = sh->ctb_addr_in_curr_slice[i];
-        frame->rpl_tab[rs] = (RefPicListTab *)frame->rpl_buf->data + sc->slice_idx;
+        frame->rpl_tab[rs] = frame->rpl + sc->slice_idx;
     }
 
-    sc->rpl = (RefPicList *)frame->rpl_tab[sh->ctb_addr_in_curr_slice[0]];
+    sc->rpl = frame->rpl_tab[sh->ctb_addr_in_curr_slice[0]]->refPicList;
 
     return 0;
 }

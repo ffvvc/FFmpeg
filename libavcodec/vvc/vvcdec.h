@@ -69,7 +69,9 @@ typedef struct VVCFrame {
     struct AVFrame *frame;
 
     MvField  *tab_dmvr_mvf;
-    RefPicListTab **rpl_tab;
+    RefPicListTab **rpl_tab;                    ///< RefStruct reference
+    RefPicListTab *rpl;                         ///< RefStruct reference
+    int nb_rpl_elems;
 
     int ctb_count;
 
@@ -78,8 +80,6 @@ typedef struct VVCFrame {
     struct VVCFrame *collocated_ref;
 
     AVBufferRef *tab_dmvr_mvf_buf;
-    AVBufferRef *rpl_tab_buf;
-    AVBufferRef *rpl_buf;
     struct FrameProgress *progress;             ///< RefStruct references
 
     /**
@@ -126,7 +126,7 @@ struct VVCFrameContext {
     uint64_t decode_order;
 
     AVBufferPool *tab_dmvr_mvf_pool;
-    AVBufferPool *rpl_tab_pool;
+    struct FFRefStructPool *rpl_tab_pool;
 
     struct FFRefStructPool *cu_pool;
     struct FFRefStructPool *tu_pool;
