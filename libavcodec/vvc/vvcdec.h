@@ -128,7 +128,7 @@ struct VVCFrameContext {
     AVBufferPool *tab_dmvr_mvf_pool;
     AVBufferPool *rpl_tab_pool;
 
-    AVBufferPool *cu_pool;
+    struct FFRefStructPool *cu_pool;
     struct FFRefStructPool *tu_pool;
 
     struct {
