@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavcodec/refstruct.h"
+
 #include "vvc_cabac.h"
 #include "vvc_ctu.h"
 #include "vvc_inter.h"
@@ -211,14 +213,11 @@ static void set_qp_c(VVCLocalContext *lc)
 
 static TransformUnit* alloc_tu(VVCFrameContext *fc, CodingUnit *cu)
 {
-    TransformUnit *tu;
-    AVBufferRef *buf = av_buffer_pool_get(fc->tu_pool);
-    if (!buf)
+    TransformUnit *tu = ff_refstruct_pool_get(fc->tu_pool);
+    if (!tu)
         return NULL;
 
-    tu = (TransformUnit *)buf->data;
     tu->next = NULL;
-    tu->buf = buf;
 
     if (cu->tus.tail)
         cu->tus.tail->next =  tu;
@@ -2444,14 +2443,14 @@ void ff_vvc_ctu_free_cus(CTU *ctu)
     CodingUnit *cu  = ctu->cus;
     while (cu) {
         AVBufferRef *cu_buf = cu->buf;
-        TransformUnit *tu   = cu->tus.head;
+        TransformUnit **head   = &cu->tus.head;
 
-        while (tu) {
-            AVBufferRef *buf = tu->buf;
-            tu  = tu->next;
-            av_buffer_unref(&buf);
+        while (*head) {
+            TransformUnit *tu = *head;
+            *head = tu->next;
+            ff_refstruct_unref(&tu);
         }
-        cu->tus.head = cu->tus.tail = NULL;
+        cu->tus.tail = NULL;
 
         cu = cu->next;
         av_buffer_unref(&cu_buf);
