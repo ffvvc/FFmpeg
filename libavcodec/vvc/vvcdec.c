@@ -367,7 +367,7 @@ static void pic_arrays_free(VVCFrameContext *fc)
     min_pu_arrays_free(fc);
     min_tu_arrays_free(fc);
     bs_arrays_free(fc);
-    av_buffer_pool_uninit(&fc->cu_pool);
+    ff_refstruct_pool_uninit(&fc->cu_pool);
     ff_refstruct_pool_uninit(&fc->tu_pool);
     pixel_buffer_free(fc);
 
@@ -444,7 +444,7 @@ static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
     }
 
     if (!fc->cu_pool) {
-        fc->cu_pool = av_buffer_pool_init(sizeof(CodingUnit), NULL);
+        fc->cu_pool = ff_refstruct_pool_alloc(sizeof(CodingUnit), 0);
         if (!fc->cu_pool)
             goto fail;
     }

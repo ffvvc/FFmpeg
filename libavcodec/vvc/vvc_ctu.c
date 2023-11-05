@@ -1170,14 +1170,11 @@ static CodingUnit* alloc_cu(VVCLocalContext *lc, const int x0, const int y0)
     const int rx        = x0 >> sps->ctb_log2_size_y;
     const int ry        = y0 >> sps->ctb_log2_size_y;
     CTU *ctu            = fc->tab.ctus + ry * pps->ctb_width + rx;
-    CodingUnit *cu;
+    CodingUnit *cu      = ff_refstruct_pool_get(fc->cu_pool);
 
-    AVBufferRef *buf = av_buffer_pool_get(fc->cu_pool);
-    if (!buf)
+    if (!cu)
         return NULL;
-    cu = (CodingUnit *)buf->data;
     cu->next = NULL;
-    cu->buf = buf;
 
     if (lc->cu)
         lc->cu->next = cu;
@@ -2440,10 +2437,12 @@ void ff_vvc_set_neighbour_available(VVCLocalContext *lc,
 
 void ff_vvc_ctu_free_cus(CTU *ctu)
 {
-    CodingUnit *cu  = ctu->cus;
-    while (cu) {
-        AVBufferRef *cu_buf = cu->buf;
-        TransformUnit **head   = &cu->tus.head;
+    CodingUnit **cus  = &ctu->cus;
+    while (*cus) {
+        CodingUnit *cu          = *cus;
+        TransformUnit **head    = &cu->tus.head;
+
+        *cus = cu->next;
 
         while (*head) {
             TransformUnit *tu = *head;
@@ -2452,10 +2451,8 @@ void ff_vvc_ctu_free_cus(CTU *ctu)
         }
         cu->tus.tail = NULL;
 
-        cu = cu->next;
-        av_buffer_unref(&cu_buf);
+        ff_refstruct_unref(&cu);
     }
-    ctu->cus = NULL;
 }
 
 int ff_vvc_get_qPy(const VVCFrameContext *fc, const int xc, const int yc)

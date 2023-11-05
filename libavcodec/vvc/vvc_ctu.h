@@ -271,8 +271,6 @@ typedef struct PredictionUnit {
 } PredictionUnit;
 
 typedef struct CodingUnit {
-    AVBufferRef *buf;
-
     VVCTreeType tree_type;
     int x0;
     int y0;
@@ -323,7 +321,7 @@ typedef struct CodingUnit {
 
     PredictionUnit pu;
 
-    struct CodingUnit *next;
+    struct CodingUnit *next;                        ///< RefStruct reference
 } CodingUnit;
 
 struct CTU {
