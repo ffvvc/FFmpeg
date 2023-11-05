@@ -61,7 +61,8 @@ struct VVCTask {
     EntryPoint *ep;
     int ctu_idx;                    //ctu idx in the current slice
 
-    atomic_uchar readiness[VVC_TASK_TYPE_LAST - VVC_TASK_TYPE_INTER];
+    // tasks with target scores met are ready for scheduling
+    atomic_uchar score[VVC_TASK_TYPE_LAST - VVC_TASK_TYPE_INTER];
 };
 
 typedef struct VVCRowThread {
@@ -142,29 +143,28 @@ void ff_vvc_parse_task_free(VVCTask *t)
 
 static void task_set_score(VVCTask *t, const VVCTaskType type, uint8_t r)
 {
-    atomic_store(&t->readiness[type - VVC_TASK_TYPE_INTER], r);
+    atomic_store(&t->score[type - VVC_TASK_TYPE_INTER], r);
 }
 
 static uint8_t task_add_score(VVCTask *t, const VVCTaskType type, const uint8_t count)
 {
-    return atomic_fetch_add(&t->readiness[type - VVC_TASK_TYPE_INTER], count);
+    return atomic_fetch_add(&t->score[type - VVC_TASK_TYPE_INTER], count);
 }
-
-// l:left, r:right, t: top, b: bottom
-static const uint8_t ready_score[] =
-{
-    0,          //VVC_TASK_TYPE_INTER,     need last state ready only
-    2,          //VVC_TASK_TYPE_RECON,     need l + rt recon
-    3,          //VVC_TASK_TYPE_LMCS,      need r + b + rb recon
-    2,          //VVC_TASK_TYPE_DEBLOCK_V, need r lmcs + l deblock v
-    2,          //VVC_TASK_TYPE_DEBLOCK_H, need r deblock v + t deblock h
-    5,          //VVC_TASK_TYPE_SAO,       need l + r + lb + b + rb deblock h
-    8,          //VVC_TASK_TYPE_ALF,       need sao around the ctu
-};
 
 static void frame_thread_add_score (VVCContext *s, VVCFrameThread *ft,
     const int x, const int y, VVCTaskType type)
 {
+    // l:left, r:right, t: top, b: bottom
+    static const uint8_t target_score[] =
+    {
+        0,          //VVC_TASK_TYPE_INTER,     need last state ready only
+        2,          //VVC_TASK_TYPE_RECON,     need l + rt recon
+        3,          //VVC_TASK_TYPE_LMCS,      need r + b + rb recon
+        2,          //VVC_TASK_TYPE_DEBLOCK_V, need r lmcs + l deblock v
+        2,          //VVC_TASK_TYPE_DEBLOCK_H, need r deblock v + t deblock h
+        5,          //VVC_TASK_TYPE_SAO,       need l + r + lb + b + rb deblock h
+        8,          //VVC_TASK_TYPE_ALF,       need sao around the ctu
+    };
     VVCTask *t = ft->tasks + ft->ctu_width * y + x;
     uint8_t score;
 
@@ -172,13 +172,13 @@ static void frame_thread_add_score (VVCContext *s, VVCFrameThread *ft,
         return;
 
     score = task_add_score(t, type, 1);
-    if (score == ready_score[type - VVC_TASK_TYPE_INTER]) {
+    if (score == target_score[type - VVC_TASK_TYPE_INTER]) {
         av_assert0(s);
         av_assert0(type == t->type + 1);
         t->type++;
         ff_vvc_frame_add_task(s, t);
     }
-    av_assert0(score <= ready_score[type - VVC_TASK_TYPE_INTER]);
+    av_assert0(score <= target_score[type - VVC_TASK_TYPE_INTER]);
 }
 
 static void decode_state_done(const VVCTask *task, VVCContext *s)
@@ -191,7 +191,7 @@ static void decode_state_done(const VVCTask *task, VVCContext *s)
 
 #define ADD(dx, dy, type) frame_thread_add_score(s, ft, rx + (dx), ry + (dy), type)
 
-    //this is a reserve map of ready_score, orded by zigzag
+    //this is a reserve map of ready_score, ordered by zigzag
     if (type == VVC_TASK_TYPE_RECON) {
         ADD(-1,  1, VVC_TASK_TYPE_RECON);
         ADD( 1,  0, VVC_TASK_TYPE_RECON);
@@ -664,7 +664,7 @@ void ff_vvc_frame_thread_free(VVCFrameContext *fc)
     av_freep(&ft);
 }
 
-static void frame_thread_init_readiness(VVCFrameContext *fc)
+static void frame_thread_init_score(VVCFrameContext *fc)
 {
     const VVCFrameThread *ft = fc->frame_thread;
     VVCTask task;
@@ -761,7 +761,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 
     memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
     fc->frame_thread = ft;
-    frame_thread_init_readiness(fc);
+    frame_thread_init_score(fc);
 
     return 0;
 
