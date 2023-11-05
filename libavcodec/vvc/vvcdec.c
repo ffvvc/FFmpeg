@@ -616,6 +616,8 @@ static int init_slice_context(SliceContext *sc, VVCFrameContext *fc, const H2645
     for (int i = 0; i < sc->nb_eps; i++)
     {
         EntryPoint *ep = sc->eps + i;
+
+        ff_vvc_parse_task_free(ep->parse_task);
         ep->parse_task = ff_vvc_parse_task_alloc(fc, sc, ep, ctu_addr);
         if (!ep->parse_task)
             return AVERROR(ENOMEM);
