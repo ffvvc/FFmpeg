@@ -79,7 +79,7 @@ static void ctb_arrays_free(VVCFrameContext *fc)
             ff_vvc_ctu_free_cus(fc->tab.ctus + i);
         av_freep(&fc->tab.ctus);
     }
-    av_buffer_pool_uninit(&fc->rpl_tab_pool);
+    ff_refstruct_pool_uninit(&fc->rpl_tab_pool);
 }
 
 static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int ctu_size)
@@ -96,7 +96,7 @@ static int ctb_arrays_init(VVCFrameContext *fc, const int ctu_count, const int c
         fc->tab.coeffs = av_malloc(ctu_count * sizeof(*fc->tab.coeffs) * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
         if (!fc->tab.coeffs)
             return AVERROR(ENOMEM);
-        fc->rpl_tab_pool = av_buffer_pool_init(ctu_count * sizeof(RefPicListTab), av_buffer_allocz);
+        fc->rpl_tab_pool = ff_refstruct_pool_alloc(ctu_count * sizeof(RefPicListTab), 0);
         if (!fc->rpl_tab_pool)
             return AVERROR(ENOMEM);
     } else {
@@ -650,14 +650,9 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
         goto fail;
     dst->tab_dmvr_mvf = src->tab_dmvr_mvf;
 
-    dst->rpl_tab_buf = av_buffer_ref(src->rpl_tab_buf);
-    if (!dst->rpl_tab_buf)
-        goto fail;
-    dst->rpl_tab = src->rpl_tab;
-
-    dst->rpl_buf = av_buffer_ref(src->rpl_buf);
-    if (!dst->rpl_buf)
-        goto fail;
+    ff_refstruct_replace(&dst->rpl_tab, src->rpl_tab);
+    ff_refstruct_replace(&dst->rpl, src->rpl);
+    dst->nb_rpl_elems = src->nb_rpl_elems;
 
     dst->poc = src->poc;
     dst->ctb_count = src->ctb_count;
