@@ -247,7 +247,7 @@ static void min_pu_arrays_free(VVCFrameContext *fc)
     av_freep(&fc->tab.msf);
     av_freep(&fc->tab.iaf);
     av_freep(&fc->tab.mmi);
-    av_buffer_pool_uninit(&fc->tab_dmvr_mvf_pool);
+    ff_refstruct_pool_uninit(&fc->tab_dmvr_mvf_pool);
 }
 
 static int min_pu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_pu)
@@ -260,7 +260,7 @@ static int min_pu_arrays_init(VVCFrameContext *fc, const int pic_size_in_min_pu)
         fc->tab.mvf  = av_mallocz(pic_size_in_min_pu * sizeof(*fc->tab.mvf));
         if (!fc->tab.msf || !fc->tab.iaf || !fc->tab.mmi || !fc->tab.mvf)
             return AVERROR(ENOMEM);
-        fc->tab_dmvr_mvf_pool  = av_buffer_pool_init(pic_size_in_min_pu * sizeof(MvField), av_buffer_allocz);
+        fc->tab_dmvr_mvf_pool  = ff_refstruct_pool_alloc(pic_size_in_min_pu * sizeof(MvField), FF_REFSTRUCT_POOL_FLAG_ZERO_EVERY_TIME);
         if (!fc->tab_dmvr_mvf_pool)
             return AVERROR(ENOMEM);
     } else {
@@ -645,10 +645,7 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
 
     ff_refstruct_replace(&dst->progress, src->progress);
 
-    dst->tab_dmvr_mvf_buf = av_buffer_ref(src->tab_dmvr_mvf_buf);
-    if (!dst->tab_dmvr_mvf_buf)
-        goto fail;
-    dst->tab_dmvr_mvf = src->tab_dmvr_mvf;
+    ff_refstruct_replace(&dst->tab_dmvr_mvf, src->tab_dmvr_mvf);
 
     ff_refstruct_replace(&dst->rpl_tab, src->rpl_tab);
     ff_refstruct_replace(&dst->rpl, src->rpl);
@@ -660,9 +657,6 @@ static int vvc_ref_frame(VVCFrameContext *fc, VVCFrame *dst, VVCFrame *src)
     dst->sequence = src->sequence;
 
     return 0;
-fail:
-    ff_vvc_unref_frame(fc, dst, ~0);
-    return AVERROR(ENOMEM);
 }
 
 static av_cold void frame_context_free(VVCFrameContext *fc)
