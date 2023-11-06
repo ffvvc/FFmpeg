@@ -35,6 +35,7 @@
 
 typedef struct FrameProgress {
     atomic_int progress[VVC_PROGRESS_LAST];
+    VVCProgressListener *listener[VVC_PROGRESS_LAST];
     AVMutex lock;
     uint8_t has_lock;
 } FrameProgress;
@@ -491,16 +492,57 @@ void ff_vvc_report_frame_finished(VVCFrame *frame)
     ff_vvc_report_progress(frame, VVC_PROGRESS_PIXEL, INT_MAX);
 }
 
+static int is_progress_done(const FrameProgress *p, const VVCProgressListener *l)
+{
+    return p->progress[l->vp] > l->y;
+}
+
+static void add_listener(VVCProgressListener **prev, VVCProgressListener *l)
+{
+    l->next = *prev;
+    *prev   = l;
+}
+
+static VVCProgressListener* remove_listener(VVCProgressListener **prev, VVCProgressListener *l)
+{
+    *prev  = l->next;
+    l->next = NULL;
+    return l;
+}
+
+static VVCProgressListener* get_done_listener(FrameProgress *p, const VVCProgress vp)
+{
+    VVCProgressListener *list = NULL;
+    VVCProgressListener **prev = &p->listener[vp];
+
+    while (*prev) {
+        if (is_progress_done(p, *prev)) {
+            VVCProgressListener *l = remove_listener(prev, *prev);
+            add_listener(&list, l);
+        } else {
+            prev = &(*prev)->next;
+        }
+    }
+    return list;
+}
+
 void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 {
     FrameProgress *p = frame->progress;
+    VVCProgressListener *l = NULL;
 
     ff_mutex_lock(&p->lock);
 
     av_assert0(p->progress[vp] < y || p->progress[vp] == INT_MAX);
     p->progress[vp] = y;
+    l = get_done_listener(p, vp);
 
     ff_mutex_unlock(&p->lock);
+
+    while (l) {
+        l->progress_done(l);
+        l = l->next;
+    }
 }
 
 int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
@@ -514,4 +556,19 @@ int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
 
     ff_mutex_unlock(&p->lock);
     return ready;
+}
+
+void ff_vvc_add_progress_listener(VVCFrame *frame, VVCProgressListener *l)
+{
+    FrameProgress *p = frame->progress;
+
+    ff_mutex_lock(&p->lock);
+
+    if (is_progress_done(p, l)) {
+        ff_mutex_unlock(&p->lock);
+        l->progress_done(l);
+    } else {
+        add_listener(p->listener + l->vp, l);
+        ff_mutex_unlock(&p->lock);
+    }
 }
