@@ -34,7 +34,7 @@ int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc);
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags);
 void ff_vvc_clear_refs(VVCFrameContext *fc);
 
-typedef enum VVCProgress{
+typedef enum VVCProgress {
     VVC_PROGRESS_MV,
     VVC_PROGRESS_PIXEL,
     VVC_PROGRESS_LAST,
