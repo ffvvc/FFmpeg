@@ -32,6 +32,12 @@
 #include "vvc_intra.h"
 #include "vvc_refs.h"
 
+typedef struct ProgressListener {
+    VVCProgressListener l;
+    VVCTask *task;
+    VVCContext *s;
+} ProgressListener;
+
 typedef enum VVCTaskType {
     VVC_TASK_TYPE_PARSE,
     VVC_TASK_TYPE_INTER,
@@ -56,6 +62,8 @@ struct VVCTask {
     int rx, ry;
     VVCFrameContext *fc;
 
+    ProgressListener listener[2][VVC_MAX_REF_ENTRIES];
+
     // reconstruct task only
     SliceContext *sc;
     EntryPoint *ep;
@@ -63,6 +71,7 @@ struct VVCTask {
 
     // tasks with target scores met are ready for scheduling
     atomic_uchar score[VVC_TASK_TYPE_LAST - VVC_TASK_TYPE_INTER];
+    atomic_uchar target_inter_score;
 };
 
 typedef struct VVCRowThread {
@@ -118,6 +127,7 @@ static void vvc_task_init(VVCTask *t, VVCTaskType type, VVCFrameContext *fc, con
     t->ry   = ry;
     for (int i = 0; i < FF_ARRAY_ELEMS(t->score); i++)
         atomic_store(t->score + i, 0);
+    atomic_store(&t->target_inter_score, 0);
 }
 
 VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
@@ -148,13 +158,12 @@ static uint8_t task_add_score(VVCTask *t, const VVCTaskType type, const uint8_t 
     return atomic_fetch_add(&t->score[type - VVC_TASK_TYPE_INTER], count);
 }
 
-static void frame_thread_add_score (VVCContext *s, VVCFrameThread *ft,
-    const int x, const int y, VVCTaskType type)
+static int task_has_target_score(VVCTask *t, const VVCTaskType type)
 {
     // l:left, r:right, t: top, b: bottom
     static const uint8_t target_score[] =
     {
-        0,          //VVC_TASK_TYPE_INTER,     need last state ready only
+        0,          //VVC_TASK_TYPE_INTER,     not used
         2,          //VVC_TASK_TYPE_RECON,     need l + rt recon
         3,          //VVC_TASK_TYPE_LMCS,      need r + b + rb recon
         2,          //VVC_TASK_TYPE_DEBLOCK_V, need r lmcs + l deblock v
@@ -162,20 +171,84 @@ static void frame_thread_add_score (VVCContext *s, VVCFrameThread *ft,
         5,          //VVC_TASK_TYPE_SAO,       need l + r + lb + b + rb deblock h
         8,          //VVC_TASK_TYPE_ALF,       need sao around the ctu
     };
+    const uint8_t score = task_add_score(t, type, 1);
+    uint8_t target = 0;
+
+    if (type == VVC_TASK_TYPE_INTER) {
+        target = atomic_load(&t->target_inter_score);
+    } else {
+        target = target_score[type - VVC_TASK_TYPE_INTER];
+    }
+
+    av_assert0(score <= target);
+
+    return score == target;
+}
+
+static void frame_thread_add_score(VVCContext *s, VVCFrameThread *ft,
+    const int x, const int y, const VVCTaskType type)
+{
     VVCTask *t = ft->tasks + ft->ctu_width * y + x;
-    uint8_t score;
 
     if (x < 0 || x >= ft->ctu_width || y < 0 || y >= ft->ctu_height)
         return;
 
-    score = task_add_score(t, type, 1);
-    if (score == target_score[type - VVC_TASK_TYPE_INTER]) {
+    if (task_has_target_score(t, type)) {
         av_assert0(s);
         av_assert0(type == t->type + 1);
         t->type++;
         ff_vvc_frame_add_task(s, t);
     }
-    av_assert0(score <= target_score[type - VVC_TASK_TYPE_INTER]);
+}
+
+static void progress_done(VVCProgressListener *_l)
+{
+    ProgressListener *l = (ProgressListener *)_l;
+    const VVCTask *t = l->task;
+
+    frame_thread_add_score(l->s, t->fc->frame_thread, t->rx, t->ry, t->type + 1);
+}
+
+static void listener_init(ProgressListener *l, VVCTask *t, VVCContext *s, const VVCProgress vp, const int y)
+{
+    l->task = t;
+    l->s    = s;
+    l->l.vp = vp;
+    l->l.y  = y;
+    l->l.progress_done = progress_done;
+}
+
+static void add_progress_listener(VVCFrame *ref, ProgressListener *l,
+    VVCTask *t, VVCContext *s, const VVCProgress vp, const int y)
+{
+    listener_init(l, t, s, vp, y);
+    atomic_fetch_add(&t->target_inter_score, 1);
+    ff_vvc_add_progress_listener(ref, (VVCProgressListener*)l);
+}
+
+static void parse_task_done(VVCContext *s, VVCFrameContext *fc, const int rx, const int ry)
+{
+    VVCFrameThread *ft  = fc->frame_thread;
+    const int rs        = ry * ft->ctu_width + rx;
+    const int slice_idx = fc->tab.slice_idx[rs];
+    VVCTask *t          = ft->tasks + rs;
+
+    if (slice_idx != -1) {
+        const SliceContext *sc = fc->slices[slice_idx];
+        const VVCSH *sh        = &sc->sh;
+        CTU *ctu               = fc->tab.ctus + rs;
+        if (!IS_I(sh->r)) {
+            for (int lx = 0; lx < 2; lx++) {
+                for (int i = 0; i < sh->r->num_ref_idx_active[lx]; i++) {
+                    const int y = ctu->max_y[lx][i];
+                    VVCFrame *ref = sc->rpl[lx].ref[i];
+                    if (ref && y >= 0)
+                        add_progress_listener(ref, &t->listener[lx][i], t, s, VVC_PROGRESS_PIXEL, y + LUMA_EXTRA_AFTER);
+                }
+            }
+        }
+    }
+
 }
 
 static void decode_state_done(const VVCTask *task, VVCContext *s)
@@ -189,7 +262,9 @@ static void decode_state_done(const VVCTask *task, VVCContext *s)
 #define ADD(dx, dy, type) frame_thread_add_score(s, ft, rx + (dx), ry + (dy), type)
 
     //this is a reserve map of ready_score, ordered by zigzag
-    if (type == VVC_TASK_TYPE_RECON) {
+    if (type == VVC_TASK_TYPE_PARSE) {
+        parse_task_done(s, fc, task->rx, task->ry);
+    } else if (type == VVC_TASK_TYPE_RECON) {
         ADD(-1,  1, VVC_TASK_TYPE_RECON);
         ADD( 1,  0, VVC_TASK_TYPE_RECON);
         ADD(-1, -1, VVC_TASK_TYPE_LMCS);
@@ -243,57 +318,19 @@ static int is_parse_ready(const VVCFrameContext *fc, const VVCTask *t)
     return 1;
 }
 
-static int is_inter_ready(const VVCFrameContext *fc, const VVCTask *t)
-{
-    VVCFrameThread *ft  = fc->frame_thread;
-    const int rs        = t->ry * ft->ctu_width + t->rx;
-    const int slice_idx = fc->tab.slice_idx[rs];
-
-    av_assert0(t->type == VVC_TASK_TYPE_INTER);
-
-    if (slice_idx != -1) {
-        const SliceContext *sc = fc->slices[slice_idx];
-        const VVCSH *sh        = &sc->sh;
-        CTU *ctu               = fc->tab.ctus + rs;
-        if (!IS_I(sh->r)) {
-            for (int lx = 0; lx < 2; lx++) {
-                for (int i = ctu->max_y_idx[lx]; i < sh->r->num_ref_idx_active[lx]; i++) {
-                    const int y = ctu->max_y[lx][i];
-                    VVCFrame *ref = sc->rpl[lx].ref[i];
-                    if (ref && y >= 0) {
-                        if (!ff_vvc_check_progress(ref, VVC_PROGRESS_PIXEL, y + LUMA_EXTRA_AFTER))
-                            return 0;
-                    }
-                    ctu->max_y_idx[lx]++;
-                }
-            }
-        }
-    }
-    return 1;
-}
-
-typedef int (*is_ready_func)(const VVCFrameContext *fc, const VVCTask *t);
-
 static int task_ready(const AVTask *_t, void *user_data)
 {
     const VVCTask *t            = (const VVCTask*)_t;
     VVCFrameThread *ft          = t->fc->frame_thread;
-    int ready;
-    is_ready_func is_ready[]    = {
-        is_parse_ready,
-        is_inter_ready,
-    };
 
     if (atomic_load(&ft->ret))
         return 1;
 
     // scheduled by task score board
-    if (t->type > VVC_TASK_TYPE_INTER)
+    if (t->type > VVC_TASK_TYPE_PARSE)
         return 1;
 
-    ready = is_ready[t->type](t->fc, t);
-
-    return ready;
+    return is_parse_ready(t->fc, t);
 }
 
 #define CHECK(a, b)                         \

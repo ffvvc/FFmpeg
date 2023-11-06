@@ -40,8 +40,19 @@ typedef enum VVCProgress {
     VVC_PROGRESS_LAST,
 } VVCProgress;
 
+typedef struct VVCProgressListener VVCProgressListener;
+typedef void (*progress_done_fn)(VVCProgressListener *l);
+
+struct VVCProgressListener {
+    VVCProgress vp;
+    int y;
+    progress_done_fn progress_done;
+    VVCProgressListener *next;   //used by ff_vvc_add_progress_listener only
+};
+
 void ff_vvc_report_frame_finished(VVCFrame *frame);
 void ff_vvc_report_progress(VVCFrame *frame, VVCProgress vp, int y);
 int ff_vvc_check_progress(VVCFrame *frame, VVCProgress vp, int y);
+void ff_vvc_add_progress_listener(VVCFrame *frame, VVCProgressListener *l);
 
 #endif // AVCODEC_VVC_REFS_H
