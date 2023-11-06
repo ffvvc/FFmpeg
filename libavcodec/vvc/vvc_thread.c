@@ -109,11 +109,15 @@ static void set_avail(const VVCFrameThread *ft, const int rx, const int ry, cons
     atomic_fetch_or(avail, 1 << type);
 }
 
-static void vvc_task_init(VVCTask *task, VVCTaskType type, VVCFrameContext *fc)
+static void vvc_task_init(VVCTask *t, VVCTaskType type, VVCFrameContext *fc, const int rx, const int ry)
 {
-    memset(task, 0, sizeof(*task));
-    task->type           = type;
-    task->fc             = fc;
+    memset(t, 0, sizeof(*t));
+    t->type = type;
+    t->fc   = fc;
+    t->rx   = rx;
+    t->ry   = ry;
+    for (int i = 0; i < FF_ARRAY_ELEMS(t->score); i++)
+        atomic_store(t->score + i, 0);
 }
 
 VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
@@ -121,17 +125,15 @@ VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
 {
     const VVCFrameThread *ft = fc->frame_thread;
     const int rs = sc->sh.ctb_addr_in_curr_slice[ctu_idx];
-    VVCTask *t = av_mallocz(sizeof(*t));
+    VVCTask *t = av_malloc(sizeof(*t));
 
     if (!t)
         return NULL;
 
-    vvc_task_init(t, VVC_TASK_TYPE_PARSE, fc);
+    vvc_task_init(t, VVC_TASK_TYPE_PARSE, fc, rs % ft->ctu_width, rs / ft->ctu_width);
     t->sc = sc;
     t->ep = ep;
     t->ctu_idx = ctu_idx;
-    t->rx = rs % ft->ctu_width;
-    t->ry = rs / ft->ctu_width;
 
     return t;
 }
@@ -139,11 +141,6 @@ VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
 void ff_vvc_parse_task_free(VVCTask *t)
 {
     av_free(t);
-}
-
-static void task_set_score(VVCTask *t, const VVCTaskType type, uint8_t r)
-{
-    atomic_store(&t->score[type - VVC_TASK_TYPE_INTER], r);
 }
 
 static uint8_t task_add_score(VVCTask *t, const VVCTaskType type, const uint8_t count)
@@ -669,16 +666,7 @@ static void frame_thread_init_score(VVCFrameContext *fc)
     const VVCFrameThread *ft = fc->frame_thread;
     VVCTask task;
 
-    for (int y = 0; y  < ft->ctu_height; y++) {
-        for (int x = 0; x < ft->ctu_width; x++) {
-            const int rs = y * ft->ctu_width + x;
-            VVCTask *t   = ft->tasks + rs;
-            for (int i = VVC_TASK_TYPE_INTER; i < VVC_TASK_TYPE_LAST; i++)
-                task_set_score(t, i, 0);
-        }
-    }
-
-    vvc_task_init(&task, VVC_TASK_TYPE_RECON, fc);
+    vvc_task_init(&task, VVC_TASK_TYPE_RECON, fc, 0, 0);
 
     for (int i = VVC_TASK_TYPE_RECON; i < VVC_TASK_TYPE_LAST; i++) {
         task.type = i;
@@ -728,15 +716,9 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
         if (!ft->avails)
             goto fail;
 
-        ft->tasks = av_calloc(ft->ctu_count, sizeof(*ft->tasks));
+        ft->tasks = av_malloc(ft->ctu_count * sizeof(*ft->tasks));
         if (!ft->tasks)
             goto fail;
-        for (int rs = 0; rs < ft->ctu_count; rs++) {
-            VVCTask *t = ft->tasks + rs;
-            t->rx = rs % ft->ctu_width;
-            t->ry = rs / ft->ctu_width;
-            t->fc = fc;
-        }
 
         if ((ret = ff_cond_init(&ft->cond, NULL)))
             goto fail;
@@ -755,8 +737,9 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 
     for (int rs = 0; rs < ft->ctu_count; rs++) {
         VVCTask *t = ft->tasks + rs;
-        t->type = VVC_TASK_TYPE_PARSE;
-        ft->avails[rs] = 0;
+
+        vvc_task_init(t, VVC_TASK_TYPE_PARSE, fc, rs % ft->ctu_width, rs / ft->ctu_width);
+        atomic_store(ft->avails + rs, 0);
     }
 
     memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
