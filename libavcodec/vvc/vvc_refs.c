@@ -37,7 +37,9 @@ typedef struct FrameProgress {
     atomic_int progress[VVC_PROGRESS_LAST];
     VVCProgressListener *listener[VVC_PROGRESS_LAST];
     AVMutex lock;
+    AVCond  cond;
     uint8_t has_lock;
+    uint8_t has_cond;
 } FrameProgress;
 
 void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
@@ -83,6 +85,8 @@ static void free_progress(FFRefStructOpaque unused, void *obj)
 {
     FrameProgress *p = (FrameProgress *)obj;
 
+    if (p->has_cond)
+        ff_cond_destroy(&p->cond);
     if (p->has_lock)
         ff_mutex_destroy(&p->lock);
 }
@@ -93,7 +97,8 @@ static FrameProgress *alloc_progress(void)
 
     if (p) {
         p->has_lock = !ff_mutex_init(&p->lock, NULL);
-        if (!p->has_lock)
+        p->has_cond = !ff_cond_init(&p->cond, NULL);
+        if (!p->has_lock || !p->has_cond)
             ff_refstruct_unref(&p);
     }
     return p;
@@ -536,6 +541,7 @@ void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
     av_assert0(p->progress[vp] < y || p->progress[vp] == INT_MAX);
     p->progress[vp] = y;
     l = get_done_listener(p, vp);
+    ff_cond_signal(&p->cond);
 
     ff_mutex_unlock(&p->lock);
 
@@ -543,19 +549,6 @@ void ff_vvc_report_progress(VVCFrame *frame, const VVCProgress vp, const int y)
         l->progress_done(l);
         l = l->next;
     }
-}
-
-int ff_vvc_check_progress(VVCFrame *frame, const VVCProgress vp, const int y)
-{
-    int ready ;
-    FrameProgress *p = frame->progress;
-
-    ff_mutex_lock(&p->lock);
-
-    ready = p->progress[vp] > y + 1;
-
-    ff_mutex_unlock(&p->lock);
-    return ready;
 }
 
 void ff_vvc_add_progress_listener(VVCFrame *frame, VVCProgressListener *l)

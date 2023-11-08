@@ -352,7 +352,7 @@ typedef struct EntryPoint {
     VVCCabacState cabac_state[VVC_CONTEXTS];
     CABACContext cc;
 
-    VVCTask *parse_task;
+    int ctu_start;
     int ctu_end;
 
     uint8_t is_first_qg;                            // first quantization group

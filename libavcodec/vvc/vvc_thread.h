@@ -25,16 +25,12 @@
 
 #include "vvcdec.h"
 
-struct VVCTask* ff_vvc_parse_task_alloc(VVCFrameContext *fc,
-    SliceContext *sc,  EntryPoint *ep, int ctu_addr);
-void ff_vvc_parse_task_free(VVCTask *t);
-
 struct AVExecutor* ff_vvc_executor_alloc(VVCContext *s, int thread_count);
 void ff_vvc_executor_free(struct AVExecutor **e);
 
 int ff_vvc_frame_thread_init(VVCFrameContext *fc);
 void ff_vvc_frame_thread_free(VVCFrameContext *fc);
-void ff_vvc_frame_add_task(VVCContext *s, struct VVCTask *t);
+void ff_vvc_frame_submit(VVCContext *s, VVCFrameContext *fc);
 int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc);
 
 #endif // AVCODEC_VVC_THREAD_H
