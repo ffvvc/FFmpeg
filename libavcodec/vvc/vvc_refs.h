@@ -52,7 +52,6 @@ struct VVCProgressListener {
 
 void ff_vvc_report_frame_finished(VVCFrame *frame);
 void ff_vvc_report_progress(VVCFrame *frame, VVCProgress vp, int y);
-int ff_vvc_check_progress(VVCFrame *frame, VVCProgress vp, int y);
 void ff_vvc_add_progress_listener(VVCFrame *frame, VVCProgressListener *l);
 
 #endif // AVCODEC_VVC_REFS_H

@@ -2381,7 +2381,6 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     lc->cu     = NULL;
 
     ff_vvc_cabac_init(lc, ctu_idx, rx, ry);
-    fc->tab.slice_idx[rs] = lc->sc->slice_idx;
     ff_vvc_decode_neighbour(lc, x_ctb, y_ctb, rx, ry, rs);
     ret = hls_coding_tree_unit(lc, x_ctb, y_ctb, ctu_idx, rx, ry);
     if (ret < 0)

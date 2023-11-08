@@ -521,11 +521,7 @@ static void vvc_smvd_ref_idx(const VVCFrameContext *fc, SliceContext *sc)
 
 static void eps_free(SliceContext *slice)
 {
-    if (slice->eps) {
-        for (int i = 0; i < slice->nb_eps; i++)
-            ff_vvc_parse_task_free(slice->eps[i].parse_task);
-        av_freep(&slice->eps);
-    }
+    av_freep(&slice->eps);
 }
 
 static void slices_free(VVCFrameContext *fc)
@@ -617,12 +613,16 @@ static int init_slice_context(SliceContext *sc, VVCFrameContext *fc, const H2645
     {
         EntryPoint *ep = sc->eps + i;
 
-        ff_vvc_parse_task_free(ep->parse_task);
-        ep->parse_task = ff_vvc_parse_task_alloc(fc, sc, ep, ctu_addr);
-        if (!ep->parse_task)
-            return AVERROR(ENOMEM);
-        ep->ctu_end = (i + 1 == sc->nb_eps ? sh->num_ctus_in_curr_slice : sh->entry_point_start_ctu[i]);
+        ep->ctu_start = ctu_addr;
+        ep->ctu_end   = (i + 1 == sc->nb_eps ? sh->num_ctus_in_curr_slice : sh->entry_point_start_ctu[i]);
+
+        for (int j = ep->ctu_start; j < ep->ctu_end; j++) {
+            const int rs = sc->sh.ctb_addr_in_curr_slice[j];
+            fc->tab.slice_idx[rs] = sc->slice_idx;
+        }
+
         ep_init_cabac_decoder(sc, i, nal, &gb);
+
         if (i + 1 < sc->nb_eps)
             ctu_addr = sh->entry_point_start_ctu[i];
     }
@@ -805,9 +805,6 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
         goto fail;
     fc->nb_slices++;
 
-    for (int i = 0; i < (fc->ps.sps->r->sps_entropy_coding_sync_enabled_flag ? 1 : sc->nb_eps); i++)
-        ff_vvc_frame_add_task(s, sc->eps[i].parse_task);
-
 fail:
     return ret;
 }
@@ -928,6 +925,7 @@ static int submit_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *output, int
     int ret;
     s->nb_frames++;
     s->nb_delayed++;
+    ff_vvc_frame_submit(s, fc);
     if (s->nb_delayed >= s->nb_fcs) {
         if ((ret = wait_delayed_frame(s, output, got_output)) < 0)
             return ret;
