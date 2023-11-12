@@ -56,7 +56,7 @@ enum {
 };
 
 typedef struct VVCSPS {
-    const H266RawSPS *r;                                            ///< RefStruct references
+    const H266RawSPS *r;                                            ///< RefStruct reference
 
     //derived values
     uint16_t    width;
@@ -92,11 +92,11 @@ typedef struct DBParams {
 } DBParams;
 
 typedef struct VVCPPS {
-    const H266RawPPS *r;
+    const H266RawPPS *r;                                            ///< RefStruct reference
 
     //derived value;
-    int8_t   chroma_qp_offset[3];                       ///< pps_cb_qp_offset, pps_cr_qp_offset, pps_joint_cbcr_qp_offset_value
-    int8_t   chroma_qp_offset_list[6][3];               ///< pps_cb_qp_offset_list, pps_cr_qp_offset_list, pps_joint_cbcr_qp_offset_list
+    int8_t   chroma_qp_offset[3];                                   ///< pps_cb_qp_offset, pps_cr_qp_offset, pps_joint_cbcr_qp_offset_value
+    int8_t   chroma_qp_offset_list[6][3];                           ///< pps_cb_qp_offset_list, pps_cr_qp_offset_list, pps_joint_cbcr_qp_offset_list
 
     uint16_t width;
     uint16_t height;
@@ -144,7 +144,7 @@ typedef struct PredWeightTable {
 
 typedef struct VVCPH {
     const H266RawPictureHeader *r;
-    void *rref;                                     ///< RefStruct reference backing ph above
+    void *rref;                                     ///< RefStruct reference, backing ph above
 
     //derived values
     uint32_t max_num_subblock_merge_cand;           ///< MaxNumSubblockMergeCand
@@ -206,7 +206,7 @@ typedef struct VVCLMCS {
 #define VVC_MAX_SL_COUNT         8
 
 typedef struct VVCParamSets {
-    const VVCSPS            *sps_list[VVC_MAX_SPS_COUNT];
+    const VVCSPS            *sps_list[VVC_MAX_SPS_COUNT];       ///< RefStruct reference
     const VVCPPS            *pps_list[VVC_MAX_PPS_COUNT];       ///< RefStruct reference
     const VVCALF            *alf_list[VVC_MAX_ALF_COUNT];       ///< RefStruct reference
     const H266RawAPS        *lmcs_list[VVC_MAX_LMCS_COUNT];     ///< RefStruct reference
@@ -223,7 +223,7 @@ typedef struct VVCFrameParamSets {
 } VVCFrameParamSets;
 
 typedef struct VVCSH {
-    const H266RawSliceHeader *r;
+    const H266RawSliceHeader *r;                            ///< RefStruct reference
 
     // derived values
     // ctu address

@@ -79,7 +79,7 @@ typedef struct VVCFrame {
 
     struct VVCFrame *collocated_ref;
 
-    struct FrameProgress *progress;             ///< RefStruct references
+    struct FrameProgress *progress;             ///< RefStruct reference
 
     /**
      * A sequence counter, so that old frames are output first
