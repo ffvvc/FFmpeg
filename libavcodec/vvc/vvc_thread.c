@@ -302,7 +302,7 @@ static void parse_task_done(VVCContext *s, VVCFrameContext *fc, const int rx, co
     schedule_inter(s, fc, sc, t, rs);
 }
 
-static void decode_state_done(const VVCTask *task, VVCContext *s)
+static void task_state_done(const VVCTask *task, VVCContext *s)
 {
     VVCFrameContext *fc = task->fc;
     VVCFrameThread *ft  = fc->frame_thread;
@@ -612,7 +612,7 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
         }
     }
 
-    decode_state_done(t, s);
+    task_state_done(t, s);
     sheduled_done(ft, &ft->nb_scheduled_tasks);
 
     return ret;
@@ -661,16 +661,16 @@ static void frame_thread_init_score(VVCFrameContext *fc)
 
         for (task.rx = -1; task.rx <= ft->ctu_width; task.rx++) {
             task.ry = -1;                           //top
-            decode_state_done(&task, NULL);
+            task_state_done(&task, NULL);
             task.ry = ft->ctu_height;               //bottom
-            decode_state_done(&task, NULL);
+            task_state_done(&task, NULL);
         }
 
         for (task.ry = 0; task.ry < ft->ctu_height; task.ry++) {
             task.rx = -1;                           //left
-            decode_state_done(&task, NULL);
+            task_state_done(&task, NULL);
             task.rx = ft->ctu_width;                //right
-            decode_state_done(&task, NULL);
+            task_state_done(&task, NULL);
         }
     }
 }
@@ -778,7 +778,7 @@ void ff_vvc_frame_submit(VVCContext *s, VVCFrameContext *fc)
 
                 task_init_parse(t, sc, ep, k);
                 check_colocation(s, t);
-                decode_state_done(t, s);
+                task_state_done(t, s);
             }
             submit_entry_point(s, ft, sc, ep);
         }
