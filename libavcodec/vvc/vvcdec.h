@@ -42,9 +42,6 @@
 #define L0                      0
 #define L1                      1
 
-typedef struct Mv Mv;
-typedef struct MvField MvField;
-
 typedef struct RefPicList {
     struct VVCFrame *ref[VVC_MAX_REF_ENTRIES];
     int list[VVC_MAX_REF_ENTRIES];
@@ -59,9 +56,9 @@ typedef struct RefPicListTab {
 typedef struct VVCFrame {
     struct AVFrame *frame;
 
-    MvField  *tab_dmvr_mvf;                     ///< RefStruct reference
+    struct MvField *tab_dmvr_mvf;               ///< RefStruct reference
     RefPicListTab **rpl_tab;                    ///< RefStruct reference
-    RefPicListTab *rpl;                         ///< RefStruct reference
+    RefPicListTab  *rpl;                        ///< RefStruct reference
     int nb_rpl_elems;
 
     int ctb_count;
@@ -146,8 +143,8 @@ typedef struct VVCFrameContext {
         uint8_t *msf;                                   ///< MergeSubblockFlag[][]
         uint8_t *iaf;                                   ///< InterAffineFlag[][]
         uint8_t *mmi;                                   ///< MotionModelIdc[][]
-        Mv      *cp_mv[2];                              ///< CpMvLX[][][][MAX_CONTROL_POINTS];
-        MvField *mvf;                                   ///< MvDmvrL0, MvDmvrL1
+        struct Mv      *cp_mv[2];                       ///< CpMvLX[][][][MAX_CONTROL_POINTS];
+        struct MvField *mvf;                            ///< MvDmvrL0, MvDmvrL1
 
         uint8_t *tu_coded_flag[VVC_MAX_SAMPLE_ARRAYS];  ///< tu_y_coded_flag[][],  tu_cb_coded_flag[][],  tu_cr_coded_flag[][]
         uint8_t *tu_joint_cbcr_residual_flag;           ///< tu_joint_cbcr_residual_flag[][]
