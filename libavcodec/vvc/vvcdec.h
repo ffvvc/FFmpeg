@@ -44,7 +44,6 @@
 
 typedef struct VVCLocalContext VVCLocalContext;
 typedef struct SliceContext SliceContext;
-typedef struct VVCFrameContext  VVCFrameContext;
 typedef struct EntryPoint EntryPoint;
 typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
@@ -99,7 +98,7 @@ struct SliceContext {
     RefPicList *rpl;
 };
 
-struct VVCFrameContext {
+typedef struct VVCFrameContext {
     struct AVCodecContext *avctx;
 
     // +1 for the current frame
@@ -195,7 +194,7 @@ struct VVCFrameContext {
         int bs_width;
         int bs_height;
     } tab;
-} ;
+} VVCFrameContext;
 
 typedef struct VVCContext {
     struct AVCodecContext *avctx;
