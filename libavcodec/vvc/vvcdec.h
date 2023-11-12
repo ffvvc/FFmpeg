@@ -43,7 +43,6 @@
 #define L1                      1
 
 typedef struct VVCLocalContext VVCLocalContext;
-typedef struct SliceContext SliceContext;
 typedef struct EntryPoint EntryPoint;
 typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
@@ -90,13 +89,13 @@ typedef struct VVCFrame {
     uint8_t flags;
 } VVCFrame;
 
-struct SliceContext {
+typedef struct SliceContext {
     int slice_idx;
     VVCSH sh;
     EntryPoint *eps;
     int nb_eps;
     RefPicList *rpl;
-};
+} SliceContext;
 
 typedef struct VVCFrameContext {
     struct AVCodecContext *avctx;
