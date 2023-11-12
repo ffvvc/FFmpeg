@@ -200,7 +200,6 @@ typedef struct VVCContext {
     int eos;                ///< current packet contains an EOS/EOB NAL
     int last_eos;           ///< last packet contains an EOS/EOB NAL
 
-
     enum VVCNALUnitType vcl_unit_type;
     int no_output_before_recovery_flag; ///< NoOutputBeforeRecoveryFlag
     int gdr_recovery_point_poc;         ///< recoveryPointPocVal
@@ -211,12 +210,6 @@ typedef struct VVCContext {
      */
     uint16_t seq_decode;
     uint16_t seq_output;
-
-    int is_nalff;           ///< this flag is != 0 if bitstream is encapsulated
-                            ///< as a format defined in 14496-15
-
-    int apply_defdispwin;
-    int nal_length_size;    ///< Number of bytes used for nal length (1, 2 or 4)
 
     struct AVExecutor *executor;
 
