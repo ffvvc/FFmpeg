@@ -42,7 +42,6 @@
 #define L0                      0
 #define L1                      1
 
-typedef struct VVCLocalContext VVCLocalContext;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
 

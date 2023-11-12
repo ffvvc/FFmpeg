@@ -360,7 +360,7 @@ typedef struct EntryPoint {
     int     num_hmvp;                               ///< NumHmvpCand
 } EntryPoint;
 
-struct VVCLocalContext {
+typedef struct VVCLocalContext {
     uint8_t ctb_left_flag;
     uint8_t ctb_up_flag;
     uint8_t ctb_up_right_flag;
@@ -426,7 +426,7 @@ struct VVCLocalContext {
     VVCFrameContext *fc;
     EntryPoint *ep;
     int *coeffs;
-} ;
+} VVCLocalContext;
 
 typedef struct VVCAllowedSplit {
     int qt;
