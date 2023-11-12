@@ -43,7 +43,6 @@
 #define L1                      1
 
 typedef struct VVCLocalContext VVCLocalContext;
-typedef struct EntryPoint EntryPoint;
 typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
@@ -92,7 +91,7 @@ typedef struct VVCFrame {
 typedef struct SliceContext {
     int slice_idx;
     VVCSH sh;
-    EntryPoint *eps;
+    struct EntryPoint *eps;
     int nb_eps;
     RefPicList *rpl;
 } SliceContext;
