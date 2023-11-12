@@ -394,8 +394,6 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     if (ret < 0)
         return ret;
 
-    decode_state_done(t, s);
-
     return 0;
 }
 
@@ -433,7 +431,6 @@ static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         lc->sc = fc->slices[slice_idx];
         ff_vvc_predict_inter(lc, rs);
     }
-    decode_state_done(t, s);
     report_frame_progress(fc, t->ry, VVC_TASK_TYPE_INTER);
 
     return 0;
@@ -450,8 +447,6 @@ static int run_recon(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         lc->sc = fc->slices[slice_idx];
         ff_vvc_reconstruct(lc, rs, t->rx, t->ry);
     }
-
-    decode_state_done(t, s);
 
     return 0;
 }
@@ -470,7 +465,6 @@ static int run_lmcs(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
         lc->sc = fc->slices[slice_idx];
         ff_vvc_lmcs_filter(lc, x0, y0);
     }
-    decode_state_done(t, s);
 
     return 0;
 }
@@ -492,8 +486,6 @@ static int run_deblock_v(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             ff_vvc_deblock_vertical(lc, x0, y0);
         }
     }
-
-    decode_state_done(t, s);
 
     return 0;
 }
@@ -518,8 +510,6 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             ff_vvc_sao_copy_ctb_to_hv(lc, t->rx, t->ry, t->ry == ft->ctu_height - 1);
     }
 
-    decode_state_done(t, s);
-
     return 0;
 }
 
@@ -539,8 +529,6 @@ static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 
     if (fc->ps.sps->r->sps_alf_enabled_flag)
         ff_vvc_alf_copy_ctu_to_hv(lc, x0, y0);
-
-    decode_state_done(t, s);
 
     return 0;
 }
@@ -624,6 +612,7 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
         }
     }
 
+    decode_state_done(t, s);
     sheduled_done(ft, &ft->nb_scheduled_tasks);
 
     return ret;
