@@ -45,8 +45,6 @@
 typedef struct VVCLocalContext VVCLocalContext;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
-typedef struct SAOParams SAOParams;
-typedef struct ALFParams ALFParams;
 
 typedef struct RefPicList {
     struct VVCFrame *ref[VVC_MAX_REF_ENTRIES];
@@ -128,8 +126,8 @@ typedef struct VVCFrameContext {
         int16_t *slice_idx;
 
         DBParams  *deblock;
-        SAOParams *sao;
-        ALFParams *alf;
+        struct SAOParams *sao;
+        struct ALFParams *alf;
 
         int     *cb_pos_x[2];                           ///< CbPosX[][][]
         int     *cb_pos_y[2];                           ///< CbPosY[][][]
