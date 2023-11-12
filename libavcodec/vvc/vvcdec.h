@@ -45,7 +45,6 @@
 typedef struct VVCLocalContext VVCLocalContext;
 typedef struct SliceContext SliceContext;
 typedef struct VVCFrameContext  VVCFrameContext;
-typedef struct VVCFrameThread VVCFrameThread;
 typedef struct EntryPoint EntryPoint;
 typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
@@ -120,7 +119,7 @@ struct VVCFrameContext {
     VVCDSPContext vvcdsp;
     VideoDSPContext vdsp;
 
-    VVCFrameThread *ft;
+    struct VVCFrameThread *ft;
 
     uint64_t decode_order;
 
