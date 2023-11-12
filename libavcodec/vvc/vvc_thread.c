@@ -80,7 +80,7 @@ typedef struct VVCRowThread {
     atomic_int progress[VVC_PROGRESS_LAST];
 } VVCRowThread;
 
-struct VVCFrameThread {
+typedef struct VVCFrameThread {
     // error return for tasks
     atomic_int ret;
 
@@ -100,7 +100,7 @@ struct VVCFrameThread {
 
     AVMutex lock;
     AVCond  cond;
-};
+} VVCFrameThread;
 
 static void add_task(VVCContext *s, VVCTask *t)
 {
