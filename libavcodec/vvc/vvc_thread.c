@@ -111,7 +111,7 @@ static void add_task(VVCContext *s, VVCTask *t)
     av_executor_execute(s->executor, &t->task);
 }
 
-static void vvc_task_init(VVCTask *t, VVCTaskType type, VVCFrameContext *fc, const int rx, const int ry)
+static void task_init(VVCTask *t, VVCTaskType type, VVCFrameContext *fc, const int rx, const int ry)
 {
     memset(t, 0, sizeof(*t));
     t->type = type;
@@ -648,7 +648,7 @@ static void frame_thread_init_score(VVCFrameContext *fc)
     const VVCFrameThread *ft = fc->ft;
     VVCTask task;
 
-    vvc_task_init(&task, VVC_TASK_TYPE_RECON, fc, 0, 0);
+    task_init(&task, VVC_TASK_TYPE_RECON, fc, 0, 0);
 
     for (int i = VVC_TASK_TYPE_RECON; i < VVC_TASK_TYPE_LAST; i++) {
         task.type = i;
@@ -715,7 +715,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 
     for (int rs = 0; rs < ft->ctu_count; rs++) {
         VVCTask *t = ft->tasks + rs;
-        vvc_task_init(t, VVC_TASK_TYPE_INIT, fc, rs % ft->ctu_width, rs / ft->ctu_width);
+        task_init(t, VVC_TASK_TYPE_INIT, fc, rs % ft->ctu_width, rs / ft->ctu_width);
     }
 
     memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
