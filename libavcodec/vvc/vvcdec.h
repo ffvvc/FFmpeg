@@ -43,7 +43,6 @@
 #define L1                      1
 
 typedef struct VVCLocalContext VVCLocalContext;
-typedef struct VVCTask VVCTask;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
 typedef struct CTU CTU;

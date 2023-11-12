@@ -34,7 +34,7 @@
 
 typedef struct ProgressListener {
     VVCProgressListener l;
-    VVCTask *task;
+    struct VVCTask *task;
     VVCContext *s;
 } ProgressListener;
 
@@ -51,9 +51,9 @@ typedef enum VVCTaskType {
     VVC_TASK_TYPE_LAST
 } VVCTaskType;
 
-struct VVCTask {
+typedef struct VVCTask {
     union {
-        VVCTask *next;                //for executor debug only
+        struct VVCTask *next;                //for executor debug only
         AVTask task;
     };
 
@@ -74,7 +74,7 @@ struct VVCTask {
     // tasks with target scores met are ready for scheduling
     atomic_uchar score[VVC_TASK_TYPE_LAST - VVC_TASK_TYPE_PARSE];
     atomic_uchar target_inter_score;
-};
+} VVCTask;
 
 typedef struct VVCRowThread {
     atomic_int progress[VVC_PROGRESS_LAST];
