@@ -45,7 +45,6 @@
 typedef struct VVCLocalContext VVCLocalContext;
 typedef struct Mv Mv;
 typedef struct MvField MvField;
-typedef struct CTU CTU;
 typedef struct SAOParams SAOParams;
 typedef struct ALFParams ALFParams;
 
@@ -173,8 +172,8 @@ typedef struct VVCFrameContext {
         uint8_t *alf_pixel_buffer_h[VVC_MAX_SAMPLE_ARRAYS][2];
         uint8_t *alf_pixel_buffer_v[VVC_MAX_SAMPLE_ARRAYS][2];
 
-        int     *coeffs;
-        CTU     *ctus;
+        int         *coeffs;
+        struct CTU  *ctus;
 
         //used in arrays_init only
         int ctu_count;

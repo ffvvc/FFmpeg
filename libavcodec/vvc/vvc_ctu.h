@@ -324,11 +324,11 @@ typedef struct CodingUnit {
     struct CodingUnit *next;                        ///< RefStruct reference
 } CodingUnit;
 
-struct CTU {
+typedef struct CTU {
     CodingUnit *cus;
     int max_y[2][VVC_MAX_REF_ENTRIES];
     int max_y_idx[2];
-};
+} CTU;
 
 typedef struct ReconstructedArea {
     int x;
