@@ -120,7 +120,7 @@ struct VVCFrameContext {
     VVCDSPContext vvcdsp;
     VideoDSPContext vdsp;
 
-    VVCFrameThread *frame_thread;
+    VVCFrameThread *ft;
 
     uint64_t decode_order;
 
