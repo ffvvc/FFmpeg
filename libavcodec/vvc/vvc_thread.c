@@ -104,7 +104,7 @@ struct VVCFrameThread {
 
 static void add_task(VVCContext *s, VVCTask *t)
 {
-    VVCFrameThread *ft  = t->fc->frame_thread;
+    VVCFrameThread *ft  = t->fc->ft;
 
     atomic_fetch_add(&ft->nb_scheduled_tasks, 1);
 
@@ -138,7 +138,7 @@ static uint8_t task_add_score(VVCTask *t, const VVCTaskType type, const uint8_t 
 //first row in tile or slice
 static int is_first_row(const VVCFrameContext *fc, const int rx, const int ry)
 {
-    const VVCFrameThread *ft    = fc->frame_thread;
+    const VVCFrameThread *ft    = fc->ft;
     const VVCPPS *pps           = fc->ps.pps;
 
     if (ry != pps->ctb_to_row_bd[ry]) {
@@ -208,7 +208,7 @@ static void progress_done(VVCProgressListener *_l, const int type)
 {
     const ProgressListener *l   = (ProgressListener *)_l;
     const VVCTask *t            = l->task;
-    VVCFrameThread *ft          = t->fc->frame_thread;
+    VVCFrameThread *ft          = t->fc->ft;
 
     frame_thread_add_score(l->s, ft, t->rx, t->ry, type);
     sheduled_done(ft, &ft->nb_scheduled_listeners);
@@ -240,7 +240,7 @@ static void listener_init(ProgressListener *l,  VVCTask *t, VVCContext *s, const
 static void add_progress_listener(VVCFrame *ref, ProgressListener *l,
     VVCTask *t, VVCContext *s, const VVCProgress vp, const int y)
 {
-    VVCFrameThread *ft = t->fc->frame_thread;
+    VVCFrameThread *ft = t->fc->ft;
 
     atomic_fetch_add(&ft->nb_scheduled_listeners, 1);
     listener_init(l, t, s, vp, y);
@@ -249,7 +249,7 @@ static void add_progress_listener(VVCFrame *ref, ProgressListener *l,
 
 static void schedule_next_parse(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc, VVCTask *t)
 {
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     EntryPoint *ep      = t->ep;
     const VVCSPS *sps   = fc->ps.sps;
 
@@ -292,7 +292,7 @@ static void schedule_inter(VVCContext *s, VVCFrameContext *fc, const SliceContex
 
 static void parse_task_done(VVCContext *s, VVCFrameContext *fc, const int rx, const int ry)
 {
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int rs        = ry * ft->ctu_width + rx;
     const int slice_idx = fc->tab.slice_idx[rs];
     VVCTask *t          = ft->tasks + rs;
@@ -305,7 +305,7 @@ static void parse_task_done(VVCContext *s, VVCFrameContext *fc, const int rx, co
 static void task_state_done(const VVCTask *task, VVCContext *s)
 {
     VVCFrameContext *fc = task->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int rx        = task->rx;
     const int ry        = task->ry;
     const int type      = task->type;
@@ -394,7 +394,7 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static void report_frame_progress(VVCFrameContext *fc,
    const int ry, const VVCTaskType type)
 {
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int ctu_size  = ft->ctu_size;
     const int idx       = type == VVC_TASK_TYPE_INTER ? VVC_PROGRESS_MV : VVC_PROGRESS_PIXEL;
     int old;
@@ -417,7 +417,7 @@ static void report_frame_progress(VVCFrameContext *fc,
 static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int rs        = t->ry * ft->ctu_width + t->rx;
     const int slice_idx = fc->tab.slice_idx[rs];
 
@@ -433,7 +433,7 @@ static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_recon(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int rs = t->ry * ft->ctu_width + t->rx;
     const int slice_idx = fc->tab.slice_idx[rs];
 
@@ -448,7 +448,7 @@ static int run_recon(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_lmcs(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int ctu_size  = ft->ctu_size;
     const int x0        = t->rx * ctu_size;
     const int y0        = t->ry * ctu_size;
@@ -466,7 +466,7 @@ static int run_lmcs(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_deblock_v(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int rs        = t->ry * ft->ctu_width + t->rx;
     const int ctb_size  = ft->ctu_size;
     const int x0        = t->rx * ctb_size;
@@ -487,7 +487,7 @@ static int run_deblock_v(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int ctb_size  = ft->ctu_size;
     const int rs        = t->ry * ft->ctu_width + t->rx;
     const int x0        = t->rx * ctb_size;
@@ -510,7 +510,7 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int rs        = t->ry * fc->ps.pps->ctb_width + t->rx;
     const int ctb_size  = ft->ctu_size;
     const int x0        = t->rx * ctb_size;
@@ -530,7 +530,7 @@ static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->frame_thread;
+    VVCFrameThread *ft  = fc->ft;
     const int ctu_size  = ft->ctu_size;
     const int x0        = t->rx * ctu_size;
     const int y0        = t->ry * ctu_size;
@@ -571,7 +571,7 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
     VVCContext *s           = (VVCContext *)user_data;
     VVCLocalContext *lc     = local_context;
     VVCFrameContext *fc     = t->fc;
-    VVCFrameThread *ft      = fc->frame_thread;
+    VVCFrameThread *ft      = fc->ft;
     const VVCTaskType type  = t->type;
     const int idx           = type - VVC_TASK_TYPE_PARSE;
     int ret = 0;
@@ -631,7 +631,7 @@ void ff_vvc_executor_free(AVExecutor **e)
 
 void ff_vvc_frame_thread_free(VVCFrameContext *fc)
 {
-    VVCFrameThread *ft = fc->frame_thread;
+    VVCFrameThread *ft = fc->ft;
 
     if (!ft)
         return;
@@ -645,7 +645,7 @@ void ff_vvc_frame_thread_free(VVCFrameContext *fc)
 
 static void frame_thread_init_score(VVCFrameContext *fc)
 {
-    const VVCFrameThread *ft = fc->frame_thread;
+    const VVCFrameThread *ft = fc->ft;
     VVCTask task;
 
     vvc_task_init(&task, VVC_TASK_TYPE_RECON, fc, 0, 0);
@@ -671,9 +671,9 @@ static void frame_thread_init_score(VVCFrameContext *fc)
 
 int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 {
-    const VVCSPS *sps = fc->ps.sps;
-    const VVCPPS *pps = fc->ps.pps;
-    VVCFrameThread *ft = fc->frame_thread;
+    const VVCSPS *sps  = fc->ps.sps;
+    const VVCPPS *pps  = fc->ps.pps;
+    VVCFrameThread *ft = fc->ft;
     int ret;
 
     if (!ft || ft->ctu_width != pps->ctb_width ||
@@ -681,7 +681,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
         ft->ctu_size != sps->ctb_size_y) {
 
         ff_vvc_frame_thread_free(fc);
-        ft = av_calloc(1, sizeof(*fc->frame_thread));
+        ft = av_calloc(1, sizeof(*fc->ft));
         if (!ft)
             return AVERROR(ENOMEM);
 
@@ -719,7 +719,8 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
     }
 
     memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
-    fc->frame_thread = ft;
+
+    fc->ft = ft;
     frame_thread_init_score(fc);
 
     return 0;
@@ -747,7 +748,7 @@ static void check_colocation(VVCContext *s, VVCTask *t)
             return;
         }
     }
-    frame_thread_add_score(s, fc->frame_thread, t->rx, t->ry, VVC_TASK_TYPE_PARSE);
+    frame_thread_add_score(s, fc->ft, t->rx, t->ry, VVC_TASK_TYPE_PARSE);
 }
 
 static void submit_entry_point(VVCContext *s, VVCFrameThread *ft, SliceContext *sc, EntryPoint *ep)
@@ -760,7 +761,7 @@ static void submit_entry_point(VVCContext *s, VVCFrameThread *ft, SliceContext *
 
 void ff_vvc_frame_submit(VVCContext *s, VVCFrameContext *fc)
 {
-    VVCFrameThread *ft = fc->frame_thread;
+    VVCFrameThread *ft = fc->ft;
 
     for (int i = 0; i < fc->nb_slices; i++) {
         SliceContext *sc = fc->slices[i];
@@ -781,7 +782,7 @@ void ff_vvc_frame_submit(VVCContext *s, VVCFrameContext *fc)
 
 int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
 {
-    VVCFrameThread *ft = fc->frame_thread;
+    VVCFrameThread *ft = fc->ft;
 
     ff_mutex_lock(&ft->lock);
 
