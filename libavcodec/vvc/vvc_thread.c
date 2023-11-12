@@ -349,12 +349,6 @@ static void task_state_done(const VVCTask *task, VVCContext *s)
 
 static int task_ready(const AVTask *_t, void *user_data)
 {
-    const VVCTask *t            = (const VVCTask*)_t;
-    VVCFrameThread *ft          = t->fc->frame_thread;
-
-    if (atomic_load(&ft->ret))
-        return 1;
-
     return 1;
 }
 
@@ -796,9 +790,6 @@ int ff_vvc_frame_wait(VVCContext *s, VVCFrameContext *fc)
 
     ff_mutex_unlock(&ft->lock);
     ff_vvc_report_frame_finished(fc->ref);
-
-    // maybe all threads are waiting, let us wake up one
-    av_executor_execute(s->executor, NULL);
 
 #ifdef VVC_THREAD_DEBUG
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d done\r\n", (int)fc->decode_order);
