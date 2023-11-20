@@ -95,12 +95,12 @@ void ff_vvc_inv_dct2_4(int *out, const ptrdiff_t out_stride, const int *in, ptrd
     const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
     const int x2 = in[2 * in_stride], x3 = in[3 * in_stride];
     const int E[2] = {
-        a * (x0 + x2),
-        a * (x0 - x2),
+        a * (x0 + G2(+x2)),
+        a * (x0 + G2(-x2)),
     };
     const int O[2] = {
-        b * x1 + c * x3,
-        c * x1 - b * x3,
+        b * x1 + G2(+c * x3),
+        c * x1 + G2(-b * x3),
     };
 
     out[0 * out_stride] = E[0] + O[0];
