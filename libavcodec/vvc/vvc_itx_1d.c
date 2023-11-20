@@ -190,36 +190,36 @@ void ff_vvc_inv_dct2_16(int *out, const ptrdiff_t out_stride, const int *in, ptr
     const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
     const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
     const int EEE[2] = {
-        a * (x0 + x8),
-        a * (x0 - x8),
+        a * (x0 + G8(+x8)),
+        a * (x0 + G8(-x8)),
     };
     const int EEO[2] = {
-        b * x4 + c * x12,
-        c * x4 - b * x12,
+        G4(b * x4) + G8(+c * x12),
+        G4(c * x4) + G8(-b * x12),
     };
     const int EE[4] = {
         EEE[0] + EEO[0], EEE[1] + EEO[1],
         EEE[1] - EEO[1], EEE[0] - EEO[0],
     };
     const int EO[4] = {
-        d * x2  + e * x6 + f * x10 + g * x14,
-        e * x2  - g * x6 - d * x10 - f * x14,
-        f * x2  - d * x6 + g * x10 + e * x14,
-        g * x2  - f * x6 + e * x10 - d * x14,
+        G2(d * x2)  + G4(+e * x6) + G8(+f * x10 + g * x14),
+        G2(e * x2)  + G4(-g * x6) + G8(-d * x10 - f * x14),
+        G2(f * x2)  + G4(-d * x6) + G8(+g * x10 + e * x14),
+        G2(g * x2)  + G4(-f * x6) + G8(+e * x10 - d * x14),
     };
     const int E[8] = {
         EE[0] + EO[0], EE[1] + EO[1], EE[2] + EO[2], EE[3] + EO[3],
         EE[3] - EO[3], EE[2] - EO[2], EE[1] - EO[1], EE[0] - EO[0],
     };
     const int O[8] = {
-        h * x1 + i * x3 + j * x5 + k * x7 + l * x9 + m * x11 + n * x13 + o * x15,
-        i * x1 + l * x3 + o * x5 - m * x7 - j * x9 - h * x11 - k * x13 - n * x15,
-        j * x1 + o * x3 - k * x5 - i * x7 - n * x9 + l * x11 + h * x13 + m * x15,
-        k * x1 - m * x3 - i * x5 + o * x7 + h * x9 + n * x11 - j * x13 - l * x15,
-        l * x1 - j * x3 - n * x5 + h * x7 - o * x9 - i * x11 + m * x13 + k * x15,
-        m * x1 - h * x3 + l * x5 + n * x7 - i * x9 + k * x11 + o * x13 - j * x15,
-        n * x1 - k * x3 + h * x5 - j * x7 + m * x9 + o * x11 - l * x13 + i * x15,
-        o * x1 - n * x3 + m * x5 - l * x7 + k * x9 - j * x11 + i * x13 - h * x15,
+        h * x1 + G2(+i * x3) + G4(+j * x5 + k * x7) + G8(+l * x9 + m * x11 + n * x13 + o * x15),
+        i * x1 + G2(+l * x3) + G4(+o * x5 - m * x7) + G8(-j * x9 - h * x11 - k * x13 - n * x15),
+        j * x1 + G2(+o * x3) + G4(-k * x5 - i * x7) + G8(-n * x9 + l * x11 + h * x13 + m * x15),
+        k * x1 + G2(-m * x3) + G4(-i * x5 + o * x7) + G8(+h * x9 + n * x11 - j * x13 - l * x15),
+        l * x1 + G2(-j * x3) + G4(-n * x5 + h * x7) + G8(-o * x9 - i * x11 + m * x13 + k * x15),
+        m * x1 + G2(-h * x3) + G4(+l * x5 + n * x7) + G8(-i * x9 + k * x11 + o * x13 - j * x15),
+        n * x1 + G2(-k * x3) + G4(+h * x5 - j * x7) + G8(+m * x9 + o * x11 - l * x13 + i * x15),
+        o * x1 + G2(-n * x3) + G4(+m * x5 - l * x7) + G8(+k * x9 - j * x11 + i * x13 - h * x15),
     };
 
     out[0  * out_stride] = E[0] + O[0];
