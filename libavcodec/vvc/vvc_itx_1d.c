@@ -477,115 +477,99 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
     const int x26 = in[26 * in_stride], x27 = in[27 * in_stride];
     const int x28 = in[28 * in_stride], x29 = in[29 * in_stride];
     const int x30 = in[30 * in_stride], x31 = in[31 * in_stride];
-    const int x32 = in[32 * in_stride], x33 = in[33 * in_stride];
-    const int x34 = in[34 * in_stride], x35 = in[35 * in_stride];
-    const int x36 = in[36 * in_stride], x37 = in[37 * in_stride];
-    const int x38 = in[38 * in_stride], x39 = in[39 * in_stride];
-    const int x40 = in[40 * in_stride], x41 = in[41 * in_stride];
-    const int x42 = in[42 * in_stride], x43 = in[43 * in_stride];
-    const int x44 = in[44 * in_stride], x45 = in[45 * in_stride];
-    const int x46 = in[46 * in_stride], x47 = in[47 * in_stride];
-    const int x48 = in[48 * in_stride], x49 = in[49 * in_stride];
-    const int x50 = in[50 * in_stride], x51 = in[51 * in_stride];
-    const int x52 = in[52 * in_stride], x53 = in[53 * in_stride];
-    const int x54 = in[54 * in_stride], x55 = in[55 * in_stride];
-    const int x56 = in[56 * in_stride], x57 = in[57 * in_stride];
-    const int x58 = in[58 * in_stride], x59 = in[59 * in_stride];
-    const int x60 = in[60 * in_stride], x61 = in[61 * in_stride];
-    const int x62 = in[62 * in_stride], x63 = in[63 * in_stride];
+    //according to vvc specification, x31 to x63 are zeros
     const int EEEEE[2] = {
-        aa * (x0 + x32),
-        aa * (x0 - x32),
+        aa * x0,
+        aa * x0,
     };
     const int EEEEO[2] = {
-        ab * x16 + ac * x48,
-        ac * x16 - ab * x48,
+        ab * x16,
+        ac * x16,
     };
     const int EEEE[4] = {
         EEEEE[0] + EEEEO[0], EEEEE[1] + EEEEO[1],
         EEEEE[1] - EEEEO[1], EEEEE[0] - EEEEO[0],
     };
     const int EEEO[4] = {
-        ad * x8  + ae * x24 + af * x40 + ag * x56,
-        ae * x8  - ag * x24 - ad * x40 - af * x56,
-        af * x8  - ad * x24 + ag * x40 + ae * x56,
-        ag * x8  - af * x24 + ae * x40 - ad * x56,
+        ad * x8  + ae * x24,
+        ae * x8  - ag * x24,
+        af * x8  - ad * x24,
+        ag * x8  - af * x24,
     };
     const int EEE[8] = {
         EEEE[0] + EEEO[0], EEEE[1] + EEEO[1], EEEE[2] + EEEO[2], EEEE[3] + EEEO[3],
         EEEE[3] - EEEO[3], EEEE[2] - EEEO[2], EEEE[1] - EEEO[1], EEEE[0] - EEEO[0],
     };
     const int EEO[8] = {
-        ah * x4 + ai * x12 + aj * x20 + ak * x28 + al * x36 + am * x44 + an * x52 + ao * x60,
-        ai * x4 + al * x12 + ao * x20 - am * x28 - aj * x36 - ah * x44 - ak * x52 - an * x60,
-        aj * x4 + ao * x12 - ak * x20 - ai * x28 - an * x36 + al * x44 + ah * x52 + am * x60,
-        ak * x4 - am * x12 - ai * x20 + ao * x28 + ah * x36 + an * x44 - aj * x52 - al * x60,
-        al * x4 - aj * x12 - an * x20 + ah * x28 - ao * x36 - ai * x44 + am * x52 + ak * x60,
-        am * x4 - ah * x12 + al * x20 + an * x28 - ai * x36 + ak * x44 + ao * x52 - aj * x60,
-        an * x4 - ak * x12 + ah * x20 - aj * x28 + am * x36 + ao * x44 - al * x52 + ai * x60,
-        ao * x4 - an * x12 + am * x20 - al * x28 + ak * x36 - aj * x44 + ai * x52 - ah * x60,
+        ah * x4 + ai * x12 + aj * x20 + ak * x28,
+        ai * x4 + al * x12 + ao * x20 - am * x28,
+        aj * x4 + ao * x12 - ak * x20 - ai * x28,
+        ak * x4 - am * x12 - ai * x20 + ao * x28,
+        al * x4 - aj * x12 - an * x20 + ah * x28,
+        am * x4 - ah * x12 + al * x20 + an * x28,
+        an * x4 - ak * x12 + ah * x20 - aj * x28,
+        ao * x4 - an * x12 + am * x20 - al * x28,
     };
     const int EE[16] = {
         EEE[0] + EEO[0], EEE[1] + EEO[1], EEE[2] + EEO[2], EEE[3] + EEO[3], EEE[4] + EEO[4], EEE[5] + EEO[5], EEE[6] + EEO[6], EEE[7] + EEO[7],
         EEE[7] - EEO[7], EEE[6] - EEO[6], EEE[5] - EEO[5], EEE[4] - EEO[4], EEE[3] - EEO[3], EEE[2] - EEO[2], EEE[1] - EEO[1], EEE[0] - EEO[0],
     };
     const int EO[16] = {
-        ap * x2 + aq * x6 + ar * x10 + as * x14 + at * x18 + au * x22 + av * x26 + aw * x30 + ax * x34 + ay * x38 + az * x42 + ba * x46 + bb * x50 + bc * x54 + bd * x58 + be * x62,
-        aq * x2 + at * x6 + aw * x10 + az * x14 + bc * x18 - be * x22 - bb * x26 - ay * x30 - av * x34 - as * x38 - ap * x42 - ar * x46 - au * x50 - ax * x54 - ba * x58 - bd * x62,
-        ar * x2 + aw * x6 + bb * x10 - bd * x14 - ay * x18 - at * x22 - ap * x26 - au * x30 - az * x34 - be * x38 + ba * x42 + av * x46 + aq * x50 + as * x54 + ax * x58 + bc * x62,
-        as * x2 + az * x6 - bd * x10 - aw * x14 - ap * x18 - av * x22 - bc * x26 + ba * x30 + at * x34 + ar * x38 + ay * x42 - be * x46 - ax * x50 - aq * x54 - au * x58 - bb * x62,
-        at * x2 + bc * x6 - ay * x10 - ap * x14 - ax * x18 + bd * x22 + au * x26 + as * x30 + bb * x34 - az * x38 - aq * x42 - aw * x46 + be * x50 + av * x54 + ar * x58 + ba * x62,
-        au * x2 - be * x6 - at * x10 - av * x14 + bd * x18 + as * x22 + aw * x26 - bc * x30 - ar * x34 - ax * x38 + bb * x42 + aq * x46 + ay * x50 - ba * x54 - ap * x58 - az * x62,
-        av * x2 - bb * x6 - ap * x10 - bc * x14 + au * x18 + aw * x22 - ba * x26 - aq * x30 - bd * x34 + at * x38 + ax * x42 - az * x46 - ar * x50 - be * x54 + as * x58 + ay * x62,
-        aw * x2 - ay * x6 - au * x10 + ba * x14 + as * x18 - bc * x22 - aq * x26 + be * x30 + ap * x34 + bd * x38 - ar * x42 - bb * x46 + at * x50 + az * x54 - av * x58 - ax * x62,
-        ax * x2 - av * x6 - az * x10 + at * x14 + bb * x18 - ar * x22 - bd * x26 + ap * x30 - be * x34 - aq * x38 + bc * x42 + as * x46 - ba * x50 - au * x54 + ay * x58 + aw * x62,
-        ay * x2 - as * x6 - be * x10 + ar * x14 - az * x18 - ax * x22 + at * x26 + bd * x30 - aq * x34 + ba * x38 + aw * x42 - au * x46 - bc * x50 + ap * x54 - bb * x58 - av * x62,
-        az * x2 - ap * x6 + ba * x10 + ay * x14 - aq * x18 + bb * x22 + ax * x26 - ar * x30 + bc * x34 + aw * x38 - as * x42 + bd * x46 + av * x50 - at * x54 + be * x58 + au * x62,
-        ba * x2 - ar * x6 + av * x10 - be * x14 - aw * x18 + aq * x22 - az * x26 - bb * x30 + as * x34 - au * x38 + bd * x42 + ax * x46 - ap * x50 + ay * x54 + bc * x58 - at * x62,
-        bb * x2 - au * x6 + aq * x10 - ax * x14 + be * x18 + ay * x22 - ar * x26 + at * x30 - ba * x34 - bc * x38 + av * x42 - ap * x46 + aw * x50 - bd * x54 - az * x58 + as * x62,
-        bc * x2 - ax * x6 + as * x10 - aq * x14 + av * x18 - ba * x22 - be * x26 + az * x30 - au * x34 + ap * x38 - at * x42 + ay * x46 - bd * x50 - bb * x54 + aw * x58 - ar * x62,
-        bd * x2 - ba * x6 + ax * x10 - au * x14 + ar * x18 - ap * x22 + as * x26 - av * x30 + ay * x34 - bb * x38 + be * x42 + bc * x46 - az * x50 + aw * x54 - at * x58 + aq * x62,
-        be * x2 - bd * x6 + bc * x10 - bb * x14 + ba * x18 - az * x22 + ay * x26 - ax * x30 + aw * x34 - av * x38 + au * x42 - at * x46 + as * x50 - ar * x54 + aq * x58 - ap * x62,
+        ap * x2 + aq * x6 + ar * x10 + as * x14 + at * x18 + au * x22 + av * x26 + aw * x30,
+        aq * x2 + at * x6 + aw * x10 + az * x14 + bc * x18 - be * x22 - bb * x26 - ay * x30,
+        ar * x2 + aw * x6 + bb * x10 - bd * x14 - ay * x18 - at * x22 - ap * x26 - au * x30,
+        as * x2 + az * x6 - bd * x10 - aw * x14 - ap * x18 - av * x22 - bc * x26 + ba * x30,
+        at * x2 + bc * x6 - ay * x10 - ap * x14 - ax * x18 + bd * x22 + au * x26 + as * x30,
+        au * x2 - be * x6 - at * x10 - av * x14 + bd * x18 + as * x22 + aw * x26 - bc * x30,
+        av * x2 - bb * x6 - ap * x10 - bc * x14 + au * x18 + aw * x22 - ba * x26 - aq * x30,
+        aw * x2 - ay * x6 - au * x10 + ba * x14 + as * x18 - bc * x22 - aq * x26 + be * x30,
+        ax * x2 - av * x6 - az * x10 + at * x14 + bb * x18 - ar * x22 - bd * x26 + ap * x30,
+        ay * x2 - as * x6 - be * x10 + ar * x14 - az * x18 - ax * x22 + at * x26 + bd * x30,
+        az * x2 - ap * x6 + ba * x10 + ay * x14 - aq * x18 + bb * x22 + ax * x26 - ar * x30,
+        ba * x2 - ar * x6 + av * x10 - be * x14 - aw * x18 + aq * x22 - az * x26 - bb * x30,
+        bb * x2 - au * x6 + aq * x10 - ax * x14 + be * x18 + ay * x22 - ar * x26 + at * x30,
+        bc * x2 - ax * x6 + as * x10 - aq * x14 + av * x18 - ba * x22 - be * x26 + az * x30,
+        bd * x2 - ba * x6 + ax * x10 - au * x14 + ar * x18 - ap * x22 + as * x26 - av * x30,
+        be * x2 - bd * x6 + bc * x10 - bb * x14 + ba * x18 - az * x22 + ay * x26 - ax * x30,
     };
     const int E[32] = {
         EE[0]  + EO[0],  EE[1]  + EO[1],  EE[2]  + EO[2],  EE[3]  + EO[3],  EE[4]  + EO[4],  EE[5]  + EO[5],  EE[6] + EO[6], EE[7] + EO[7], EE[8] + EO[8], EE[9] + EO[9], EE[10] + EO[10], EE[11] + EO[11], EE[12] + EO[12], EE[13] + EO[13], EE[14] + EO[14], EE[15] + EO[15],
         EE[15] - EO[15], EE[14] - EO[14], EE[13] - EO[13], EE[12] - EO[12], EE[11] - EO[11], EE[10] - EO[10], EE[9] - EO[9], EE[8] - EO[8], EE[7] - EO[7], EE[6] - EO[6], EE[5]  - EO[5],  EE[4]  - EO[4],  EE[3]  - EO[3],  EE[2]  - EO[2],  EE[1]  - EO[1],  EE[0]  - EO[0],
     };
     const int O[32] = {
-        bf * x1 + bg * x3 + bh * x5 + bi * x7 + bj * x9 + bk * x11 + bl * x13 + bm * x15 + bn * x17 + bo * x19 + bp * x21 + bq * x23 +  br * x25 + bs * x27 + bt * x29 + bu * x31 + bv * x33 + bw * x35 + bx * x37 + by * x39 + bz * x41 + ca * x43 + cb * x45 + cc * x47 + cd * x49 + ce * x51 + cf * x53 + cg * x55 + ch * x57 + ci * x59 + cj * x61 + ck * x63,
-        bg * x1 + bj * x3 + bm * x5 + bp * x7 + bs * x9 + bv * x11 + by * x13 + cb * x15 + ce * x17 + ch * x19 + ck * x21 - ci * x23 + -cf * x25 - cc * x27 - bz * x29 - bw * x31 - bt * x33 - bq * x35 - bn * x37 - bk * x39 - bh * x41 - bf * x43 - bi * x45 - bl * x47 - bo * x49 - br * x51 - bu * x53 - bx * x55 - ca * x57 - cd * x59 - cg * x61 - cj * x63,
-        bh * x1 + bm * x3 + br * x5 + bw * x7 + cb * x9 + cg * x11 - ck * x13 - cf * x15 - ca * x17 - bv * x19 - bq * x21 - bl * x23 + -bg * x25 - bi * x27 - bn * x29 - bs * x31 - bx * x33 - cc * x35 - ch * x37 + cj * x39 + ce * x41 + bz * x43 + bu * x45 + bp * x47 + bk * x49 + bf * x51 + bj * x53 + bo * x55 + bt * x57 + by * x59 + cd * x61 + ci * x63,
-        bi * x1 + bp * x3 + bw * x5 + cd * x7 + ck * x9 - ce * x11 - bx * x13 - bq * x15 - bj * x17 - bh * x19 - bo * x21 - bv * x23 + -cc * x25 - cj * x27 + cf * x29 + by * x31 + br * x33 + bk * x35 + bg * x37 + bn * x39 + bu * x41 + cb * x43 + ci * x45 - cg * x47 - bz * x49 - bs * x51 - bl * x53 - bf * x55 - bm * x57 - bt * x59 - ca * x61 - ch * x63,
-        bj * x1 + bs * x3 + cb * x5 + ck * x7 - cc * x9 - bt * x11 - bk * x13 - bi * x15 - br * x17 - ca * x19 - cj * x21 + cd * x23 +  bu * x25 + bl * x27 + bh * x29 + bq * x31 + bz * x33 + ci * x35 - ce * x37 - bv * x39 - bm * x41 - bg * x43 - bp * x45 - by * x47 - ch * x49 + cf * x51 + bw * x53 + bn * x55 + bf * x57 + bo * x59 + bx * x61 + cg * x63,
-        bk * x1 + bv * x3 + cg * x5 - ce * x7 - bt * x9 - bi * x11 - bm * x13 - bx * x15 - ci * x17 + cc * x19 + br * x21 + bg * x23 +  bo * x25 + bz * x27 + ck * x29 - ca * x31 - bp * x33 - bf * x35 - bq * x37 - cb * x39 + cj * x41 + by * x43 + bn * x45 + bh * x47 + bs * x49 + cd * x51 - ch * x53 - bw * x55 - bl * x57 - bj * x59 - bu * x61 - cf * x63,
-        bl * x1 + by * x3 - ck * x5 - bx * x7 - bk * x9 - bm * x11 - bz * x13 + cj * x15 + bw * x17 + bj * x19 + bn * x21 + ca * x23 + -ci * x25 - bv * x27 - bi * x29 - bo * x31 - cb * x33 + ch * x35 + bu * x37 + bh * x39 + bp * x41 + cc * x43 - cg * x45 - bt * x47 - bg * x49 - bq * x51 - cd * x53 + cf * x55 + bs * x57 + bf * x59 + br * x61 + ce * x63,
-        bm * x1 + cb * x3 - cf * x5 - bq * x7 - bi * x9 - bx * x11 + cj * x13 + bu * x15 + bf * x17 + bt * x19 + ci * x21 - by * x23 + -bj * x25 - bp * x27 - ce * x29 + cc * x31 + bn * x33 + bl * x35 + ca * x37 - cg * x39 - br * x41 - bh * x43 - bw * x45 + ck * x47 + bv * x49 + bg * x51 + bs * x53 + ch * x55 - bz * x57 - bk * x59 - bo * x61 - cd * x63,
-        bn * x1 + ce * x3 - ca * x5 - bj * x7 - br * x9 - ci * x11 + bw * x13 + bf * x15 + bv * x17 - cj * x19 - bs * x21 - bi * x23 + -bz * x25 + cf * x27 + bo * x29 + bm * x31 + cd * x33 - cb * x35 - bk * x37 - bq * x39 - ch * x41 + bx * x43 + bg * x45 + bu * x47 - ck * x49 - bt * x51 - bh * x53 - by * x55 + cg * x57 + bp * x59 + bl * x61 + cc * x63,
-        bo * x1 + ch * x3 - bv * x5 - bh * x7 - ca * x9 + cc * x11 + bj * x13 + bt * x15 - cj * x17 - bq * x19 - bm * x21 - cf * x23 +  bx * x25 + bf * x27 + by * x29 - ce * x31 - bl * x33 - br * x35 - ck * x37 + bs * x39 + bk * x41 + cd * x43 - bz * x45 - bg * x47 - bw * x49 + cg * x51 + bn * x53 + bp * x55 + ci * x57 - bu * x59 - bi * x61 - cb * x63,
-        bp * x1 + ck * x3 - bq * x5 - bo * x7 - cj * x9 + br * x11 + bn * x13 + ci * x15 - bs * x17 - bm * x19 - ch * x21 + bt * x23 +  bl * x25 + cg * x27 - bu * x29 - bk * x31 - cf * x33 + bv * x35 + bj * x37 + ce * x39 - bw * x41 - bi * x43 - cd * x45 + bx * x47 + bh * x49 + cc * x51 - by * x53 - bg * x55 - cb * x57 + bz * x59 + bf * x61 + ca * x63,
-        bq * x1 - ci * x3 - bl * x5 - bv * x7 + cd * x9 + bg * x11 + ca * x13 - by * x15 - bi * x17 - cf * x19 + bt * x21 + bn * x23 +  ck * x25 - bo * x27 - bs * x29 + cg * x31 + bj * x33 + bx * x35 - cb * x37 - bf * x39 - cc * x41 + bw * x43 + bk * x45 + ch * x47 - br * x49 - bp * x51 + cj * x53 + bm * x55 + bu * x57 - ce * x59 - bh * x61 - bz * x63,
-        br * x1 - cf * x3 - bg * x5 - cc * x7 + bu * x9 + bo * x11 - ci * x13 - bj * x15 - bz * x17 + bx * x19 + bl * x21 + ck * x23 + -bm * x25 - bw * x27 + ca * x29 + bi * x31 + ch * x33 - bp * x35 - bt * x37 + cd * x39 + bf * x41 + ce * x43 - bs * x45 - bq * x47 + cg * x49 + bh * x51 + cb * x53 - bv * x55 - bn * x57 + cj * x59 + bk * x61 + by * x63,
-        bs * x1 - cc * x3 - bi * x5 - cj * x7 + bl * x9 + bz * x11 - bv * x13 - bp * x15 + cf * x17 + bf * x19 + cg * x21 - bo * x23 + -bw * x25 + by * x27 + bm * x29 - ci * x31 - bh * x33 - cd * x35 + br * x37 + bt * x39 - cb * x41 - bj * x43 - ck * x45 + bk * x47 + ca * x49 - bu * x51 - bq * x53 + ce * x55 + bg * x57 + ch * x59 - bn * x61 - bx * x63,
-        bt * x1 - bz * x3 - bn * x5 + cf * x7 + bh * x9 + ck * x11 - bi * x13 - ce * x15 + bo * x17 + by * x19 - bu * x21 - bs * x23 +  ca * x25 + bm * x27 - cg * x29 - bg * x31 - cj * x33 + bj * x35 + cd * x37 - bp * x39 - bx * x41 + bv * x43 + br * x45 - cb * x47 - bl * x49 + ch * x51 + bf * x53 + ci * x55 - bk * x57 - cc * x59 + bq * x61 + bw * x63,
-        bu * x1 - bw * x3 - bs * x5 + by * x7 + bq * x9 - ca * x11 - bo * x13 + cc * x15 + bm * x17 - ce * x19 - bk * x21 + cg * x23 +  bi * x25 - ci * x27 - bg * x29 + ck * x31 + bf * x33 + cj * x35 - bh * x37 - ch * x39 + bj * x41 + cf * x43 - bl * x45 - cd * x47 + bn * x49 + cb * x51 - bp * x53 - bz * x55 + br * x57 + bx * x59 - bt * x61 - bv * x63,
-        bv * x1 - bt * x3 - bx * x5 + br * x7 + bz * x9 - bp * x11 - cb * x13 + bn * x15 + cd * x17 - bl * x19 - cf * x21 + bj * x23 +  ch * x25 - bh * x27 - cj * x29 + bf * x31 - ck * x33 - bg * x35 + ci * x37 + bi * x39 - cg * x41 - bk * x43 + ce * x45 + bm * x47 - cc * x49 - bo * x51 + ca * x53 + bq * x55 - by * x57 - bs * x59 + bw * x61 + bu * x63,
-        bw * x1 - bq * x3 - cc * x5 + bk * x7 + ci * x9 - bf * x11 + ch * x13 + bl * x15 - cb * x17 - br * x19 + bv * x21 + bx * x23 + -bp * x25 - cd * x27 + bj * x29 + cj * x31 - bg * x33 + cg * x35 + bm * x37 - ca * x39 - bs * x41 + bu * x43 + by * x45 - bo * x47 - ce * x49 + bi * x51 + ck * x53 - bh * x55 + cf * x57 + bn * x59 - bz * x61 - bt * x63,
-        bx * x1 - bn * x3 - ch * x5 + bg * x7 - ce * x9 - bq * x11 + bu * x13 + ca * x15 - bk * x17 - ck * x19 + bj * x21 - cb * x23 + -bt * x25 + br * x27 + cd * x29 - bh * x31 + ci * x33 + bm * x35 - by * x37 - bw * x39 + bo * x41 + cg * x43 - bf * x45 + cf * x47 + bp * x49 - bv * x51 - bz * x53 + bl * x55 + cj * x57 - bi * x59 + cc * x61 + bs * x63,
-        by * x1 - bk * x3 + cj * x5 + bn * x7 - bv * x9 - cb * x11 + bh * x13 - cg * x15 - bq * x17 + bs * x19 + ce * x21 - bf * x23 +  cd * x25 + bt * x27 - bp * x29 - ch * x31 + bi * x33 - ca * x35 - bw * x37 + bm * x39 + ck * x41 - bl * x43 + bx * x45 + bz * x47 - bj * x49 + ci * x51 + bo * x53 - bu * x55 - cc * x57 + bg * x59 - cf * x61 - br * x63,
-        bz * x1 - bh * x3 + ce * x5 + bu * x7 - bm * x9 + cj * x11 + bp * x13 - br * x15 - ch * x17 + bk * x19 - bw * x21 - cc * x23 +  bf * x25 - cb * x27 - bx * x29 + bj * x31 - cg * x33 - bs * x35 + bo * x37 + ck * x39 - bn * x41 + bt * x43 + cf * x45 - bi * x47 + by * x49 + ca * x51 - bg * x53 + cd * x55 + bv * x57 - bl * x59 + ci * x61 + bq * x63,
-        ca * x1 - bf * x3 + bz * x5 + cb * x7 - bg * x9 + by * x11 + cc * x13 - bh * x15 + bx * x17 + cd * x19 - bi * x21 + bw * x23 +  ce * x25 - bj * x27 + bv * x29 + cf * x31 - bk * x33 + bu * x35 + cg * x37 - bl * x39 + bt * x41 + ch * x43 - bm * x45 + bs * x47 + ci * x49 - bn * x51 + br * x53 + cj * x55 - bo * x57 + bq * x59 + ck * x61 - bp * x63,
-        cb * x1 - bi * x3 + bu * x5 + ci * x7 - bp * x9 + bn * x11 - cg * x13 - bw * x15 + bg * x17 - bz * x19 - cd * x21 + bk * x23 + -bs * x25 - ck * x27 + br * x29 - bl * x31 + ce * x33 + by * x35 - bf * x37 + bx * x39 + cf * x41 - bm * x43 + bq * x45 - cj * x47 - bt * x49 + bj * x51 - cc * x53 - ca * x55 + bh * x57 - bv * x59 - ch * x61 + bo * x63,
-        cc * x1 - bl * x3 + bp * x5 - cg * x7 - by * x9 + bh * x11 - bt * x13 + ck * x15 + bu * x17 - bg * x19 + bx * x21 + ch * x23 + -bq * x25 + bk * x27 - cb * x29 - cd * x31 + bm * x33 - bo * x35 + cf * x37 + bz * x39 - bi * x41 + bs * x43 - cj * x45 - bv * x47 + bf * x49 - bw * x51 - ci * x53 + br * x55 - bj * x57 + ca * x59 + ce * x61 - bn * x63,
-        cd * x1 - bo * x3 + bk * x5 - bz * x7 - ch * x9 + bs * x11 - bg * x13 + bv * x15 - ck * x17 - bw * x19 + bh * x21 - br * x23 +  cg * x25 + ca * x27 - bl * x29 + bn * x31 - cc * x33 - ce * x35 + bp * x37 - bj * x39 + by * x41 + ci * x43 - bt * x45 + bf * x47 - bu * x49 + cj * x51 + bx * x53 - bi * x55 + bq * x57 - cf * x59 - cb * x61 + bm * x63,
-        ce * x1 - br * x3 + bf * x5 - bs * x7 + cf * x9 + cd * x11 - bq * x13 + bg * x15 - bt * x17 + cg * x19 + cc * x21 - bp * x23 +  bh * x25 - bu * x27 + ch * x29 + cb * x31 - bo * x33 + bi * x35 - bv * x37 + ci * x39 + ca * x41 - bn * x43 + bj * x45 - bw * x47 + cj * x49 + bz * x51 - bm * x53 + bk * x55 - bx * x57 + ck * x59 + by * x61 - bl * x63,
-        cf * x1 - bu * x3 + bj * x5 - bl * x7 + bw * x9 - ch * x11 - cd * x13 + bs * x15 - bh * x17 + bn * x19 - by * x21 + cj * x23 +  cb * x25 - bq * x27 + bf * x29 - bp * x31 + ca * x33 + ck * x35 - bz * x37 + bo * x39 - bg * x41 + br * x43 - cc * x45 - ci * x47 + bx * x49 - bm * x51 + bi * x53 - bt * x55 + ce * x57 + cg * x59 - bv * x61 + bk * x63,
-        cg * x1 - bx * x3 + bo * x5 - bf * x7 + bn * x9 - bw * x11 + cf * x13 + ch * x15 - by * x17 + bp * x19 - bg * x21 + bm * x23 + -bv * x25 + ce * x27 + ci * x29 - bz * x31 + bq * x33 - bh * x35 + bl * x37 - bu * x39 + cd * x41 + cj * x43 - ca * x45 + br * x47 - bi * x49 + bk * x51 - bt * x53 + cc * x55 + ck * x57 - cb * x59 + bs * x61 - bj * x63,
-        ch * x1 - ca * x3 + bt * x5 - bm * x7 + bf * x9 - bl * x11 + bs * x13 - bz * x15 + cg * x17 + ci * x19 - cb * x21 + bu * x23 + -bn * x25 + bg * x27 - bk * x29 + br * x31 - by * x33 + cf * x35 + cj * x37 - cc * x39 + bv * x41 - bo * x43 + bh * x45 - bj * x47 + bq * x49 - bx * x51 + ce * x53 + ck * x55 - cd * x57 + bw * x59 - bp * x61 + bi * x63,
-        ci * x1 - cd * x3 + by * x5 - bt * x7 + bo * x9 - bj * x11 + bf * x13 - bk * x15 + bp * x17 - bu * x19 + bz * x21 - ce * x23 +  cj * x25 + ch * x27 - cc * x29 + bx * x31 - bs * x33 + bn * x35 - bi * x37 + bg * x39 - bl * x41 + bq * x43 - bv * x45 + ca * x47 - cf * x49 + ck * x51 + cg * x53 - cb * x55 + bw * x57 - br * x59 + bm * x61 - bh * x63,
-        cj * x1 - cg * x3 + cd * x5 - ca * x7 + bx * x9 - bu * x11 + br * x13 - bo * x15 + bl * x17 - bi * x19 + bf * x21 - bh * x23 +  bk * x25 - bn * x27 + bq * x29 - bt * x31 + bw * x33 - bz * x35 + cc * x37 - cf * x39 + ci * x41 + ck * x43 - ch * x45 + ce * x47 - cb * x49 + by * x51 - bv * x53 + bs * x55 - bp * x57 + bm * x59 - bj * x61 + bg * x63,
-        ck * x1 - cj * x3 + ci * x5 - ch * x7 + cg * x9 - cf * x11 + ce * x13 - cd * x15 + cc * x17 - cb * x19 + ca * x21 - bz * x23 +  by * x25 - bx * x27 + bw * x29 - bv * x31 + bu * x33 - bt * x35 + bs * x37 - br * x39 + bq * x41 - bp * x43 + bo * x45 - bn * x47 + bm * x49 - bl * x51 + bk * x53 - bj * x55 + bi * x57 - bh * x59 + bg * x61 - bf * x63,
+        bf * x1 + bg * x3 + bh * x5 + bi * x7 + bj * x9 + bk * x11 + bl * x13 + bm * x15 + bn * x17 + bo * x19 + bp * x21 + bq * x23 +  br * x25 + bs * x27 + bt * x29 + bu * x31,
+        bg * x1 + bj * x3 + bm * x5 + bp * x7 + bs * x9 + bv * x11 + by * x13 + cb * x15 + ce * x17 + ch * x19 + ck * x21 - ci * x23 + -cf * x25 - cc * x27 - bz * x29 - bw * x31,
+        bh * x1 + bm * x3 + br * x5 + bw * x7 + cb * x9 + cg * x11 - ck * x13 - cf * x15 - ca * x17 - bv * x19 - bq * x21 - bl * x23 + -bg * x25 - bi * x27 - bn * x29 - bs * x31,
+        bi * x1 + bp * x3 + bw * x5 + cd * x7 + ck * x9 - ce * x11 - bx * x13 - bq * x15 - bj * x17 - bh * x19 - bo * x21 - bv * x23 + -cc * x25 - cj * x27 + cf * x29 + by * x31,
+        bj * x1 + bs * x3 + cb * x5 + ck * x7 - cc * x9 - bt * x11 - bk * x13 - bi * x15 - br * x17 - ca * x19 - cj * x21 + cd * x23 +  bu * x25 + bl * x27 + bh * x29 + bq * x31,
+        bk * x1 + bv * x3 + cg * x5 - ce * x7 - bt * x9 - bi * x11 - bm * x13 - bx * x15 - ci * x17 + cc * x19 + br * x21 + bg * x23 +  bo * x25 + bz * x27 + ck * x29 - ca * x31,
+        bl * x1 + by * x3 - ck * x5 - bx * x7 - bk * x9 - bm * x11 - bz * x13 + cj * x15 + bw * x17 + bj * x19 + bn * x21 + ca * x23 + -ci * x25 - bv * x27 - bi * x29 - bo * x31,
+        bm * x1 + cb * x3 - cf * x5 - bq * x7 - bi * x9 - bx * x11 + cj * x13 + bu * x15 + bf * x17 + bt * x19 + ci * x21 - by * x23 + -bj * x25 - bp * x27 - ce * x29 + cc * x31,
+        bn * x1 + ce * x3 - ca * x5 - bj * x7 - br * x9 - ci * x11 + bw * x13 + bf * x15 + bv * x17 - cj * x19 - bs * x21 - bi * x23 + -bz * x25 + cf * x27 + bo * x29 + bm * x31,
+        bo * x1 + ch * x3 - bv * x5 - bh * x7 - ca * x9 + cc * x11 + bj * x13 + bt * x15 - cj * x17 - bq * x19 - bm * x21 - cf * x23 +  bx * x25 + bf * x27 + by * x29 - ce * x31,
+        bp * x1 + ck * x3 - bq * x5 - bo * x7 - cj * x9 + br * x11 + bn * x13 + ci * x15 - bs * x17 - bm * x19 - ch * x21 + bt * x23 +  bl * x25 + cg * x27 - bu * x29 - bk * x31,
+        bq * x1 - ci * x3 - bl * x5 - bv * x7 + cd * x9 + bg * x11 + ca * x13 - by * x15 - bi * x17 - cf * x19 + bt * x21 + bn * x23 +  ck * x25 - bo * x27 - bs * x29 + cg * x31,
+        br * x1 - cf * x3 - bg * x5 - cc * x7 + bu * x9 + bo * x11 - ci * x13 - bj * x15 - bz * x17 + bx * x19 + bl * x21 + ck * x23 + -bm * x25 - bw * x27 + ca * x29 + bi * x31,
+        bs * x1 - cc * x3 - bi * x5 - cj * x7 + bl * x9 + bz * x11 - bv * x13 - bp * x15 + cf * x17 + bf * x19 + cg * x21 - bo * x23 + -bw * x25 + by * x27 + bm * x29 - ci * x31,
+        bt * x1 - bz * x3 - bn * x5 + cf * x7 + bh * x9 + ck * x11 - bi * x13 - ce * x15 + bo * x17 + by * x19 - bu * x21 - bs * x23 +  ca * x25 + bm * x27 - cg * x29 - bg * x31,
+        bu * x1 - bw * x3 - bs * x5 + by * x7 + bq * x9 - ca * x11 - bo * x13 + cc * x15 + bm * x17 - ce * x19 - bk * x21 + cg * x23 +  bi * x25 - ci * x27 - bg * x29 + ck * x31,
+        bv * x1 - bt * x3 - bx * x5 + br * x7 + bz * x9 - bp * x11 - cb * x13 + bn * x15 + cd * x17 - bl * x19 - cf * x21 + bj * x23 +  ch * x25 - bh * x27 - cj * x29 + bf * x31,
+        bw * x1 - bq * x3 - cc * x5 + bk * x7 + ci * x9 - bf * x11 + ch * x13 + bl * x15 - cb * x17 - br * x19 + bv * x21 + bx * x23 + -bp * x25 - cd * x27 + bj * x29 + cj * x31,
+        bx * x1 - bn * x3 - ch * x5 + bg * x7 - ce * x9 - bq * x11 + bu * x13 + ca * x15 - bk * x17 - ck * x19 + bj * x21 - cb * x23 + -bt * x25 + br * x27 + cd * x29 - bh * x31,
+        by * x1 - bk * x3 + cj * x5 + bn * x7 - bv * x9 - cb * x11 + bh * x13 - cg * x15 - bq * x17 + bs * x19 + ce * x21 - bf * x23 +  cd * x25 + bt * x27 - bp * x29 - ch * x31,
+        bz * x1 - bh * x3 + ce * x5 + bu * x7 - bm * x9 + cj * x11 + bp * x13 - br * x15 - ch * x17 + bk * x19 - bw * x21 - cc * x23 +  bf * x25 - cb * x27 - bx * x29 + bj * x31,
+        ca * x1 - bf * x3 + bz * x5 + cb * x7 - bg * x9 + by * x11 + cc * x13 - bh * x15 + bx * x17 + cd * x19 - bi * x21 + bw * x23 +  ce * x25 - bj * x27 + bv * x29 + cf * x31,
+        cb * x1 - bi * x3 + bu * x5 + ci * x7 - bp * x9 + bn * x11 - cg * x13 - bw * x15 + bg * x17 - bz * x19 - cd * x21 + bk * x23 + -bs * x25 - ck * x27 + br * x29 - bl * x31,
+        cc * x1 - bl * x3 + bp * x5 - cg * x7 - by * x9 + bh * x11 - bt * x13 + ck * x15 + bu * x17 - bg * x19 + bx * x21 + ch * x23 + -bq * x25 + bk * x27 - cb * x29 - cd * x31,
+        cd * x1 - bo * x3 + bk * x5 - bz * x7 - ch * x9 + bs * x11 - bg * x13 + bv * x15 - ck * x17 - bw * x19 + bh * x21 - br * x23 +  cg * x25 + ca * x27 - bl * x29 + bn * x31,
+        ce * x1 - br * x3 + bf * x5 - bs * x7 + cf * x9 + cd * x11 - bq * x13 + bg * x15 - bt * x17 + cg * x19 + cc * x21 - bp * x23 +  bh * x25 - bu * x27 + ch * x29 + cb * x31,
+        cf * x1 - bu * x3 + bj * x5 - bl * x7 + bw * x9 - ch * x11 - cd * x13 + bs * x15 - bh * x17 + bn * x19 - by * x21 + cj * x23 +  cb * x25 - bq * x27 + bf * x29 - bp * x31,
+        cg * x1 - bx * x3 + bo * x5 - bf * x7 + bn * x9 - bw * x11 + cf * x13 + ch * x15 - by * x17 + bp * x19 - bg * x21 + bm * x23 + -bv * x25 + ce * x27 + ci * x29 - bz * x31,
+        ch * x1 - ca * x3 + bt * x5 - bm * x7 + bf * x9 - bl * x11 + bs * x13 - bz * x15 + cg * x17 + ci * x19 - cb * x21 + bu * x23 + -bn * x25 + bg * x27 - bk * x29 + br * x31,
+        ci * x1 - cd * x3 + by * x5 - bt * x7 + bo * x9 - bj * x11 + bf * x13 - bk * x15 + bp * x17 - bu * x19 + bz * x21 - ce * x23 +  cj * x25 + ch * x27 - cc * x29 + bx * x31,
+        cj * x1 - cg * x3 + cd * x5 - ca * x7 + bx * x9 - bu * x11 + br * x13 - bo * x15 + bl * x17 - bi * x19 + bf * x21 - bh * x23 +  bk * x25 - bn * x27 + bq * x29 - bt * x31,
+        ck * x1 - cj * x3 + ci * x5 - ch * x7 + cg * x9 - cf * x11 + ce * x13 - cd * x15 + cc * x17 - cb * x19 + ca * x21 - bz * x23 +  by * x25 - bx * x27 + bw * x29 - bv * x31,
     };
-
     out[0  * out_stride] = E[0 ] + O[0 ];
     out[1  * out_stride] = E[1 ] + O[1 ];
     out[2  * out_stride] = E[2 ] + O[2 ];
