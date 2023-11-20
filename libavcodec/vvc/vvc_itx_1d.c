@@ -129,22 +129,22 @@ void ff_vvc_inv_dct2_8(int *out, const ptrdiff_t out_stride, const int *in, ptrd
     const int x4 = in[4 * in_stride], x5 = in[5 * in_stride];
     const int x6 = in[6 * in_stride], x7 = in[7 * in_stride];
     const int EE[2] = {
-        a * (x0 + x4),
-        a * (x0 - x4),
+        a * (x0 + G4(+x4)),
+        a * (x0 + G4(-x4)),
     };
     const int EO[2] = {
-        b * x2 + c * x6,
-        c * x2 - b * x6,
+        G2(b * x2) + G4(+c * x6),
+        G2(c * x2) + G4(-b * x6),
     };
     const int E[4] = {
         EE[0] + EO[0], EE[1] + EO[1],
         EE[1] - EO[1], EE[0] - EO[0],
     };
     const int O[4] = {
-        d * x1 + e * x3 + f * x5 + g * x7,
-        e * x1 - g * x3 - d * x5 - f * x7,
-        f * x1 - d * x3 + g * x5 + e * x7,
-        g * x1 - f * x3 + e * x5 - d * x7,
+        d * x1 + G2(+e * x3) + G4(+f * x5 + g * x7),
+        e * x1 + G2(-g * x3) + G4(-d * x5 - f * x7),
+        f * x1 + G2(-d * x3) + G4(+g * x5 + e * x7),
+        g * x1 + G2(-f * x3) + G4(+e * x5 - d * x7),
     };
 
     out[0 * out_stride] = E[0] + O[0];
