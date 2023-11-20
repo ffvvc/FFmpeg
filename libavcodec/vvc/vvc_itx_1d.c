@@ -67,7 +67,7 @@ transmatrix[2][2] = {
     { a, -a },
 }
  */
-void ff_vvc_inv_dct2_2(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_2(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
 {
     const int a = 64;
     const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
@@ -84,7 +84,7 @@ transmatrix[4][4] = {
     { c, -b,  b, -c},
 }
  */
-void ff_vvc_inv_dct2_4(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_4(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36;
     const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
@@ -116,7 +116,7 @@ transmatrix[8][8] = {
     { g, -f,  e, -d,  d, -e,  f, -g},
 }
  */
-void ff_vvc_inv_dct2_8(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_8(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18;
     const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
@@ -172,7 +172,7 @@ transmatrix[16][16] = {
     { o, -n,  m, -l,  k, -j,  i, -h,  h, -i,  j, -k,  l, -m,  n, -o},
 }
  */
-void ff_vvc_inv_dct2_16(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_16(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18, h = 90;
     const int i = 87, j = 80, k = 70, l = 57, m = 43, n = 25, o =  9;
@@ -271,7 +271,7 @@ transMatrix[32][32] = {
     { E, -D,  C, -B,  A, -z,  y, -x,  w, -v,  u, -t,  s, -r,  q, -p,  p, -q,  r, -s,  t, -u,  v, -w,  x, -y,  z, -A,  B, -C,  D, -E},
 }
  */
-void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18, h = 90;
     const int i = 87, j = 80, k = 70, l = 57, m = 43, n = 25, o =  9, p = 90;
@@ -451,7 +451,7 @@ transMatrix[64][64] = {
 }
  */
 
-void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
 {
     const int aa = 64, ab = 83, ac = 36, ad = 89, ae = 75, af = 50, ag = 18, ah = 90;
     const int ai = 87, aj = 80, ak = 70, al = 57, am = 43, an = 25, ao =  9, ap = 90;
@@ -652,12 +652,12 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
     out[63 * out_stride] = E[0]  - O[0];
 };
 
-static void matrix_mul(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size)
+static void matrix_mul(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size, const size_t nz)
 {
     for (int i = 0; i < size; i++) {
          int o = 0;
 
-         for (int j = 0; j < size; j++)
+         for (int j = 0; j < nz; j++)
               o += in[j * in_stride] * matrix[j * size];
          *out = o;
          out += out_stride;
@@ -665,15 +665,15 @@ static void matrix_mul(int *out, const ptrdiff_t out_stride, const int *in, cons
     }
 }
 
-static void inv_dct8(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size)
+static void inv_dct8(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size, const size_t nz)
 {
-    matrix_mul(out, out_stride, in, in_stride, matrix, size);
+    matrix_mul(out, out_stride, in, in_stride, matrix, size, nz);
 }
 
-#define DEFINE_INV_DCT8_1D(S)                                                                  \
-void ff_vvc_inv_dct8_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride) \
-{                                                                                              \
-    inv_dct8(out, out_stride, in, in_stride, &ff_vvc_dct8_##S##x##S[0][0], S);                 \
+#define DEFINE_INV_DCT8_1D(S)                                                                                       \
+void ff_vvc_inv_dct8_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)     \
+{                                                                                                                   \
+    inv_dct8(out, out_stride, in, in_stride, &ff_vvc_dct8_##S##x##S[0][0], S, nz);                                  \
 }
 
 DEFINE_INV_DCT8_1D( 4)
@@ -681,15 +681,15 @@ DEFINE_INV_DCT8_1D( 8)
 DEFINE_INV_DCT8_1D(16)
 DEFINE_INV_DCT8_1D(32)
 
-static void inv_dst7(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size)
+static void inv_dst7(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size, const size_t nz)
 {
-     matrix_mul(out, out_stride, in, in_stride, matrix, size);
+     matrix_mul(out, out_stride, in, in_stride, matrix, size, nz);
 }
 
-#define DEFINE_INV_DST7_1D(S)                                                                  \
-void ff_vvc_inv_dst7_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride) \
-{                                                                                              \
-    inv_dst7(out, out_stride, in, in_stride, &ff_vvc_dst7_##S##x##S[0][0], S);                 \
+#define DEFINE_INV_DST7_1D(S)                                                                                       \
+void ff_vvc_inv_dst7_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)     \
+{                                                                                                                   \
+    inv_dst7(out, out_stride, in, in_stride, &ff_vvc_dst7_##S##x##S[0][0], S, nz);                                  \
 }
 
 DEFINE_INV_DST7_1D( 4)

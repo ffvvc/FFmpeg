@@ -27,7 +27,7 @@
 #include <stddef.h>
 
 #define vvc_itx_1d_fn(name) \
-    void (name)(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride)
+    void (name)(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, size_t nz)
 typedef vvc_itx_1d_fn(*vvc_itx_1d_fn);
 
 vvc_itx_1d_fn(ff_vvc_inv_dct2_2);
