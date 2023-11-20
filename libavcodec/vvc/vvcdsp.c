@@ -64,10 +64,10 @@ static int vvc_sad(const int16_t *src0, const int16_t *src1, int dx, int dy,
     return sad;
 }
 
-#define itx_fn(type, s)                                                                         \
-static void itx_##type##_##s(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step)    \
-{                                                                                               \
-  ff_vvc_inv_##type##_##s(out, out_step, in, in_step);                                          \
+#define itx_fn(type, s)                                                                                     \
+static void itx_##type##_##s(int *out, ptrdiff_t out_step, const int *in, ptrdiff_t in_step, size_t nz)     \
+{                                                                                                           \
+  ff_vvc_inv_##type##_##s(out, out_step, in, in_step, nz);                                                  \
 }
 
 #define itx_fn_common(type) \

@@ -447,8 +447,8 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     const VVCSPS *sps   = fc->ps.sps;
     const int w         = tb->tb_width;
     const int h         = tb->tb_height;
-    const int nzw       = tb->max_scan_x + 1;
-    const int nzh       = tb->max_scan_y + 1;
+    const size_t nzw    = tb->max_scan_x + 1;
+    const size_t nzh    = tb->max_scan_y + 1;
     const int shift1    = 7;
     const int shift2    = 5 + sps->log2_transform_range - sps->bit_depth;
 
@@ -466,11 +466,11 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     }
 
     for (int x = 0; x < nzw; x++)
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w);
+        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w, nzh);
     scale_clip(temp, nzw, w, h, shift1, sps->log2_transform_range);
 
     for (int y = 0; y < h; y++)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1);
+        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1, nzw);
     scale(tb->coeffs, tb->coeffs, w, h, shift2);
 }
 
@@ -479,11 +479,13 @@ static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     const VVCSPS *sps   = fc->ps.sps;
     const int w         = tb->tb_width;
     const int h         = tb->tb_height;
+    const size_t nzw    = tb->max_scan_x + 1;
+    const size_t nzh    = tb->max_scan_y + 1;
 
     if (w > 1)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1);
+        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1, nzw);
     else
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1);
+        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1, nzh);
     scale(tb->coeffs, temp, w, h, 6 + sps->log2_transform_range - sps->bit_depth);
 }
 
