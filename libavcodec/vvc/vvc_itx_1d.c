@@ -299,58 +299,58 @@ void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptr
     const int x28 = in[28 * in_stride], x29 = in[29 * in_stride];
     const int x30 = in[30 * in_stride], x31 = in[31 * in_stride];
     const int EEEE[2] = {
-        a * (x0 + x16),
-        a * (x0 - x16),
+        a * (x0 + G16(+x16)),
+        a * (x0 + G16(-x16)),
     };
     const int EEEO[2] = {
-        b * x8 + c * x24,
-        c * x8 - b * x24,
+        G8(b * x8) + G16(+c * x24),
+        G8(c * x8) + G16(-b * x24),
     };
     const int EEE[4] = {
         EEEE[0] + EEEO[0], EEEE[1] + EEEO[1],
         EEEE[1] - EEEO[1], EEEE[0] - EEEO[0],
     };
     const int EEO[4] = {
-        d * x4  + e * x12 + f * x20 + g * x28,
-        e * x4  - g * x12 - d * x20 - f * x28,
-        f * x4  - d * x12 + g * x20 + e * x28,
-        g * x4  - f * x12 + e * x20 - d * x28,
+        G4(d * x4) + G8(+e * x12) + G16(+f * x20 + g * x28),
+        G4(e * x4) + G8(-g * x12) + G16(-d * x20 - f * x28),
+        G4(f * x4) + G8(-d * x12) + G16(+g * x20 + e * x28),
+        G4(g * x4) + G8(-f * x12) + G16(+e * x20 - d * x28),
     };
     const int EE[8] = {
         EEE[0] + EEO[0], EEE[1] + EEO[1], EEE[2] + EEO[2], EEE[3] + EEO[3],
         EEE[3] - EEO[3], EEE[2] - EEO[2], EEE[1] - EEO[1], EEE[0] - EEO[0],
     };
     const int EO[8] = {
-        h * x2 + i * x6 + j * x10 + k * x14 + l * x18 + m * x22 + n * x26 + o * x30,
-        i * x2 + l * x6 + o * x10 - m * x14 - j * x18 - h * x22 - k * x26 - n * x30,
-        j * x2 + o * x6 - k * x10 - i * x14 - n * x18 + l * x22 + h * x26 + m * x30,
-        k * x2 - m * x6 - i * x10 + o * x14 + h * x18 + n * x22 - j * x26 - l * x30,
-        l * x2 - j * x6 - n * x10 + h * x14 - o * x18 - i * x22 + m * x26 + k * x30,
-        m * x2 - h * x6 + l * x10 + n * x14 - i * x18 + k * x22 + o * x26 - j * x30,
-        n * x2 - k * x6 + h * x10 - j * x14 + m * x18 + o * x22 - l * x26 + i * x30,
-        o * x2 - n * x6 + m * x10 - l * x14 + k * x18 - j * x22 + i * x26 - h * x30,
+        G2(h * x2) + G4(+i * x6) + G8(+ j * x10 + k * x14) + G16(+l * x18 + m * x22 + n * x26 + o * x30),
+        G2(i * x2) + G4(+l * x6) + G8(+ o * x10 - m * x14) + G16(-j * x18 - h * x22 - k * x26 - n * x30),
+        G2(j * x2) + G4(+o * x6) + G8(- k * x10 - i * x14) + G16(-n * x18 + l * x22 + h * x26 + m * x30),
+        G2(k * x2) + G4(-m * x6) + G8(- i * x10 + o * x14) + G16(+h * x18 + n * x22 - j * x26 - l * x30),
+        G2(l * x2) + G4(-j * x6) + G8(- n * x10 + h * x14) + G16(-o * x18 - i * x22 + m * x26 + k * x30),
+        G2(m * x2) + G4(-h * x6) + G8(+ l * x10 + n * x14) + G16(-i * x18 + k * x22 + o * x26 - j * x30),
+        G2(n * x2) + G4(-k * x6) + G8(+ h * x10 - j * x14) + G16(+m * x18 + o * x22 - l * x26 + i * x30),
+        G2(o * x2) + G4(-n * x6) + G8(+ m * x10 - l * x14) + G16(+k * x18 - j * x22 + i * x26 - h * x30),
     };
     const int E[16] = {
         EE[0] + EO[0], EE[1] + EO[1], EE[2] + EO[2], EE[3] + EO[3], EE[4] + EO[4], EE[5] + EO[5], EE[6] + EO[6], EE[7] + EO[7],
         EE[7] - EO[7], EE[6] - EO[6], EE[5] - EO[5], EE[4] - EO[4], EE[3] - EO[3], EE[2] - EO[2], EE[1] - EO[1], EE[0] - EO[0],
     };
     const int O[16] = {
-        p * x1 + q * x3 + r * x5 + s * x7 + t * x9 + u * x11 + v * x13 + w * x15 + x * x17 + y * x19 + z * x21 + A * x23 + B * x25 + C * x27 + D * x29 + E_* x31,
-        q * x1 + t * x3 + w * x5 + z * x7 + C * x9 - E_* x11 - B * x13 - y * x15 - v * x17 - s * x19 - p * x21 - r * x23 - u * x25 - x * x27 - A * x29 - D * x31,
-        r * x1 + w * x3 + B * x5 - D * x7 - y * x9 - t * x11 - p * x13 - u * x15 - z * x17 - E_* x19 + A * x21 + v * x23 + q * x25 + s * x27 + x * x29 + C * x31,
-        s * x1 + z * x3 - D * x5 - w * x7 - p * x9 - v * x11 - C * x13 + A * x15 + t * x17 + r * x19 + y * x21 - E_* x23 - x * x25 - q * x27 - u * x29 - B * x31,
-        t * x1 + C * x3 - y * x5 - p * x7 - x * x9 + D * x11 + u * x13 + s * x15 + B * x17 - z * x19 - q * x21 - w * x23 + E_* x25 + v * x27 + r * x29 + A * x31,
-        u * x1 - E_* x3 - t * x5 - v * x7 + D * x9 + s * x11 + w * x13 - C * x15 - r * x17 - x * x19 + B * x21 + q * x23 + y * x25 - A * x27 - p * x29 - z * x31,
-        v * x1 - B * x3 - p * x5 - C * x7 + u * x9 + w * x11 - A * x13 - q * x15 - D * x17 + t * x19 + x * x21 - z * x23 - r * x25 - E_* x27 + s * x29 + y * x31,
-        w * x1 - y * x3 - u * x5 + A * x7 + s * x9 - C * x11 - q * x13 + E_* x15 + p * x17 + D * x19 - r * x21 - B * x23 + t * x25 + z * x27 - v * x29 - x * x31,
-        x * x1 - v * x3 - z * x5 + t * x7 + B * x9 - r * x11 - D * x13 + p * x15 - E_* x17 - q * x19 + C * x21 + s * x23 - A * x25 - u * x27 + y * x29 + w * x31,
-        y * x1 - s * x3 - E_* x5 + r * x7 - z * x9 - x * x11 + t * x13 + D * x15 - q * x17 + A * x19 + w * x21 - u * x23 - C * x25 + p * x27 - B * x29 - v * x31,
-        z * x1 - p * x3 + A * x5 + y * x7 - q * x9 + B * x11 + x * x13 - r * x15 + C * x17 + w * x19 - s * x21 + D * x23 + v * x25 - t * x27 + E_* x29 + u * x31,
-        A * x1 - r * x3 + v * x5 - E_* x7 - w * x9 + q * x11 - z * x13 - B * x15 + s * x17 - u * x19 + D * x21 + x * x23 - p * x25 + y * x27 + C * x29 - t * x31,
-        B * x1 - u * x3 + q * x5 - x * x7 + E_* x9 + y * x11 - r * x13 + t * x15 - A * x17 - C * x19 + v * x21 - p * x23 + w * x25 - D * x27 - z * x29 + s * x31,
-        C * x1 - x * x3 + s * x5 - q * x7 + v * x9 - A * x11 - E_* x13 + z * x15 - u * x17 + p * x19 - t * x21 + y * x23 - D * x25 - B * x27 + w * x29 - r * x31,
-        D * x1 - A * x3 + x * x5 - u * x7 + r * x9 - p * x11 + s * x13 - v * x15 + y * x17 - B * x19 + E_* x21 + C * x23 - z * x25 + w * x27 - t * x29 + q * x31,
-        E_* x1 - D * x3 + C * x5 - B * x7 + A * x9 - z * x11 + y * x13 - x * x15 + w * x17 - v * x19 + u * x21 - t * x23 + s * x25 - r * x27 + q * x29 - p * x31,
+        p * x1 + G2(+q * x3) + G4(+r * x5 + s * x7) + G8(+t * x9 + u * x11 + v * x13 + w * x15) + G16(+x * x17 + y * x19 + z * x21 + A * x23 + B * x25 + C * x27 + D * x29 + E_* x31),
+        q * x1 + G2(+t * x3) + G4(+w * x5 + z * x7) + G8(+C * x9 - E_* x11 - B * x13 - y * x15) + G16(-v * x17 - s * x19 - p * x21 - r * x23 - u * x25 - x * x27 - A * x29 - D * x31),
+        r * x1 + G2(+w * x3) + G4(+B * x5 - D * x7) + G8(-y * x9 - t * x11 - p * x13 - u * x15) + G16(-z * x17 - E_* x19 + A * x21 + v * x23 + q * x25 + s * x27 + x * x29 + C * x31),
+        s * x1 + G2(+z * x3) + G4(-D * x5 - w * x7) + G8(-p * x9 - v * x11 - C * x13 + A * x15) + G16(+t * x17 + r * x19 + y * x21 - E_* x23 - x * x25 - q * x27 - u * x29 - B * x31),
+        t * x1 + G2(+C * x3) + G4(-y * x5 - p * x7) + G8(-x * x9 + D * x11 + u * x13 + s * x15) + G16(+B * x17 - z * x19 - q * x21 - w * x23 + E_* x25 + v * x27 + r * x29 + A * x31),
+        u * x1 + G2(-E_* x3) + G4(-t * x5 - v * x7) + G8(+D * x9 + s * x11 + w * x13 - C * x15) + G16(-r * x17 - x * x19 + B * x21 + q * x23 + y * x25 - A * x27 - p * x29 - z * x31),
+        v * x1 + G2(-B * x3) + G4(-p * x5 - C * x7) + G8(+u * x9 + w * x11 - A * x13 - q * x15) + G16(-D * x17 + t * x19 + x * x21 - z * x23 - r * x25 - E_* x27 + s * x29 + y * x31),
+        w * x1 + G2(-y * x3) + G4(-u * x5 + A * x7) + G8(+s * x9 - C * x11 - q * x13 + E_* x15) + G16(+p * x17 + D * x19 - r * x21 - B * x23 + t * x25 + z * x27 - v * x29 - x * x31),
+        x * x1 + G2(-v * x3) + G4(-z * x5 + t * x7) + G8(+B * x9 - r * x11 - D * x13 + p * x15) + G16(-E_* x17 - q * x19 + C * x21 + s * x23 - A * x25 - u * x27 + y * x29 + w * x31),
+        y * x1 + G2(-s * x3) + G4(-E_* x5 + r * x7) + G8(-z * x9 - x * x11 + t * x13 + D * x15) + G16(-q * x17 + A * x19 + w * x21 - u * x23 - C * x25 + p * x27 - B * x29 - v * x31),
+        z * x1 + G2(-p * x3) + G4(+A * x5 + y * x7) + G8(-q * x9 + B * x11 + x * x13 - r * x15) + G16(+C * x17 + w * x19 - s * x21 + D * x23 + v * x25 - t * x27 + E_* x29 + u * x31),
+        A * x1 + G2(-r * x3) + G4(+v * x5 - E_* x7) + G8(-w * x9 + q * x11 - z * x13 - B * x15) + G16(+s * x17 - u * x19 + D * x21 + x * x23 - p * x25 + y * x27 + C * x29 - t * x31),
+        B * x1 + G2(-u * x3) + G4(+q * x5 - x * x7) + G8(+E_* x9 + y * x11 - r * x13 + t * x15) + G16(-A * x17 - C * x19 + v * x21 - p * x23 + w * x25 - D * x27 - z * x29 + s * x31),
+        C * x1 + G2(-x * x3) + G4(+s * x5 - q * x7) + G8(+v * x9 - A * x11 - E_* x13 + z * x15) + G16(-u * x17 + p * x19 - t * x21 + y * x23 - D * x25 - B * x27 + w * x29 - r * x31),
+        D * x1 + G2(-A * x3) + G4(+x * x5 - u * x7) + G8(+r * x9 - p * x11 + s * x13 - v * x15) + G16(+y * x17 - B * x19 + E_* x21 + C * x23 - z * x25 + w * x27 - t * x29 + q * x31),
+        E_* x1 + G2(-D * x3) + G4(+C * x5 - B * x7) + G8(+A * x9 - z * x11 + y * x13 - x * x15) + G16(+w * x17 - v * x19 + u * x21 - t * x23 + s * x25 - r * x27 + q * x29 - p * x31),
     };
 
     out[0  * out_stride] = E[0]  + O[0];
