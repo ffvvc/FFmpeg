@@ -481,6 +481,17 @@ static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     const size_t nzw    = tb->max_scan_x + 1;
     const size_t nzh    = tb->max_scan_y + 1;
 
+    if ((w > 1 && nzw == 1 && trh == DCT2) || (h > 1 && nzh == 1 && trv == DCT2)) {
+        const int shift = 6 + sps->log2_transform_range - sps->bit_depth;
+        const int add   = 1 << (shift - 1);
+        const int dc    = (tb->coeffs[0] * DCT_A + add) >> shift;
+
+        for (int i = 0; i < w * h; i++)
+            tb->coeffs[i] = dc;
+
+        return;
+    }
+
     if (w > 1)
         fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1, nzw);
     else
