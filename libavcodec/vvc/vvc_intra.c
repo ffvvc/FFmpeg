@@ -442,6 +442,8 @@ static void dequant(const VVCLocalContext *lc, const TransformUnit *tu, Transfor
     }
 }
 
+//transmatrix[0][0]
+#define DCT_A 64
 static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int *temp)
 {
     const VVCSPS *sps   = fc->ps.sps;
@@ -449,15 +451,12 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     const int h         = tb->tb_height;
     const size_t nzw    = tb->max_scan_x + 1;
     const size_t nzh    = tb->max_scan_y + 1;
-    const int shift1    = 7;
-    const int shift2    = 5 + sps->log2_transform_range - sps->bit_depth;
+    const int shift[]   = { 7, 5 + sps->log2_transform_range - sps->bit_depth };
 
     if (w == h && nzw == 1 && nzh == 1 && trh == DCT2 && trv == DCT2) {
-        const int add1  = 1 << (shift1 - 1);
-        const int add2  = 1 << (shift2 - 1);
-        const int a     = 64;
-        const int t     = (tb->coeffs[0] * a + add1) >> shift1;
-        const int dc    = (t * a + add2) >> shift2;
+        const int add[] = { 1 << (shift[0] - 1), 1 << (shift[1] - 1) };
+        const int t     = (tb->coeffs[0] * DCT_A + add[0]) >> shift[0];
+        const int dc    = (t * DCT_A + add[1]) >> shift[1];
 
         for (int i = 0; i < w * h; i++)
             tb->coeffs[i] = dc;
@@ -467,11 +466,11 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
 
     for (int x = 0; x < nzw; x++)
         fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w, nzh);
-    scale_clip(temp, nzw, w, h, shift1, sps->log2_transform_range);
+    scale_clip(temp, nzw, w, h, shift[0], sps->log2_transform_range);
 
     for (int y = 0; y < h; y++)
         fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1, nzw);
-    scale(tb->coeffs, tb->coeffs, w, h, shift2);
+    scale(tb->coeffs, tb->coeffs, w, h, shift[1]);
 }
 
 static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int  *temp)
