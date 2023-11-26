@@ -66,6 +66,19 @@
 #define G8(m)  ((nz >  8) ? (m) : 0)
 #define G16(m) ((nz > 16) ? (m) : 0)
 
+//xxx_1 functions to make itx_2d and itx_1d happy
+void ff_vvc_inv_dct2_1(int *coeffs, const ptrdiff_t stride, const size_t nz)
+{
+}
+
+void ff_vvc_inv_dct8_1(int *coeffs, const ptrdiff_t stride, const size_t nz)
+{
+}
+
+void ff_vvc_inv_dst7_1(int *coeffs, const ptrdiff_t stride, const size_t nz)
+{
+}
+
 /*
 transmatrix[2][2] = {
     { a,  a },

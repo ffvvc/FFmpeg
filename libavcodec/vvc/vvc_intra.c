@@ -273,32 +273,6 @@ static void predict_intra(VVCLocalContext *lc, const TransformUnit *tu, const in
     }
 }
 
-static void scale_clip(int *coeff, const int nzw, const int w, const int h,
-    const int shift, const int log2_transform_range)
-{
-    const int add = 1 << (shift - 1);
-    for (int y = 0; y < h; y++) {
-        int *p = coeff + y * w;
-        for (int x = 0; x < nzw; x++) {
-            *p = av_clip_intp2((*p + add) >> shift, log2_transform_range);
-            p++;
-        }
-        memset(p, 0, sizeof(*p) * (w - nzw));
-    }
-}
-
-static void scale(int *out, const int *in, const int w, const int h, const int shift)
-{
-    const int add = 1 << (shift - 1);
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int *o = out + y * w + x;
-            const int *i = in + y * w + x;
-            *o = (*i + add) >> shift;
-        }
-    }
-}
-
 // part of 8.7.3 Scaling process for transform coefficients
 static void derive_qp(const VVCLocalContext *lc, const TransformUnit *tu, TransformBlock *tb)
 {
@@ -442,63 +416,6 @@ static void dequant(const VVCLocalContext *lc, const TransformUnit *tu, Transfor
     }
 }
 
-//transmatrix[0][0]
-#define DCT_A 64
-static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv)
-{
-    const VVCSPS *sps   = fc->ps.sps;
-    const int w         = tb->tb_width;
-    const int h         = tb->tb_height;
-    const size_t nzw    = tb->max_scan_x + 1;
-    const size_t nzh    = tb->max_scan_y + 1;
-    const int shift[]   = { 7, 5 + sps->log2_transform_range - sps->bit_depth };
-
-    if (w == h && nzw == 1 && nzh == 1 && trh == DCT2 && trv == DCT2) {
-        const int add[] = { 1 << (shift[0] - 1), 1 << (shift[1] - 1) };
-        const int t     = (tb->coeffs[0] * DCT_A + add[0]) >> shift[0];
-        const int dc    = (t * DCT_A + add[1]) >> shift[1];
-
-        for (int i = 0; i < w * h; i++)
-            tb->coeffs[i] = dc;
-
-        return;
-    }
-
-    for (int x = 0; x < nzw; x++)
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](tb->coeffs + x, w, nzh);
-    scale_clip(tb->coeffs, nzw, w, h, shift[0], sps->log2_transform_range);
-
-    for (int y = 0; y < h; y++)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, nzw);
-    scale(tb->coeffs, tb->coeffs, w, h, shift[1]);
-}
-
-static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv)
-{
-    const VVCSPS *sps   = fc->ps.sps;
-    const int w         = tb->tb_width;
-    const int h         = tb->tb_height;
-    const size_t nzw    = tb->max_scan_x + 1;
-    const size_t nzh    = tb->max_scan_y + 1;
-
-    if ((w > 1 && nzw == 1 && trh == DCT2) || (h > 1 && nzh == 1 && trv == DCT2)) {
-        const int shift = 6 + sps->log2_transform_range - sps->bit_depth;
-        const int add   = 1 << (shift - 1);
-        const int dc    = (tb->coeffs[0] * DCT_A + add) >> shift;
-
-        for (int i = 0; i < w * h; i++)
-            tb->coeffs[i] = dc;
-
-        return;
-    }
-
-    if (w > 1)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs, 1, nzw);
-    else
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](tb->coeffs, 1, nzh);
-    scale(tb->coeffs, tb->coeffs, w, h, 6 + sps->log2_transform_range - sps->bit_depth);
-}
-
 static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const CodingUnit *cu)
 {
     const VVCSPS *sps        = lc->fc->ps.sps;
@@ -544,10 +461,8 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
                 if (cu->apply_lfnst_flag[c_idx])
                     ilfnst_transform(lc, tb);
                 derive_transform_type(fc, lc, tb, &trh, &trv);
-                if (w > 1 && h > 1)
-                    itx_2d(fc, tb, trh, trv);
-                else
-                    itx_1d(fc, tb, trh, trv);
+                fc->vvcdsp.itx.itx[trh][trv][av_log2(w)][av_log2(h)](tb->coeffs,
+                    tb->max_scan_x + 1, tb->max_scan_y + 1, sps->log2_transform_range, sps->bit_depth);
             }
 
             if (chroma_scale)

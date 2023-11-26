@@ -64,23 +64,135 @@ static int vvc_sad(const int16_t *src0, const int16_t *src1, int dx, int dy,
     return sad;
 }
 
-#define itx_fn(type, s)                                                         \
-static void itx_##type##_##s(int *coeffs, ptrdiff_t step, size_t nz)            \
-{                                                                               \
-  ff_vvc_inv_##type##_##s(coeffs, step, nz);                                    \
+static void scale_clip(int *coeff, const int nzw, const int w, const int h,
+    const int shift, const int log2_transform_range)
+{
+    const int add = 1 << (shift - 1);
+    for (int y = 0; y < h; y++) {
+        int *p = coeff + y * w;
+        for (int x = 0; x < nzw; x++) {
+            *p = av_clip_intp2((*p + add) >> shift, log2_transform_range);
+            p++;
+        }
+        memset(p, 0, sizeof(*p) * (w - nzw));
+    }
 }
 
-#define itx_fn_common(type) \
-    itx_fn(type, 4);        \
-    itx_fn(type, 8);        \
-    itx_fn(type, 16);       \
-    itx_fn(type, 32);       \
+static void scale(int *c, const int w, const int h, const int shift)
+{
+    const int add = 1 << (shift - 1);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            *c = (*c + add) >> shift;
+            c++;
+        }
+    }
+}
 
-itx_fn_common(dct2);
-itx_fn_common(dst7);
-itx_fn_common(dct8);
-itx_fn(dct2, 2);
-itx_fn(dct2, 64);
+//transmatrix[0][0]
+#define DCT_A 64
+static void itx_2d(int *coeffs,
+    const int w, const int h, const size_t nzw, const size_t nzh,
+    const intptr_t log2_transform_range, const intptr_t bd,
+    const vvc_itx_1d_fn first_1d_fn, const vvc_itx_1d_fn second_1d_fn, const int has_dconly)
+{
+    const int shift[]   = { 7, 5 + log2_transform_range - bd };
+
+    if (w == h && nzw == 1 && nzh == 1 && has_dconly) {
+        const int add[] = { 1 << (shift[0] - 1), 1 << (shift[1] - 1) };
+        const int t     = (coeffs[0] * DCT_A + add[0]) >> shift[0];
+        const int dc    = (t * DCT_A + add[1]) >> shift[1];
+        for (int i = 0; i < w * h; i++)
+            coeffs[i] = dc;
+        return;
+    }
+
+    for (int x = 0; x < nzw; x++)
+        first_1d_fn(coeffs + x, w, nzh);
+    scale_clip(coeffs, nzw, w, h, shift[0], log2_transform_range);
+
+    for (int y = 0; y < h; y++)
+        second_1d_fn(coeffs + y * w, 1, nzw);
+    scale(coeffs, w, h, shift[1]);
+}
+
+static void itx_1d(int *coeffs,
+    const int w, const int h, const size_t nzw, const size_t nzh,
+    const intptr_t log2_transform_range, const intptr_t bd,
+    const vvc_itx_1d_fn first_1d_fn, const vvc_itx_1d_fn second_1d_fn, const int has_dconly)
+{
+    const int shift = 6 + log2_transform_range - bd;
+    if (nzw == 1 && nzh == 1 && has_dconly) {
+        const int add   = 1 << (shift - 1);
+        const int dc    = (coeffs[0] * DCT_A + add) >> shift;
+        for (int i = 0; i < w * h; i++)
+            coeffs[i] = dc;
+        return;
+    }
+
+    if (w > 1)
+        second_1d_fn(coeffs, 1, nzw);
+    else
+        first_1d_fn(coeffs, 1, nzh);
+    scale(coeffs, w, h, shift);
+}
+
+#define itx_fn(type1, type2, w, h, has_dconly)                                                  \
+static void itx_##type1##_##type2##_##w##x##h(int *coeffs,                                      \
+    const size_t nzw, const size_t nzh, const intptr_t log2_transform_range, const intptr_t bd) \
+{                                                                                               \
+    if (w > 1 && h > 1)                                                                         \
+        itx_2d(coeffs, w, h, nzw, nzh, log2_transform_range, bd,                                \
+            ff_vvc_inv_##type2##_##h, ff_vvc_inv_##type1##_##w, has_dconly);                    \
+    else                                                                                        \
+        itx_1d(coeffs, w, h, nzw, nzh, log2_transform_range, bd,                                \
+            ff_vvc_inv_##type2##_##h, ff_vvc_inv_##type1##_##w, has_dconly);                    \
+}
+
+#define itx_fn_1d_type(type, s, has_dconly)                                     \
+    itx_fn(type, dct2, s, 1, has_dconly)                                        \
+    itx_fn(dct2, type, 1, s, has_dconly)                                        \
+
+#define itx_fn_1d(s)                                                            \
+    itx_fn_1d_type(dct2, s, 1)                                                  \
+    itx_fn_1d_type(dct8, s, 0)                                                  \
+    itx_fn_1d_type(dst7, s, 0)                                                  \
+
+#define itx_fn_height_4_to_32(type1, type2, w, has_dconly)                      \
+    itx_fn(type1, type2, w,  4, has_dconly)                                     \
+    itx_fn(type1, type2, w,  8, has_dconly)                                     \
+    itx_fn(type1, type2, w, 16, has_dconly)                                     \
+    itx_fn(type1, type2, w, 32, has_dconly)                                     \
+
+#define itx_fn_dxtn_height(type, w, has_dconly)                                 \
+    itx_fn(type, dct2, w,  2, has_dconly)                                       \
+    itx_fn(type, dct2, w, 64, has_dconly)                                       \
+    itx_fn_height_4_to_32(type, dct2, w, has_dconly)                            \
+    itx_fn_height_4_to_32(type, dct8, w, 0)                                     \
+    itx_fn_height_4_to_32(type, dst7, w, 0)                                     \
+
+// for width 2 and 64, we can only do dct2
+#define itx_fn_dct2(w)                                                          \
+    itx_fn_dxtn_height(dct2, w, 1)                                              \
+
+// for width 4, 8, 16, 32, we can do dct2, dct8 and dst7
+#define itx_fn_dxtn(w)                                                          \
+    itx_fn_dct2(w)                                                              \
+    itx_fn_dxtn_height(dct8, w, 0)                                              \
+    itx_fn_dxtn_height(dst7, w, 0)                                              \
+
+// 1d
+itx_fn_1d(16)
+itx_fn_1d(32)
+itx_fn_1d_type(dct2, 64, 1)
+
+// 2d
+itx_fn_dct2(2)
+itx_fn_dxtn(4)
+itx_fn_dxtn(8)
+itx_fn_dxtn(16)
+itx_fn_dxtn(32)
+itx_fn_dct2(64)
 
 typedef struct IntraEdgeParams {
     uint8_t* top;
