@@ -72,13 +72,13 @@ transmatrix[2][2] = {
     { a, -a },
 }
  */
-void ff_vvc_inv_dct2_2(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
+void ff_vvc_inv_dct2_2(int *coeffs, const ptrdiff_t stride, const size_t nz)
 {
     const int a = 64;
-    const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
+    const int x0 = coeffs[0 * stride], x1 = coeffs[1 * stride];
 
-    out[0 * out_stride] = a * (x0 + x1);
-    out[1 * out_stride] = a * (x0 - x1);
+    coeffs[0 * stride] = a * (x0 + x1);
+    coeffs[1 * stride] = a * (x0 - x1);
 }
 
 /*
@@ -89,11 +89,11 @@ transmatrix[4][4] = {
     { c, -b,  b, -c},
 }
  */
-void ff_vvc_inv_dct2_4(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
+void ff_vvc_inv_dct2_4(int *coeffs, const ptrdiff_t stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36;
-    const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
-    const int x2 = in[2 * in_stride], x3 = in[3 * in_stride];
+    const int x0 = coeffs[0 * stride], x1 = coeffs[1 * stride];
+    const int x2 = coeffs[2 * stride], x3 = coeffs[3 * stride];
     const int E[2] = {
         a * (x0 + G2(+x2)),
         a * (x0 + G2(-x2)),
@@ -103,10 +103,10 @@ void ff_vvc_inv_dct2_4(int *out, const ptrdiff_t out_stride, const int *in, ptrd
         c * x1 + G2(-b * x3),
     };
 
-    out[0 * out_stride] = E[0] + O[0];
-    out[1 * out_stride] = E[1] + O[1];
-    out[2 * out_stride] = E[1] - O[1];
-    out[3 * out_stride] = E[0] - O[0];
+    coeffs[0 * stride] = E[0] + O[0];
+    coeffs[1 * stride] = E[1] + O[1];
+    coeffs[2 * stride] = E[1] - O[1];
+    coeffs[3 * stride] = E[0] - O[0];
 }
 
 /*
@@ -121,13 +121,13 @@ transmatrix[8][8] = {
     { g, -f,  e, -d,  d, -e,  f, -g},
 }
  */
-void ff_vvc_inv_dct2_8(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
+void ff_vvc_inv_dct2_8(int *coeffs, const ptrdiff_t stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18;
-    const int x0 = in[0 * in_stride], x1 = in[1 * in_stride];
-    const int x2 = in[2 * in_stride], x3 = in[3 * in_stride];
-    const int x4 = in[4 * in_stride], x5 = in[5 * in_stride];
-    const int x6 = in[6 * in_stride], x7 = in[7 * in_stride];
+    const int x0 = coeffs[0 * stride], x1 = coeffs[1 * stride];
+    const int x2 = coeffs[2 * stride], x3 = coeffs[3 * stride];
+    const int x4 = coeffs[4 * stride], x5 = coeffs[5 * stride];
+    const int x6 = coeffs[6 * stride], x7 = coeffs[7 * stride];
     const int EE[2] = {
         a * (x0 + G4(+x4)),
         a * (x0 + G4(-x4)),
@@ -147,14 +147,14 @@ void ff_vvc_inv_dct2_8(int *out, const ptrdiff_t out_stride, const int *in, ptrd
         g * x1 + G2(-f * x3) + G4(+e * x5 - d * x7),
     };
 
-    out[0 * out_stride] = E[0] + O[0];
-    out[1 * out_stride] = E[1] + O[1];
-    out[2 * out_stride] = E[2] + O[2];
-    out[3 * out_stride] = E[3] + O[3];
-    out[4 * out_stride] = E[3] - O[3];
-    out[5 * out_stride] = E[2] - O[2];
-    out[6 * out_stride] = E[1] - O[1];
-    out[7 * out_stride] = E[0] - O[0];
+    coeffs[0 * stride] = E[0] + O[0];
+    coeffs[1 * stride] = E[1] + O[1];
+    coeffs[2 * stride] = E[2] + O[2];
+    coeffs[3 * stride] = E[3] + O[3];
+    coeffs[4 * stride] = E[3] - O[3];
+    coeffs[5 * stride] = E[2] - O[2];
+    coeffs[6 * stride] = E[1] - O[1];
+    coeffs[7 * stride] = E[0] - O[0];
 }
 
 /*
@@ -177,18 +177,18 @@ transmatrix[16][16] = {
     { o, -n,  m, -l,  k, -j,  i, -h,  h, -i,  j, -k,  l, -m,  n, -o},
 }
  */
-void ff_vvc_inv_dct2_16(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
+void ff_vvc_inv_dct2_16(int *coeffs, const ptrdiff_t stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18, h = 90;
     const int i = 87, j = 80, k = 70, l = 57, m = 43, n = 25, o =  9;
-    const int x0  = in[0  * in_stride], x1  = in[1  * in_stride];
-    const int x2  = in[2  * in_stride], x3  = in[3  * in_stride];
-    const int x4  = in[4  * in_stride], x5  = in[5  * in_stride];
-    const int x6  = in[6  * in_stride], x7  = in[7  * in_stride];
-    const int x8  = in[8  * in_stride], x9  = in[9  * in_stride];
-    const int x10 = in[10 * in_stride], x11 = in[11 * in_stride];
-    const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
-    const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
+    const int x0  = coeffs[0  * stride], x1  = coeffs[1  * stride];
+    const int x2  = coeffs[2  * stride], x3  = coeffs[3  * stride];
+    const int x4  = coeffs[4  * stride], x5  = coeffs[5  * stride];
+    const int x6  = coeffs[6  * stride], x7  = coeffs[7  * stride];
+    const int x8  = coeffs[8  * stride], x9  = coeffs[9  * stride];
+    const int x10 = coeffs[10 * stride], x11 = coeffs[11 * stride];
+    const int x12 = coeffs[12 * stride], x13 = coeffs[13 * stride];
+    const int x14 = coeffs[14 * stride], x15 = coeffs[15 * stride];
     const int EEE[2] = {
         a * (x0 + G8(+x8)),
         a * (x0 + G8(-x8)),
@@ -222,22 +222,22 @@ void ff_vvc_inv_dct2_16(int *out, const ptrdiff_t out_stride, const int *in, ptr
         o * x1 + G2(-n * x3) + G4(+m * x5 - l * x7) + G8(+k * x9 - j * x11 + i * x13 - h * x15),
     };
 
-    out[0  * out_stride] = E[0] + O[0];
-    out[1  * out_stride] = E[1] + O[1];
-    out[2  * out_stride] = E[2] + O[2];
-    out[3  * out_stride] = E[3] + O[3];
-    out[4  * out_stride] = E[4] + O[4];
-    out[5  * out_stride] = E[5] + O[5];
-    out[6  * out_stride] = E[6] + O[6];
-    out[7  * out_stride] = E[7] + O[7];
-    out[8  * out_stride] = E[7] - O[7];
-    out[9  * out_stride] = E[6] - O[6];
-    out[10 * out_stride] = E[5] - O[5];
-    out[11 * out_stride] = E[4] - O[4];
-    out[12 * out_stride] = E[3] - O[3];
-    out[13 * out_stride] = E[2] - O[2];
-    out[14 * out_stride] = E[1] - O[1];
-    out[15 * out_stride] = E[0] - O[0];
+    coeffs[0  * stride] = E[0] + O[0];
+    coeffs[1  * stride] = E[1] + O[1];
+    coeffs[2  * stride] = E[2] + O[2];
+    coeffs[3  * stride] = E[3] + O[3];
+    coeffs[4  * stride] = E[4] + O[4];
+    coeffs[5  * stride] = E[5] + O[5];
+    coeffs[6  * stride] = E[6] + O[6];
+    coeffs[7  * stride] = E[7] + O[7];
+    coeffs[8  * stride] = E[7] - O[7];
+    coeffs[9  * stride] = E[6] - O[6];
+    coeffs[10 * stride] = E[5] - O[5];
+    coeffs[11 * stride] = E[4] - O[4];
+    coeffs[12 * stride] = E[3] - O[3];
+    coeffs[13 * stride] = E[2] - O[2];
+    coeffs[14 * stride] = E[1] - O[1];
+    coeffs[15 * stride] = E[0] - O[0];
 }
 
 /*
@@ -276,28 +276,28 @@ transMatrix[32][32] = {
     { E, -D,  C, -B,  A, -z,  y, -x,  w, -v,  u, -t,  s, -r,  q, -p,  p, -q,  r, -s,  t, -u,  v, -w,  x, -y,  z, -A,  B, -C,  D, -E},
 }
  */
-void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
+void ff_vvc_inv_dct2_32(int *coeffs, const ptrdiff_t stride, const size_t nz)
 {
     const int a = 64, b = 83, c = 36, d = 89, e = 75, f = 50, g = 18, h = 90;
     const int i = 87, j = 80, k = 70, l = 57, m = 43, n = 25, o =  9, p = 90;
     const int q = 90, r = 88, s = 85, t = 82, u = 78, v = 73, w = 67, x = 61;
     const int y = 54, z = 46, A = 38, B = 31, C = 22, D = 13, E_=  4;
-    const int x0  = in[0  * in_stride], x1  = in[1  * in_stride];
-    const int x2  = in[2  * in_stride], x3  = in[3  * in_stride];
-    const int x4  = in[4  * in_stride], x5  = in[5  * in_stride];
-    const int x6  = in[6  * in_stride], x7  = in[7  * in_stride];
-    const int x8  = in[8  * in_stride], x9  = in[9  * in_stride];
-    const int x10 = in[10 * in_stride], x11 = in[11 * in_stride];
-    const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
-    const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
-    const int x16 = in[16 * in_stride], x17 = in[17 * in_stride];
-    const int x18 = in[18 * in_stride], x19 = in[19 * in_stride];
-    const int x20 = in[20 * in_stride], x21 = in[21 * in_stride];
-    const int x22 = in[22 * in_stride], x23 = in[23 * in_stride];
-    const int x24 = in[24 * in_stride], x25 = in[25 * in_stride];
-    const int x26 = in[26 * in_stride], x27 = in[27 * in_stride];
-    const int x28 = in[28 * in_stride], x29 = in[29 * in_stride];
-    const int x30 = in[30 * in_stride], x31 = in[31 * in_stride];
+    const int x0  = coeffs[0  * stride], x1  = coeffs[1  * stride];
+    const int x2  = coeffs[2  * stride], x3  = coeffs[3  * stride];
+    const int x4  = coeffs[4  * stride], x5  = coeffs[5  * stride];
+    const int x6  = coeffs[6  * stride], x7  = coeffs[7  * stride];
+    const int x8  = coeffs[8  * stride], x9  = coeffs[9  * stride];
+    const int x10 = coeffs[10 * stride], x11 = coeffs[11 * stride];
+    const int x12 = coeffs[12 * stride], x13 = coeffs[13 * stride];
+    const int x14 = coeffs[14 * stride], x15 = coeffs[15 * stride];
+    const int x16 = coeffs[16 * stride], x17 = coeffs[17 * stride];
+    const int x18 = coeffs[18 * stride], x19 = coeffs[19 * stride];
+    const int x20 = coeffs[20 * stride], x21 = coeffs[21 * stride];
+    const int x22 = coeffs[22 * stride], x23 = coeffs[23 * stride];
+    const int x24 = coeffs[24 * stride], x25 = coeffs[25 * stride];
+    const int x26 = coeffs[26 * stride], x27 = coeffs[27 * stride];
+    const int x28 = coeffs[28 * stride], x29 = coeffs[29 * stride];
+    const int x30 = coeffs[30 * stride], x31 = coeffs[31 * stride];
     const int EEEE[2] = {
         a * (x0 + G16(+x16)),
         a * (x0 + G16(-x16)),
@@ -353,38 +353,38 @@ void ff_vvc_inv_dct2_32(int *out, const ptrdiff_t out_stride, const int *in, ptr
         E_* x1 + G2(-D * x3) + G4(+C * x5 - B * x7) + G8(+A * x9 - z * x11 + y * x13 - x * x15) + G16(+w * x17 - v * x19 + u * x21 - t * x23 + s * x25 - r * x27 + q * x29 - p * x31),
     };
 
-    out[0  * out_stride] = E[0]  + O[0];
-    out[1  * out_stride] = E[1]  + O[1];
-    out[2  * out_stride] = E[2]  + O[2];
-    out[3  * out_stride] = E[3]  + O[3];
-    out[4  * out_stride] = E[4]  + O[4];
-    out[5  * out_stride] = E[5]  + O[5];
-    out[6  * out_stride] = E[6]  + O[6];
-    out[7  * out_stride] = E[7]  + O[7];
-    out[8  * out_stride] = E[8]  + O[8];
-    out[9  * out_stride] = E[9]  + O[9];
-    out[10 * out_stride] = E[10] + O[10];
-    out[11 * out_stride] = E[11] + O[11];
-    out[12 * out_stride] = E[12] + O[12];
-    out[13 * out_stride] = E[13] + O[13];
-    out[14 * out_stride] = E[14] + O[14];
-    out[15 * out_stride] = E[15] + O[15];
-    out[16 * out_stride] = E[15] - O[15];
-    out[17 * out_stride] = E[14] - O[14];
-    out[18 * out_stride] = E[13] - O[13];
-    out[19 * out_stride] = E[12] - O[12];
-    out[20 * out_stride] = E[11] - O[11];
-    out[21 * out_stride] = E[10] - O[10];
-    out[22 * out_stride] = E[9]  - O[9];
-    out[23 * out_stride] = E[8]  - O[8];
-    out[24 * out_stride] = E[7]  - O[7];
-    out[25 * out_stride] = E[6]  - O[6];
-    out[26 * out_stride] = E[5]  - O[5];
-    out[27 * out_stride] = E[4]  - O[4];
-    out[28 * out_stride] = E[3]  - O[3];
-    out[29 * out_stride] = E[2]  - O[2];
-    out[30 * out_stride] = E[1]  - O[1];
-    out[31 * out_stride] = E[0]  - O[0];
+    coeffs[0  * stride] = E[0]  + O[0];
+    coeffs[1  * stride] = E[1]  + O[1];
+    coeffs[2  * stride] = E[2]  + O[2];
+    coeffs[3  * stride] = E[3]  + O[3];
+    coeffs[4  * stride] = E[4]  + O[4];
+    coeffs[5  * stride] = E[5]  + O[5];
+    coeffs[6  * stride] = E[6]  + O[6];
+    coeffs[7  * stride] = E[7]  + O[7];
+    coeffs[8  * stride] = E[8]  + O[8];
+    coeffs[9  * stride] = E[9]  + O[9];
+    coeffs[10 * stride] = E[10] + O[10];
+    coeffs[11 * stride] = E[11] + O[11];
+    coeffs[12 * stride] = E[12] + O[12];
+    coeffs[13 * stride] = E[13] + O[13];
+    coeffs[14 * stride] = E[14] + O[14];
+    coeffs[15 * stride] = E[15] + O[15];
+    coeffs[16 * stride] = E[15] - O[15];
+    coeffs[17 * stride] = E[14] - O[14];
+    coeffs[18 * stride] = E[13] - O[13];
+    coeffs[19 * stride] = E[12] - O[12];
+    coeffs[20 * stride] = E[11] - O[11];
+    coeffs[21 * stride] = E[10] - O[10];
+    coeffs[22 * stride] = E[9]  - O[9];
+    coeffs[23 * stride] = E[8]  - O[8];
+    coeffs[24 * stride] = E[7]  - O[7];
+    coeffs[25 * stride] = E[6]  - O[6];
+    coeffs[26 * stride] = E[5]  - O[5];
+    coeffs[27 * stride] = E[4]  - O[4];
+    coeffs[28 * stride] = E[3]  - O[3];
+    coeffs[29 * stride] = E[2]  - O[2];
+    coeffs[30 * stride] = E[1]  - O[1];
+    coeffs[31 * stride] = E[0]  - O[0];
 }
 
 /*
@@ -456,7 +456,7 @@ transMatrix[64][64] = {
 }
  */
 
-void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)
+void ff_vvc_inv_dct2_64(int *coeffs, const ptrdiff_t stride, const size_t nz)
 {
     const int aa = 64, ab = 83, ac = 36, ad = 89, ae = 75, af = 50, ag = 18, ah = 90;
     const int ai = 87, aj = 80, ak = 70, al = 57, am = 43, an = 25, ao =  9, ap = 90;
@@ -466,22 +466,22 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
     const int bo = 81, bp = 79, bq = 77, br = 73, bs = 71, bt = 69, bu = 65, bv = 62;
     const int bw = 59, bx = 56, by = 52, bz = 48, ca = 44, cb = 41, cc = 37, cd = 33;
     const int ce = 28, cf = 24, cg = 20, ch = 15, ci = 11, cj =  7, ck =  2;
-    const int x0  = in[0  * in_stride], x1  = in[1  * in_stride];
-    const int x2  = in[2  * in_stride], x3  = in[3  * in_stride];
-    const int x4  = in[4  * in_stride], x5  = in[5  * in_stride];
-    const int x6  = in[6  * in_stride], x7  = in[7  * in_stride];
-    const int x8  = in[8  * in_stride], x9  = in[9  * in_stride];
-    const int x10 = in[10 * in_stride], x11 = in[11 * in_stride];
-    const int x12 = in[12 * in_stride], x13 = in[13 * in_stride];
-    const int x14 = in[14 * in_stride], x15 = in[15 * in_stride];
-    const int x16 = in[16 * in_stride], x17 = in[17 * in_stride];
-    const int x18 = in[18 * in_stride], x19 = in[19 * in_stride];
-    const int x20 = in[20 * in_stride], x21 = in[21 * in_stride];
-    const int x22 = in[22 * in_stride], x23 = in[23 * in_stride];
-    const int x24 = in[24 * in_stride], x25 = in[25 * in_stride];
-    const int x26 = in[26 * in_stride], x27 = in[27 * in_stride];
-    const int x28 = in[28 * in_stride], x29 = in[29 * in_stride];
-    const int x30 = in[30 * in_stride], x31 = in[31 * in_stride];
+    const int x0  = coeffs[0  * stride], x1  = coeffs[1  * stride];
+    const int x2  = coeffs[2  * stride], x3  = coeffs[3  * stride];
+    const int x4  = coeffs[4  * stride], x5  = coeffs[5  * stride];
+    const int x6  = coeffs[6  * stride], x7  = coeffs[7  * stride];
+    const int x8  = coeffs[8  * stride], x9  = coeffs[9  * stride];
+    const int x10 = coeffs[10 * stride], x11 = coeffs[11 * stride];
+    const int x12 = coeffs[12 * stride], x13 = coeffs[13 * stride];
+    const int x14 = coeffs[14 * stride], x15 = coeffs[15 * stride];
+    const int x16 = coeffs[16 * stride], x17 = coeffs[17 * stride];
+    const int x18 = coeffs[18 * stride], x19 = coeffs[19 * stride];
+    const int x20 = coeffs[20 * stride], x21 = coeffs[21 * stride];
+    const int x22 = coeffs[22 * stride], x23 = coeffs[23 * stride];
+    const int x24 = coeffs[24 * stride], x25 = coeffs[25 * stride];
+    const int x26 = coeffs[26 * stride], x27 = coeffs[27 * stride];
+    const int x28 = coeffs[28 * stride], x29 = coeffs[29 * stride];
+    const int x30 = coeffs[30 * stride], x31 = coeffs[31 * stride];
     //according to vvc specification, x31 to x63 are zeros
     const int EEEEE[2] = {
         aa * x0,
@@ -575,94 +575,100 @@ void ff_vvc_inv_dct2_64(int *out, const ptrdiff_t out_stride, const int *in, ptr
         cj * x1 + G2(-cg * x3) + G4(+cd * x5 - ca * x7) + G8(+bx * x9 - bu * x11 + br * x13 - bo * x15) + G16(+bl * x17 - bi * x19 + bf * x21 - bh * x23 +  bk * x25 - bn * x27 + bq * x29 - bt * x31),
         ck * x1 + G2(-cj * x3) + G4(+ci * x5 - ch * x7) + G8(+cg * x9 - cf * x11 + ce * x13 - cd * x15) + G16(+cc * x17 - cb * x19 + ca * x21 - bz * x23 +  by * x25 - bx * x27 + bw * x29 - bv * x31),
     };
-    out[0  * out_stride] = E[0 ] + O[0 ];
-    out[1  * out_stride] = E[1 ] + O[1 ];
-    out[2  * out_stride] = E[2 ] + O[2 ];
-    out[3  * out_stride] = E[3 ] + O[3 ];
-    out[4  * out_stride] = E[4 ] + O[4 ];
-    out[5  * out_stride] = E[5 ] + O[5 ];
-    out[6  * out_stride] = E[6 ] + O[6 ];
-    out[7  * out_stride] = E[7 ] + O[7 ];
-    out[8  * out_stride] = E[8 ] + O[8 ];
-    out[9  * out_stride] = E[9 ] + O[9 ];
-    out[10 * out_stride] = E[10] + O[10];
-    out[11 * out_stride] = E[11] + O[11];
-    out[12 * out_stride] = E[12] + O[12];
-    out[13 * out_stride] = E[13] + O[13];
-    out[14 * out_stride] = E[14] + O[14];
-    out[15 * out_stride] = E[15] + O[15];
-    out[16 * out_stride] = E[16] + O[16];
-    out[17 * out_stride] = E[17] + O[17];
-    out[18 * out_stride] = E[18] + O[18];
-    out[19 * out_stride] = E[19] + O[19];
-    out[20 * out_stride] = E[20] + O[20];
-    out[21 * out_stride] = E[21] + O[21];
-    out[22 * out_stride] = E[22] + O[22];
-    out[23 * out_stride] = E[23] + O[23];
-    out[24 * out_stride] = E[24] + O[24];
-    out[25 * out_stride] = E[25] + O[25];
-    out[26 * out_stride] = E[26] + O[26];
-    out[27 * out_stride] = E[27] + O[27];
-    out[28 * out_stride] = E[28] + O[28];
-    out[29 * out_stride] = E[29] + O[29];
-    out[30 * out_stride] = E[30] + O[30];
-    out[31 * out_stride] = E[31] + O[31];
-    out[32 * out_stride] = E[31] - O[31];
-    out[33 * out_stride] = E[30] - O[30];
-    out[34 * out_stride] = E[29] - O[29];
-    out[35 * out_stride] = E[28] - O[28];
-    out[36 * out_stride] = E[27] - O[27];
-    out[37 * out_stride] = E[26] - O[26];
-    out[38 * out_stride] = E[25] - O[25];
-    out[39 * out_stride] = E[24] - O[24];
-    out[40 * out_stride] = E[23] - O[23];
-    out[41 * out_stride] = E[22] - O[22];
-    out[42 * out_stride] = E[21] - O[21];
-    out[43 * out_stride] = E[20] - O[20];
-    out[44 * out_stride] = E[19] - O[19];
-    out[45 * out_stride] = E[18] - O[18];
-    out[46 * out_stride] = E[17] - O[17];
-    out[47 * out_stride] = E[16] - O[16];
-    out[48 * out_stride] = E[15] - O[15];
-    out[49 * out_stride] = E[14] - O[14];
-    out[50 * out_stride] = E[13] - O[13];
-    out[51 * out_stride] = E[12] - O[12];
-    out[52 * out_stride] = E[11] - O[11];
-    out[53 * out_stride] = E[10] - O[10];
-    out[54 * out_stride] = E[9]  - O[9];
-    out[55 * out_stride] = E[8]  - O[8];
-    out[56 * out_stride] = E[7]  - O[7];
-    out[57 * out_stride] = E[6]  - O[6];
-    out[58 * out_stride] = E[5]  - O[5];
-    out[59 * out_stride] = E[4]  - O[4];
-    out[60 * out_stride] = E[3]  - O[3];
-    out[61 * out_stride] = E[2]  - O[2];
-    out[62 * out_stride] = E[1]  - O[1];
-    out[63 * out_stride] = E[0]  - O[0];
+    coeffs[0  * stride] = E[0 ] + O[0 ];
+    coeffs[1  * stride] = E[1 ] + O[1 ];
+    coeffs[2  * stride] = E[2 ] + O[2 ];
+    coeffs[3  * stride] = E[3 ] + O[3 ];
+    coeffs[4  * stride] = E[4 ] + O[4 ];
+    coeffs[5  * stride] = E[5 ] + O[5 ];
+    coeffs[6  * stride] = E[6 ] + O[6 ];
+    coeffs[7  * stride] = E[7 ] + O[7 ];
+    coeffs[8  * stride] = E[8 ] + O[8 ];
+    coeffs[9  * stride] = E[9 ] + O[9 ];
+    coeffs[10 * stride] = E[10] + O[10];
+    coeffs[11 * stride] = E[11] + O[11];
+    coeffs[12 * stride] = E[12] + O[12];
+    coeffs[13 * stride] = E[13] + O[13];
+    coeffs[14 * stride] = E[14] + O[14];
+    coeffs[15 * stride] = E[15] + O[15];
+    coeffs[16 * stride] = E[16] + O[16];
+    coeffs[17 * stride] = E[17] + O[17];
+    coeffs[18 * stride] = E[18] + O[18];
+    coeffs[19 * stride] = E[19] + O[19];
+    coeffs[20 * stride] = E[20] + O[20];
+    coeffs[21 * stride] = E[21] + O[21];
+    coeffs[22 * stride] = E[22] + O[22];
+    coeffs[23 * stride] = E[23] + O[23];
+    coeffs[24 * stride] = E[24] + O[24];
+    coeffs[25 * stride] = E[25] + O[25];
+    coeffs[26 * stride] = E[26] + O[26];
+    coeffs[27 * stride] = E[27] + O[27];
+    coeffs[28 * stride] = E[28] + O[28];
+    coeffs[29 * stride] = E[29] + O[29];
+    coeffs[30 * stride] = E[30] + O[30];
+    coeffs[31 * stride] = E[31] + O[31];
+    coeffs[32 * stride] = E[31] - O[31];
+    coeffs[33 * stride] = E[30] - O[30];
+    coeffs[34 * stride] = E[29] - O[29];
+    coeffs[35 * stride] = E[28] - O[28];
+    coeffs[36 * stride] = E[27] - O[27];
+    coeffs[37 * stride] = E[26] - O[26];
+    coeffs[38 * stride] = E[25] - O[25];
+    coeffs[39 * stride] = E[24] - O[24];
+    coeffs[40 * stride] = E[23] - O[23];
+    coeffs[41 * stride] = E[22] - O[22];
+    coeffs[42 * stride] = E[21] - O[21];
+    coeffs[43 * stride] = E[20] - O[20];
+    coeffs[44 * stride] = E[19] - O[19];
+    coeffs[45 * stride] = E[18] - O[18];
+    coeffs[46 * stride] = E[17] - O[17];
+    coeffs[47 * stride] = E[16] - O[16];
+    coeffs[48 * stride] = E[15] - O[15];
+    coeffs[49 * stride] = E[14] - O[14];
+    coeffs[50 * stride] = E[13] - O[13];
+    coeffs[51 * stride] = E[12] - O[12];
+    coeffs[52 * stride] = E[11] - O[11];
+    coeffs[53 * stride] = E[10] - O[10];
+    coeffs[54 * stride] = E[9]  - O[9];
+    coeffs[55 * stride] = E[8]  - O[8];
+    coeffs[56 * stride] = E[7]  - O[7];
+    coeffs[57 * stride] = E[6]  - O[6];
+    coeffs[58 * stride] = E[5]  - O[5];
+    coeffs[59 * stride] = E[4]  - O[4];
+    coeffs[60 * stride] = E[3]  - O[3];
+    coeffs[61 * stride] = E[2]  - O[2];
+    coeffs[62 * stride] = E[1]  - O[1];
+    coeffs[63 * stride] = E[0]  - O[0];
 };
 
-static void matrix_mul(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size, const size_t nz)
+static void matrix_mul(int *coeffs, const ptrdiff_t stride, const int8_t* matrix, const int size, const size_t nz)
 {
+    //for dst7 and dct8, coeffs > 16 are zero out
+    int tmp[16];
+
+    for (int i = 0; i < nz; i++)
+        tmp[i] = coeffs[i * stride];
+
     for (int i = 0; i < size; i++) {
          int o = 0;
 
          for (int j = 0; j < nz; j++)
-              o += in[j * in_stride] * matrix[j * size];
-         *out = o;
-         out += out_stride;
+              o += tmp[j] * matrix[j * size];
+         *coeffs = o;
+         coeffs += stride;
          matrix++;
     }
 }
 
-static void inv_dct8(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t *matrix, const int size, const size_t nz)
+static void inv_dct8(int *coeffs, const ptrdiff_t stride, const int8_t *matrix, const int size, const size_t nz)
 {
-    matrix_mul(out, out_stride, in, in_stride, matrix, size, nz);
+    matrix_mul(coeffs, stride, matrix, size, nz);
 }
 
-#define DEFINE_INV_DCT8_1D(S)                                                                                       \
-void ff_vvc_inv_dct8_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)     \
-{                                                                                                                   \
-    inv_dct8(out, out_stride, in, in_stride, &ff_vvc_dct8_##S##x##S[0][0], S, nz);                                  \
+#define DEFINE_INV_DCT8_1D(S)                                                   \
+void ff_vvc_inv_dct8_ ## S(int *coeffs, const ptrdiff_t stride, const size_t nz) \
+{                                                                               \
+    inv_dct8(coeffs, stride, &ff_vvc_dct8_##S##x##S[0][0], S, nz);               \
 }
 
 DEFINE_INV_DCT8_1D( 4)
@@ -670,15 +676,15 @@ DEFINE_INV_DCT8_1D( 8)
 DEFINE_INV_DCT8_1D(16)
 DEFINE_INV_DCT8_1D(32)
 
-static void inv_dst7(int *out, const ptrdiff_t out_stride, const int *in, const ptrdiff_t in_stride, const int8_t* matrix, const int size, const size_t nz)
+static void inv_dst7(int *coeffs, const ptrdiff_t stride, const int8_t *matrix, const int size, const size_t nz)
 {
-     matrix_mul(out, out_stride, in, in_stride, matrix, size, nz);
+    matrix_mul(coeffs, stride, matrix, size, nz);
 }
 
-#define DEFINE_INV_DST7_1D(S)                                                                                       \
-void ff_vvc_inv_dst7_ ## S(int *out, ptrdiff_t out_stride, const int *in, ptrdiff_t in_stride, const size_t nz)     \
-{                                                                                                                   \
-    inv_dst7(out, out_stride, in, in_stride, &ff_vvc_dst7_##S##x##S[0][0], S, nz);                                  \
+#define DEFINE_INV_DST7_1D(S)                                                   \
+void ff_vvc_inv_dst7_ ## S(int *coeffs, const ptrdiff_t stride, const size_t nz) \
+{                                                                               \
+    inv_dst7(coeffs, stride, &ff_vvc_dst7_##S##x##S[0][0], S, nz);               \
 }
 
 DEFINE_INV_DST7_1D( 4)
