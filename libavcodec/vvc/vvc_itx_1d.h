@@ -30,16 +30,19 @@
     void (name)(int *coeffs, ptrdiff_t stride, size_t nz)
 typedef vvc_itx_1d_fn(*vvc_itx_1d_fn);
 
+vvc_itx_1d_fn(ff_vvc_inv_dct2_1);
 vvc_itx_1d_fn(ff_vvc_inv_dct2_2);
 vvc_itx_1d_fn(ff_vvc_inv_dct2_4);
 vvc_itx_1d_fn(ff_vvc_inv_dct2_8);
 vvc_itx_1d_fn(ff_vvc_inv_dct2_16);
 vvc_itx_1d_fn(ff_vvc_inv_dct2_32);
 vvc_itx_1d_fn(ff_vvc_inv_dct2_64);
+vvc_itx_1d_fn(ff_vvc_inv_dst7_1);
 vvc_itx_1d_fn(ff_vvc_inv_dst7_4);
 vvc_itx_1d_fn(ff_vvc_inv_dst7_8);
 vvc_itx_1d_fn(ff_vvc_inv_dst7_16);
 vvc_itx_1d_fn(ff_vvc_inv_dst7_32);
+vvc_itx_1d_fn(ff_vvc_inv_dct8_1);
 vvc_itx_1d_fn(ff_vvc_inv_dct8_4);
 vvc_itx_1d_fn(ff_vvc_inv_dct8_8);
 vvc_itx_1d_fn(ff_vvc_inv_dct8_16);

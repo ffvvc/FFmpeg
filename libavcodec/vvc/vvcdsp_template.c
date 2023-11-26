@@ -94,27 +94,73 @@ static void FUNC(transform_bdpcm)(int *coeffs, const int width, const int height
     }
 }
 
+#define ITX_1D_TYPE(TYPE, type, s)                                              \
+    do {                                                                        \
+        const int log2 = av_log2(s);                                            \
+        itx->itx[TYPE][DCT2][log2][0] = itx_##type##_##dct2##_##s##x##1;        \
+        itx->itx[DCT2][TYPE][0][log2] = itx_##dct2##_##type##_##1##x##s;        \
+    } while (0)
+
+#define ITX_1D(s)                                                               \
+    do {                                                                        \
+        ITX_1D_TYPE(DCT2, dct2, s);                                             \
+        ITX_1D_TYPE(DCT8, dct8, s);                                             \
+        ITX_1D_TYPE(DST7, dst7, s);                                             \
+    } while (0)
+
+#define ITX_HEIGHT_4_TO_32(TYPE1, TYPE2, type1, type2, w)                       \
+    do {                                                                        \
+        const int log2 = av_log2(w);                                            \
+        itx->itx[TYPE1][TYPE2][log2][2] = itx_##type1##_##type2##_##w##x##4;    \
+        itx->itx[TYPE1][TYPE2][log2][3] = itx_##type1##_##type2##_##w##x##8;    \
+        itx->itx[TYPE1][TYPE2][log2][4] = itx_##type1##_##type2##_##w##x##16;   \
+        itx->itx[TYPE1][TYPE2][log2][5] = itx_##type1##_##type2##_##w##x##32;   \
+    } while (0)
+
+#define ITX_DXTN_HEIGHT(TYPE, type, w)                                          \
+    do {                                                                        \
+        const int log2 = av_log2(w);                                            \
+        itx->itx[TYPE][DCT2][log2][1] = itx_##type##_##dct2##_##w##x##2;        \
+        itx->itx[TYPE][DCT2][log2][6] = itx_##type##_##dct2##_##w##x##64;       \
+        ITX_HEIGHT_4_TO_32(TYPE, DCT2, type, dct2, w);                          \
+        ITX_HEIGHT_4_TO_32(TYPE, DCT8, type, dct8, w);                          \
+        ITX_HEIGHT_4_TO_32(TYPE, DST7, type, dst7, w);                          \
+    } while (0)
+
+#define ITX_DCT2(w)                                                             \
+    do {                                                                        \
+        ITX_DXTN_HEIGHT(DCT2, dct2, w);                                         \
+    } while (0)
+
+#define ITX_DXTN(w)                                                             \
+    do {                                                                        \
+        ITX_DCT2(w);                                                            \
+        ITX_DXTN_HEIGHT(DCT8, dct8, w);                                         \
+        ITX_DXTN_HEIGHT(DST7, dst7, w);                                         \
+    } while (0)
+
 static void FUNC(ff_vvc_itx_dsp_init)(VVCItxDSPContext *const itx)
 {
-#define VVC_ITX(TYPE, type, s)                                                  \
-        itx->itx[TYPE][TX_SIZE_##s]      = itx_##type##_##s;                    \
-
-#define VVC_ITX_COMMON(TYPE, type)                                              \
-        VVC_ITX(TYPE, type, 4);                                                 \
-        VVC_ITX(TYPE, type, 8);                                                 \
-        VVC_ITX(TYPE, type, 16);                                                \
-        VVC_ITX(TYPE, type, 32);
-
     itx->add_residual                = FUNC(add_residual);
     itx->add_residual_joint          = FUNC(add_residual_joint);
     itx->pred_residual_joint         = FUNC(pred_residual_joint);
     itx->transform_bdpcm             = FUNC(transform_bdpcm);
-    VVC_ITX(DCT2, dct2, 2)
-    VVC_ITX(DCT2, dct2, 64)
-    VVC_ITX_COMMON(DCT2, dct2)
-    VVC_ITX_COMMON(DCT8, dct8)
-    VVC_ITX_COMMON(DST7, dst7)
 
-#undef VVC_ITX
-#undef VVC_ITX_COMMON
+    ITX_1D(16);
+    ITX_1D(32);
+    ITX_1D_TYPE(DCT2, dct2, 64);
+
+    ITX_DCT2(2);
+    ITX_DXTN(4);
+    ITX_DXTN(8);
+    ITX_DXTN(16);
+    ITX_DXTN(32);
+    ITX_DCT2(64);
 }
+
+#undef ITX_1D_TYPE
+#undef ITX_1D
+#undef ITX_HEIGHT_4_TO_32
+#undef ITX_DXTN_HEIGHT
+#undef ITX_DCT2
+#undef ITX_DXTN
