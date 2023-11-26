@@ -444,7 +444,7 @@ static void dequant(const VVCLocalContext *lc, const TransformUnit *tu, Transfor
 
 //transmatrix[0][0]
 #define DCT_A 64
-static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int *temp)
+static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv)
 {
     const VVCSPS *sps   = fc->ps.sps;
     const int w         = tb->tb_width;
@@ -465,15 +465,15 @@ static void itx_2d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     }
 
     for (int x = 0; x < nzw; x++)
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp + x, w, tb->coeffs + x, w, nzh);
-    scale_clip(temp, nzw, w, h, shift[0], sps->log2_transform_range);
+        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](tb->coeffs + x, w, nzh);
+    scale_clip(tb->coeffs, nzw, w, h, shift[0], sps->log2_transform_range);
 
     for (int y = 0; y < h; y++)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, temp + y * w, 1, nzw);
+        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs + y * w, 1, nzw);
     scale(tb->coeffs, tb->coeffs, w, h, shift[1]);
 }
 
-static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv, int  *temp)
+static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxType trh, const enum TxType trv)
 {
     const VVCSPS *sps   = fc->ps.sps;
     const int w         = tb->tb_width;
@@ -493,10 +493,10 @@ static void itx_1d(const VVCFrameContext *fc, TransformBlock *tb, const enum TxT
     }
 
     if (w > 1)
-        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](temp, 1, tb->coeffs, 1, nzw);
+        fc->vvcdsp.itx.itx[trh][tb->log2_tb_width - 1](tb->coeffs, 1, nzw);
     else
-        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](temp, 1, tb->coeffs, 1, nzh);
-    scale(tb->coeffs, temp, w, h, 6 + sps->log2_transform_range - sps->bit_depth);
+        fc->vvcdsp.itx.itx[trv][tb->log2_tb_height - 1](tb->coeffs, 1, nzh);
+    scale(tb->coeffs, tb->coeffs, w, h, 6 + sps->log2_transform_range - sps->bit_depth);
 }
 
 static void transform_bdpcm(TransformBlock *tb, const VVCLocalContext *lc, const CodingUnit *cu)
@@ -545,9 +545,9 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
                     ilfnst_transform(lc, tb);
                 derive_transform_type(fc, lc, tb, &trh, &trv);
                 if (w > 1 && h > 1)
-                    itx_2d(fc, tb, trh, trv, temp);
+                    itx_2d(fc, tb, trh, trv);
                 else
-                    itx_1d(fc, tb, trh, trv, temp);
+                    itx_1d(fc, tb, trh, trv);
             }
 
             if (chroma_scale)
