@@ -178,7 +178,6 @@ static int derive_temporal_colocated_mvs(const VVCLocalContext *lc, MvField temp
             }
         }
     }
-
     return 0;
 }
 
@@ -334,7 +333,6 @@ static int is_fallback_mode(const SubblockParams *sp, const PredFlag pred_flag)
             return 0;
     }
     return 1;
-
 }
 
 static void init_subblock_params(SubblockParams *sp, const MotionInfo* mi,
@@ -491,7 +489,6 @@ void ff_vvc_store_gpm_mvf(const VVCLocalContext *lc, const PredictionUnit *pu)
             }
         }
     }
-
 }
 
 void ff_vvc_store_mvf(const VVCLocalContext *lc, const MvField *mvf)
@@ -685,7 +682,6 @@ static int mv_merge_temporal_candidate(const VVCLocalContext *lc, MvField *cand)
             temporal_luma_motion_vector(lc, 0, cand->mv + 1, 1, 1, 0) : 0;
         cand->pred_flag = available_l0 + (available_l1 << 1);
     }
-
     return cand->pred_flag;
 }
 
@@ -1110,7 +1106,6 @@ static int sb_temporal_merge_candidate(const VVCLocalContext* lc, NeighbourConte
         }
         return 1;
     }
-
     return 0;
 }
 
@@ -1344,9 +1339,7 @@ static int affine_merge_const_candidates(const VVCLocalContext *lc, MotionInfo *
             return 1;
     }
     return 0;
-
 }
-
 
 //8.5.5.2 Derivation process for motion vectors and reference indices in subblock merge mode
 //return 1 if candidate is SbCol

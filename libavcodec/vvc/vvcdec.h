@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVCODEC_VVCDEC_H
-#define AVCODEC_VVCDEC_H
+#ifndef AVCODEC_VVC_VVCDEC_H
+#define AVCODEC_VVC_VVCDEC_H
 
 #include "libavcodec/videodsp.h"
 #include "libavcodec/vvc.h"
@@ -86,10 +86,11 @@ typedef struct SliceContext {
     struct EntryPoint *eps;
     int nb_eps;
     RefPicList *rpl;
+    void *ref;                      ///< RefStruct reference, backing slice data
 } SliceContext;
 
 typedef struct VVCFrameContext {
-    struct AVCodecContext *avctx;
+    void *log_ctx;
 
     // +1 for the current frame
     VVCFrame DPB[VVC_MAX_DPB_SIZE + 1];
@@ -220,4 +221,4 @@ typedef struct VVCContext {
     int nb_delayed;         ///< delayed frames
 }  VVCContext ;
 
-#endif /* AVCODEC_VVCDEC_H */
+#endif /* AVCODEC_VVC_VVCDEC_H */

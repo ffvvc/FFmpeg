@@ -612,7 +612,7 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
     return ret;
 }
 
-AVExecutor* ff_vvc_executor_alloc(VVCContext *s, int thread_count)
+AVExecutor* ff_vvc_executor_alloc(VVCContext *s, const int thread_count)
 {
     AVTaskCallbacks callbacks = {
         s,
@@ -621,7 +621,7 @@ AVExecutor* ff_vvc_executor_alloc(VVCContext *s, int thread_count)
         task_ready,
         task_run,
     };
-    return av_executor_alloc(&callbacks, s->nb_fcs);
+    return av_executor_alloc(&callbacks, thread_count);
 }
 
 void ff_vvc_executor_free(AVExecutor **e)

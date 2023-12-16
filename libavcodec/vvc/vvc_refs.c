@@ -75,8 +75,7 @@ const RefPicList *ff_vvc_get_ref_list(const VVCFrameContext *fc, const VVCFrame 
 
 void ff_vvc_clear_refs(VVCFrameContext *fc)
 {
-    int i;
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++)
         ff_vvc_unref_frame(fc, &fc->DPB[i],
             VVC_FRAME_FLAG_SHORT_REF | VVC_FRAME_FLAG_LONG_REF);
 }
@@ -107,14 +106,13 @@ static FrameProgress *alloc_progress(void)
 static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
 {
     const VVCPPS *pps = fc->ps.pps;
-    int i, j, ret;
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+        int ret;
         VVCFrame *frame = &fc->DPB[i];
         if (frame->frame->buf[0])
             continue;
 
-        ret = ff_thread_get_buffer(fc->avctx, frame->frame,
-                                   AV_GET_BUFFER_FLAG_REF);
+        ret = ff_thread_get_buffer(s->avctx, frame->frame, AV_GET_BUFFER_FLAG_REF);
         if (ret < 0)
             return NULL;
 
@@ -131,7 +129,7 @@ static VVCFrame *alloc_frame(VVCContext *s, VVCFrameContext *fc)
         if (!frame->rpl_tab)
             goto fail;
         frame->ctb_count = pps->ctb_width * pps->ctb_height;
-        for (j = 0; j < frame->ctb_count; j++)
+        for (int j = 0; j < frame->ctb_count; j++)
             frame->rpl_tab[j] = frame->rpl;
 
         frame->progress = alloc_progress();
@@ -160,8 +158,7 @@ int ff_vvc_set_new_ref(VVCContext *s, VVCFrameContext *fc, AVFrame **frame)
 
         if (frame->frame->buf[0] && frame->sequence == s->seq_decode &&
             frame->poc == poc) {
-            av_log(s->avctx, AV_LOG_ERROR, "Duplicate POC in a sequence: %d.\n",
-                   poc);
+            av_log(s->avctx, AV_LOG_ERROR, "Duplicate POC in a sequence: %d.\n", poc);
             return AVERROR_INVALIDDATA;
         }
     }
@@ -197,10 +194,10 @@ int ff_vvc_output_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *out, const 
     do {
         int nb_output = 0;
         int min_poc   = INT_MAX;
-        int i, min_idx, ret;
+        int min_idx, ret;
 
         if (no_output_of_prior_pics_flag) {
-            for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+            for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
                 VVCFrame *frame = &fc->DPB[i];
                 if (!(frame->flags & VVC_FRAME_FLAG_BUMPING) && frame->poc != fc->ps.ph.poc &&
                         frame->sequence == s->seq_output) {
@@ -209,7 +206,7 @@ int ff_vvc_output_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *out, const 
             }
         }
 
-        for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+        for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
             VVCFrame *frame = &fc->DPB[i];
             if ((frame->flags & VVC_FRAME_FLAG_OUTPUT) &&
                 frame->sequence == s->seq_output) {
@@ -256,9 +253,8 @@ void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc)
     const int poc = fc->ps.ph.poc;
     int dpb = 0;
     int min_poc = INT_MAX;
-    int i;
 
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
         VVCFrame *frame = &fc->DPB[i];
         if ((frame->flags) &&
             frame->sequence == s->seq_output &&
@@ -268,7 +264,7 @@ void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc)
     }
 
     if (sps && dpb >= sps->r->sps_dpb_params.dpb_max_dec_pic_buffering_minus1[sps->r->sps_max_sublayers_minus1] + 1) {
-        for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+        for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
             VVCFrame *frame = &fc->DPB[i];
             if ((frame->flags) &&
                 frame->sequence == s->seq_output &&
@@ -279,7 +275,7 @@ void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc)
             }
         }
 
-        for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+        for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
             VVCFrame *frame = &fc->DPB[i];
             if (frame->flags & VVC_FRAME_FLAG_OUTPUT &&
                 frame->sequence == s->seq_output &&
@@ -295,9 +291,8 @@ void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc)
 static VVCFrame *find_ref_idx(VVCContext *s, VVCFrameContext *fc, int poc, uint8_t use_msb)
 {
     int mask = use_msb ? ~0 : fc->ps.sps->max_pic_order_cnt_lsb - 1;
-    int i;
 
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
         VVCFrame *ref = &fc->DPB[i];
         if (ref->frame->buf[0] && ref->sequence == s->seq_decode) {
             if ((ref->poc & mask) == poc)
@@ -317,7 +312,6 @@ static VVCFrame *generate_missing_ref(VVCContext *s, VVCFrameContext *fc, int po
 {
     const VVCSPS *sps = fc->ps.sps;
     VVCFrame *frame;
-    int i, y;
 
     frame = alloc_frame(s, fc);
     if (!frame)
@@ -325,12 +319,12 @@ static VVCFrame *generate_missing_ref(VVCContext *s, VVCFrameContext *fc, int po
 
     if (!s->avctx->hwaccel) {
         if (!sps->pixel_shift) {
-            for (i = 0; frame->frame->buf[i]; i++)
+            for (int i = 0; frame->frame->buf[i]; i++)
                 memset(frame->frame->buf[i]->data, 1 << (sps->bit_depth - 1),
                        frame->frame->buf[i]->size);
         } else {
-            for (i = 0; frame->frame->data[i]; i++)
-                for (y = 0; y < (sps->height >> sps->vshift[i]); y++) {
+            for (int i = 0; frame->frame->data[i]; i++)
+                for (int y = 0; y < (sps->height >> sps->vshift[i]); y++) {
                     uint8_t *dst = frame->frame->data[i] + y * frame->frame->linesize[i];
                     AV_WN16(dst, 1 << (sps->bit_depth - 1));
                     av_memcpy_backptr(dst + 2, 2, 2*(sps->width >> sps->hshift[i]) - 2);
@@ -452,27 +446,26 @@ int ff_vvc_slice_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
                 }
                 ret = add_candidate_ref(s, fc, rpl, poc, ref_flag, use_msb);
                 if (ret < 0)
-                    goto fail;
+                    return ret;
             } else {
-                avpriv_request_sample(fc->avctx, "Inter layer ref");
+                avpriv_request_sample(fc->log_ctx, "Inter layer ref");
                 ret = AVERROR_PATCHWELCOME;
-                goto fail;
+                return ret;
             }
         }
         if ((!rsh->sh_collocated_from_l0_flag) == lx &&
             rsh->sh_collocated_ref_idx < rpl->nb_refs)
             fc->ref->collocated_ref = rpl->ref[rsh->sh_collocated_ref_idx];
     }
-fail:
-    return ret;
+    return 0;
 }
 
 int ff_vvc_frame_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 {
-    int i, ret = 0;
+    int ret = 0;
 
     /* clear the reference flags on all frames except the current one */
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
         VVCFrame *frame = &fc->DPB[i];
 
         if (frame == fc->ref)
@@ -486,7 +479,7 @@ int ff_vvc_frame_rpl(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 
 fail:
     /* release any frames that are now unused */
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++)
         ff_vvc_unref_frame(fc, &fc->DPB[i], 0);
     return ret;
 }

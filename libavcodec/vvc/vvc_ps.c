@@ -195,7 +195,7 @@ static int sps_derive(VVCSPS *sps, void *log_ctx)
 
 static void sps_free(FFRefStructOpaque opaque, void *obj)
 {
-    VVCSPS *sps = (VVCSPS*)obj;
+    VVCSPS *sps = obj;
     ff_refstruct_unref(&sps->r);
 }
 
@@ -203,6 +203,9 @@ static const VVCSPS *sps_alloc(const H266RawSPS *rsps, void *log_ctx)
 {
     int ret;
     VVCSPS *sps = ff_refstruct_alloc_ext(sizeof(*sps), 0, NULL, sps_free);
+
+    if (!sps)
+        return NULL;
 
     ff_refstruct_replace(&sps->r, rsps);
 
@@ -230,8 +233,8 @@ static int decode_sps(VVCParamSets *ps, const H266RawSPS *rsps, void *log_ctx)
     if (!sps)
         return AVERROR(ENOMEM);
 
-    ff_refstruct_replace(&ps->sps_list[sps_id], sps);
-    ff_refstruct_unref(&sps);
+    ff_refstruct_unref(&ps->sps_list[sps_id]);
+    ps->sps_list[sps_id] = sps;
 
     return 0;
 }
@@ -452,7 +455,7 @@ static int pps_derive(VVCPPS *pps, const VVCSPS *sps)
 
 static void pps_free(FFRefStructOpaque opaque, void *obj)
 {
-    VVCPPS *pps = (VVCPPS *)obj;
+    VVCPPS *pps = obj;
 
     ff_refstruct_unref(&pps->r);
 
@@ -499,8 +502,8 @@ static int decode_pps(VVCParamSets *ps, const H266RawPPS *rpps)
     if (!pps)
         return AVERROR(ENOMEM);
 
-    ff_refstruct_replace(&ps->pps_list[pps_id], pps);
-    ff_refstruct_unref(&pps);
+    ff_refstruct_unref(&ps->pps_list[pps_id]);
+    ps->pps_list[pps_id] = pps;
 
     return ret;
 }
@@ -785,17 +788,15 @@ void ff_vvc_frame_ps_free(VVCFrameParamSets *fps)
 
 void ff_vvc_ps_uninit(VVCParamSets *ps)
 {
-    int i;
-
-    for (i = 0; i < FF_ARRAY_ELEMS(ps->scaling_list); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(ps->scaling_list); i++)
         ff_refstruct_unref(&ps->scaling_list[i]);
-    for (i = 0; i < FF_ARRAY_ELEMS(ps->lmcs_list); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(ps->lmcs_list); i++)
         ff_refstruct_unref(&ps->lmcs_list[i]);
-    for (i = 0; i < FF_ARRAY_ELEMS(ps->alf_list); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(ps->alf_list); i++)
         ff_refstruct_unref(&ps->alf_list[i]);
-    for (i = 0; i < FF_ARRAY_ELEMS(ps->sps_list); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(ps->sps_list); i++)
         ff_refstruct_unref(&ps->sps_list[i]);
-    for (i = 0; i < FF_ARRAY_ELEMS(ps->pps_list); i++)
+    for (int i = 0; i < FF_ARRAY_ELEMS(ps->pps_list); i++)
         ff_refstruct_unref(&ps->pps_list[i]);
 }
 

@@ -912,11 +912,6 @@ static int inline vvc_get_cabac(CABACContext *c, VVCCabacState* base, const int 
 
 #define GET_CABAC(ctx) vvc_get_cabac(&lc->ep->cc, lc->ep->cabac_state, ctx)
 
-static av_always_inline int vvc_get_cabac_bypass(CABACContext *c)
-{
-    return get_cabac_bypass(c);
-}
-
 //9.3.3.4 Truncated binary (TB) binarization process
 static int truncated_binary_decode(VVCLocalContext *lc, const int c_max)
 {
@@ -925,9 +920,9 @@ static int truncated_binary_decode(VVCLocalContext *lc, const int c_max)
     const int u = (1 << (k+1)) - n;
     int v = 0;
     for (int i = 0; i < k; i++)
-        v = (v << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+        v = (v << 1) | get_cabac_bypass(&lc->ep->cc);
     if (v >= u) {
-        v = (v << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+        v = (v << 1) | get_cabac_bypass(&lc->ep->cc);
         v -= u;
     }
     return v;
@@ -939,14 +934,14 @@ static int limited_kth_order_egk_decode(CABACContext *c, const int k, const int 
     int pre_ext_len = 0;
     int escape_length;
     int val = 0;
-    while ((pre_ext_len < max_pre_ext_len) && vvc_get_cabac_bypass(c))
+    while ((pre_ext_len < max_pre_ext_len) && get_cabac_bypass(c))
         pre_ext_len++;
     if (pre_ext_len == max_pre_ext_len)
         escape_length = trunc_suffix_len;
     else
         escape_length = pre_ext_len + k;
     while (escape_length-- > 0) {
-        val = (val << 1) + vvc_get_cabac_bypass(c);
+        val = (val << 1) + get_cabac_bypass(c);
     }
     val += ((1 << pre_ext_len) - 1) << k;
     return val;
@@ -988,18 +983,17 @@ int ff_vvc_sao_type_idx_decode(VVCLocalContext *lc)
     if (!GET_CABAC(SAO_TYPE_IDX))
         return SAO_NOT_APPLIED;
 
-    if (!vvc_get_cabac_bypass(&lc->ep->cc))
+    if (!get_cabac_bypass(&lc->ep->cc))
         return SAO_BAND;
     return SAO_EDGE;
 }
 
 int ff_vvc_sao_band_position_decode(VVCLocalContext *lc)
 {
-    int i;
-    int value = vvc_get_cabac_bypass(&lc->ep->cc);
+    int value = get_cabac_bypass(&lc->ep->cc);
 
-    for (i = 0; i < 4; i++)
-        value = (value << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+    for (int i = 0; i < 4; i++)
+        value = (value << 1) | get_cabac_bypass(&lc->ep->cc);
     return value;
 }
 
@@ -1008,20 +1002,20 @@ int ff_vvc_sao_offset_abs_decode(VVCLocalContext *lc)
     int i = 0;
     int length = (1 << (FFMIN(lc->fc->ps.sps->bit_depth, 10) - 5)) - 1;
 
-    while (i < length && vvc_get_cabac_bypass(&lc->ep->cc))
+    while (i < length && get_cabac_bypass(&lc->ep->cc))
         i++;
     return i;
 }
 
 int ff_vvc_sao_offset_sign_decode(VVCLocalContext *lc)
 {
-    return vvc_get_cabac_bypass(&lc->ep->cc);
+    return get_cabac_bypass(&lc->ep->cc);
 }
 
 int ff_vvc_sao_eo_class_decode(VVCLocalContext *lc)
 {
-    int ret = vvc_get_cabac_bypass(&lc->ep->cc) << 1;
-    ret    |= vvc_get_cabac_bypass(&lc->ep->cc);
+    int ret = get_cabac_bypass(&lc->ep->cc) << 1;
+    ret    |= get_cabac_bypass(&lc->ep->cc);
     return ret;
 }
 
@@ -1082,7 +1076,7 @@ int ff_vvc_alf_ctb_cc_idc(VVCLocalContext *lc, const int rx, const int ry, const
     if (!GET_CABAC(inc))
         return 0;
     i++;
-    while (i < cc_filters_signalled && vvc_get_cabac_bypass(&lc->ep->cc))
+    while (i < cc_filters_signalled && get_cabac_bypass(&lc->ep->cc))
         i++;
     return i;
 }
@@ -1273,7 +1267,7 @@ int ff_vvc_intra_mip_flag(VVCLocalContext *lc, const uint8_t *intra_mip_flag)
 
 int ff_vvc_intra_mip_transposed_flag(VVCLocalContext *lc)
 {
-    return vvc_get_cabac_bypass(&lc->ep->cc);
+    return get_cabac_bypass(&lc->ep->cc);
 }
 
 int ff_vvc_intra_mip_mode(VVCLocalContext *lc)
@@ -1320,7 +1314,7 @@ int ff_vvc_intra_luma_not_planar_flag(VVCLocalContext *lc, const int intra_subpa
 int ff_vvc_intra_luma_mpm_idx(VVCLocalContext *lc)
 {
     int i;
-    for (i = 0; i < 4 && vvc_get_cabac_bypass(&lc->ep->cc); i++)
+    for (i = 0; i < 4 && get_cabac_bypass(&lc->ep->cc); i++)
         /* nothing */;
     return i;
 }
@@ -1339,14 +1333,14 @@ int ff_vvc_cclm_mode_idx(VVCLocalContext *lc)
 {
     if (!GET_CABAC(CCLM_MODE_IDX))
         return 0;
-    return vvc_get_cabac_bypass(&lc->ep->cc) + 1;
+    return get_cabac_bypass(&lc->ep->cc) + 1;
 }
 
 int ff_vvc_intra_chroma_pred_mode(VVCLocalContext *lc)
 {
     if (!GET_CABAC(INTRA_CHROMA_PRED_MODE))
         return 4;
-    return (vvc_get_cabac_bypass(&lc->ep->cc) << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+    return (get_cabac_bypass(&lc->ep->cc) << 1) | get_cabac_bypass(&lc->ep->cc);
 }
 
 int ff_vvc_general_merge_flag(VVCLocalContext *lc)
@@ -1376,7 +1370,7 @@ int ff_vvc_merge_subblock_idx(VVCLocalContext *lc, const int max_num_subblock_me
     int i;
     if (!GET_CABAC(MERGE_SUBBLOCK_IDX))
         return 0;
-    for (i = 1; i < max_num_subblock_merge_cand - 1 && vvc_get_cabac_bypass(&lc->ep->cc); i++)
+    for (i = 1; i < max_num_subblock_merge_cand - 1 && get_cabac_bypass(&lc->ep->cc); i++)
         /* nothing */;
     return i;
 }
@@ -1402,14 +1396,14 @@ static int mmvd_distance_idx_decode(VVCLocalContext *lc)
     int i;
     if (!GET_CABAC(MMVD_DISTANCE_IDX))
         return 0;
-    for (i = 1; i < 7 && vvc_get_cabac_bypass(&lc->ep->cc); i++)
+    for (i = 1; i < 7 && get_cabac_bypass(&lc->ep->cc); i++)
         /* nothing */;
     return i;
 }
 
 static int mmvd_direction_idx_decode(VVCLocalContext *lc)
 {
-    return (vvc_get_cabac_bypass(&lc->ep->cc) << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+    return (get_cabac_bypass(&lc->ep->cc) << 1) | get_cabac_bypass(&lc->ep->cc);
 }
 
 void ff_vvc_mmvd_offset_coding(VVCLocalContext *lc, Mv *mmvd_offset, const int ph_mmvd_fullpel_only_flag)
@@ -1448,7 +1442,7 @@ int ff_vvc_merge_idx(VVCLocalContext *lc)
     if (!GET_CABAC(MERGE_IDX))
         return 0;
 
-    for (i = 1; i < c_max && vvc_get_cabac_bypass(&lc->ep->cc); i++)
+    for (i = 1; i < c_max && get_cabac_bypass(&lc->ep->cc); i++)
         /* nothing */;
     return i;
 }
@@ -1458,7 +1452,7 @@ int ff_vvc_merge_gpm_partition_idx(VVCLocalContext *lc)
     int i = 0;
 
     for (int j = 0; j < 6; j++)
-        i = (i << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+        i = (i << 1) | get_cabac_bypass(&lc->ep->cc);
 
     return i;
 }
@@ -1471,7 +1465,7 @@ int ff_vvc_merge_gpm_idx(VVCLocalContext *lc, const int idx)
     if (!GET_CABAC(MERGE_IDX))
         return 0;
 
-    for (i = 1; i < c_max && vvc_get_cabac_bypass(&lc->ep->cc); i++)
+    for (i = 1; i < c_max && get_cabac_bypass(&lc->ep->cc); i++)
         /* nothing */;
 
     return i;
@@ -1522,7 +1516,7 @@ int ff_vvc_ref_idx_lx(VVCLocalContext *lc, const uint8_t nb_refs)
     while (i < max_ctx && GET_CABAC(REF_IDX_LX + i))
         i++;
     if (i == 2) {
-        while (i < c_max && vvc_get_cabac_bypass(&lc->ep->cc))
+        while (i < c_max && get_cabac_bypass(&lc->ep->cc))
             i++;
     }
     return i;
@@ -1545,7 +1539,7 @@ int ff_vvc_abs_mvd_minus2(VVCLocalContext *lc)
 
 int ff_vvc_mvd_sign_flag(VVCLocalContext *lc)
 {
-    return vvc_get_cabac_bypass(&lc->ep->cc);
+    return get_cabac_bypass(&lc->ep->cc);
 }
 
 int ff_vvc_mvp_lx_flag(VVCLocalContext *lc)
@@ -1598,7 +1592,7 @@ int ff_vvc_bcw_idx(VVCLocalContext *lc, const int no_backward_pred_flag)
     int i = 1;
     if (!GET_CABAC(BCW_IDX))
         return 0;
-    while (i < c_max && vvc_get_cabac_bypass(&lc->ep->cc))
+    while (i < c_max && get_cabac_bypass(&lc->ep->cc))
         i++;
     return i;
 }
@@ -1644,12 +1638,12 @@ int ff_vvc_cu_qp_delta_abs(VVCLocalContext *lc)
 
     // CuQpDeltaVal shall in the range of −( 32 + QpBdOffset / 2 ) to +( 31 + QpBdOffset / 2 )
     // so k = 6 should enough
-    for (k = 0; k < 6 && vvc_get_cabac_bypass(&lc->ep->cc); k++)
+    for (k = 0; k < 6 && get_cabac_bypass(&lc->ep->cc); k++)
         /* nothing */;
     i = (1 << k) - 1;
     v = 0;
     while (k--)
-        v = (v << 1) + vvc_get_cabac_bypass(&lc->ep->cc);
+        v = (v << 1) + get_cabac_bypass(&lc->ep->cc);
     v += i;
 
     return v + 5;
@@ -1657,7 +1651,7 @@ int ff_vvc_cu_qp_delta_abs(VVCLocalContext *lc)
 
 int ff_vvc_cu_qp_delta_sign_flag(VVCLocalContext *lc)
 {
-    return vvc_get_cabac_bypass(&lc->ep->cc);
+    return get_cabac_bypass(&lc->ep->cc);
 }
 
 int ff_vvc_cu_chroma_qp_offset_flag(VVCLocalContext *lc)
@@ -1710,12 +1704,11 @@ static av_always_inline int last_significant_coeff_y_prefix_decode(VVCLocalConte
 static av_always_inline int last_sig_coeff_suffix_decode(VVCLocalContext *lc,
     const int last_significant_coeff_y_prefix)
 {
-    int i;
     const int length = (last_significant_coeff_y_prefix >> 1) - 1;
-    int value = vvc_get_cabac_bypass(&lc->ep->cc);
+    int value = get_cabac_bypass(&lc->ep->cc);
 
-    for (i = 1; i < length; i++)
-        value = (value << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+    for (int i = 1; i < length; i++)
+        value = (value << 1) | get_cabac_bypass(&lc->ep->cc);
     return value;
 }
 
@@ -1877,13 +1870,12 @@ static int abs_decode(VVCLocalContext *lc, const int c_rice_param)
     const int MAX_BIN = 6;
     int prefix = 0;
     int suffix = 0;
-    int i;
 
-    while (prefix < MAX_BIN && vvc_get_cabac_bypass(&lc->ep->cc))
+    while (prefix < MAX_BIN && get_cabac_bypass(&lc->ep->cc))
         prefix++;
     if (prefix < MAX_BIN) {
-        for (i = 0; i < c_rice_param; i++) {
-            suffix = (suffix << 1) | vvc_get_cabac_bypass(&lc->ep->cc);
+        for (int i = 0; i < c_rice_param; i++) {
+            suffix = (suffix << 1) | get_cabac_bypass(&lc->ep->cc);
         }
     } else {
         suffix = limited_kth_order_egk_decode(&lc->ep->cc,
@@ -1919,7 +1911,7 @@ static int abs_remainder_ts_decode(VVCLocalContext *lc, const ResidualCoding* rc
 
 static int coeff_sign_flag_decode(VVCLocalContext *lc)
 {
-    return vvc_get_cabac_bypass(&lc->ep->cc);
+    return get_cabac_bypass(&lc->ep->cc);
 }
 
 //9.3.4.2.10 Derivation process of ctxInc for the syntax element coeff_sign_flag for transform skip mode

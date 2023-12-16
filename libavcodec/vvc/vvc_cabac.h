@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVCODEC_VVC_CABAC_H
-#define AVCODEC_VVC_CABAC_H
+#ifndef AVCODEC_VVC_VVC_CABAC_H
+#define AVCODEC_VVC_VVC_CABAC_H
 
 #include "vvc_ctu.h"
 
@@ -123,4 +123,4 @@ int ff_vvc_end_of_slice_flag_decode(VVCLocalContext *lc);
 int ff_vvc_end_of_tile_one_bit(VVCLocalContext *lc);
 int ff_vvc_end_of_subset_one_bit(VVCLocalContext *lc);
 
-#endif //AVCODEC_VVC_CABAC_H
+#endif //AVCODEC_VVC_VVC_CABAC_H
