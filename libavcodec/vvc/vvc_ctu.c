@@ -1443,7 +1443,7 @@ static int hls_merge_data(VVCLocalContext *lc)
     pu->merge_gpm_flag = 0;
     pu->mi.num_sb_x = pu->mi.num_sb_y = 1;
     if (cu->pred_mode == MODE_IBC) {
-        avpriv_report_missing_feature(lc->fc->avctx, "Intra Block Copy");
+        avpriv_report_missing_feature(fc->log_ctx, "Intra Block Copy");
         return AVERROR_PATCHWELCOME;
     } else {
         if (ph->max_num_subblock_merge_cand > 0 && cu->cb_width >= 8 && cu->cb_height >= 8)
@@ -1459,16 +1459,17 @@ static int hls_merge_data(VVCLocalContext *lc)
 static void hls_mvd_coding(VVCLocalContext *lc, Mv* mvd)
 {
     int16_t mv[2];
-    int i;
 
-    for (i = 0; i < 2; i++) {
+    for (int i = 0; i < 2; i++) {
         mv[i] = ff_vvc_abs_mvd_greater0_flag(lc);
     }
-    for (i = 0; i < 2; i++) {
+
+    for (int i = 0; i < 2; i++) {
         if (mv[i])
             mv[i] += ff_vvc_abs_mvd_greater1_flag(lc);
     }
-    for (i = 0; i < 2; i++) {
+
+    for (int i = 0; i < 2; i++) {
         if (mv[i] > 0) {
             if (mv[i] == 2)
                 mv[i] += ff_vvc_abs_mvd_minus2(lc);
@@ -1680,7 +1681,7 @@ static void refine_regular_subblock(const VVCLocalContext *lc)
     }
 }
 
-static int vvc_inter_data(VVCLocalContext *lc)
+static int inter_data(VVCLocalContext *lc)
 {
     const CodingUnit *cu    = lc->cu;
     PredictionUnit *pu      = &lc->cu->pu;
@@ -1694,7 +1695,7 @@ static int vvc_inter_data(VVCLocalContext *lc)
     if (pu->general_merge_flag) {
         hls_merge_data(lc);
     } else if (cu->pred_mode == MODE_IBC){
-        avpriv_report_missing_feature(lc->fc->avctx, "Intra Block Copy");
+        avpriv_report_missing_feature(lc->fc->log_ctx, "Intra Block Copy");
         return AVERROR_PATCHWELCOME;
     } else {
         ret = mvp_data(lc);
@@ -1735,18 +1736,18 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         (mode_type != MODE_TYPE_INTRA || tree_type != DUAL_TREE_CHROMA)) {
         pred_mode_plt_flag = ff_vvc_pred_mode_plt_flag(lc);
         if (pred_mode_plt_flag) {
-            avpriv_report_missing_feature(lc->fc->avctx, "Palette");
+            avpriv_report_missing_feature(fc->log_ctx, "Palette");
             return AVERROR_PATCHWELCOME;
         }
     }
     if (cu->pred_mode == MODE_INTRA && sps->r->sps_act_enabled_flag && tree_type == SINGLE_TREE) {
-        avpriv_report_missing_feature(fc->avctx, "Adaptive Color Transform");
+        avpriv_report_missing_feature(fc->log_ctx, "Adaptive Color Transform");
         return AVERROR_PATCHWELCOME;
     }
     if (cu->pred_mode == MODE_INTRA || cu->pred_mode == MODE_PLT) {
         if (tree_type == SINGLE_TREE || tree_type == DUAL_TREE_LUMA) {
             if (pred_mode_plt_flag) {
-                avpriv_report_missing_feature(lc->fc->avctx, "Palette");
+                avpriv_report_missing_feature(fc->log_ctx, "Palette");
                 return AVERROR_PATCHWELCOME;
             } else {
                 intra_luma_pred_modes(lc);
@@ -1755,7 +1756,7 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         }
         if ((tree_type == SINGLE_TREE || tree_type == DUAL_TREE_CHROMA) && sps->r->sps_chroma_format_idc) {
             if (pred_mode_plt_flag && tree_type == DUAL_TREE_CHROMA) {
-                avpriv_report_missing_feature(lc->fc->avctx, "Palette");
+                avpriv_report_missing_feature(fc->log_ctx, "Palette");
                 return AVERROR_PATCHWELCOME;
             } else if (!pred_mode_plt_flag) {
                 if (!cu->act_enabled_flag)
@@ -1763,7 +1764,7 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
             }
         }
     } else if (tree_type != DUAL_TREE_CHROMA) { /* MODE_INTER or MODE_IBC */
-        if ((ret = vvc_inter_data(lc)) < 0)
+        if ((ret = inter_data(lc)) < 0)
             return ret;
     }
     if (cu->pred_mode != MODE_INTRA && !pred_mode_plt_flag && !lc->cu->pu.general_merge_flag)
@@ -1774,7 +1775,7 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
     if (cu->coded_flag) {
         sbt_info(lc, sps);
         if (sps->r->sps_act_enabled_flag && cu->pred_mode != MODE_INTRA && tree_type == SINGLE_TREE) {
-            avpriv_report_missing_feature(fc->avctx, "Adaptive Color Transform");
+            avpriv_report_missing_feature(fc->log_ctx, "Adaptive Color Transform");
             return AVERROR_PATCHWELCOME;
         }
         lc->parse.lfnst_dc_only = 1;

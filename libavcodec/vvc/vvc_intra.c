@@ -368,7 +368,7 @@ static const uint8_t* derive_scale_m(const VVCLocalContext *lc, const TransformB
         return ff_vvc_default_scale_m;
 
     if (!sl) {
-        av_log(lc->fc->avctx, AV_LOG_WARNING, "bug: no scaling list aps, id = %d", ps->ph.r->ph_scaling_list_aps_id);
+        av_log(lc->fc->log_ctx, AV_LOG_WARNING, "bug: no scaling list aps, id = %d", ps->ph.r->ph_scaling_list_aps_id);
         return ff_vvc_default_scale_m;
     }
 

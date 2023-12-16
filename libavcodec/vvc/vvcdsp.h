@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVCODEC_VVCDSP_H
-#define AVCODEC_VVCDSP_H
+#ifndef AVCODEC_VVC_VVCDSP_H
+#define AVCODEC_VVC_VVCDSP_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -172,4 +172,4 @@ void ff_vvc_dsp_init(VVCDSPContext *hpc, int bit_depth);
 void ff_vvc_dsp_init_x86(VVCDSPContext *c, const int bit_depth);
 void ff_vvc_dsp_init_aarch64(VVCDSPContext *c, const int bit_depth);
 
-#endif /* AVCODEC_VVCDSP_H */
+#endif /* AVCODEC_VVC_VVCDSP_H */
