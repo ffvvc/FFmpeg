@@ -81,6 +81,10 @@
 #define ALF_GRADIENT_SIZE       ((MAX_CU_SIZE + ALF_GRADIENT_BORDER * 2) / ALF_GRADIENT_STEP)
 #define ALF_NUM_DIR             4
 
+#define MF_NOT_VALID           -1
+#define MV_BITS                18
+#define MV_CLIP_PERIOD         (1 << MV_BITS)
+#define MV_CLIP_PERIOD_HALF    (1 << (MV_BITS - 1))
 
 /**
  * Value of the luma sample at position (x, y) in the 2D array tab.
@@ -297,6 +301,8 @@ typedef struct CodingUnit {
     //inter
     uint8_t ciip_flag;
 
+    int line_idx;
+
     // Inferred parameters
     enum IspType isp_split_type;                    ///< IntraSubPartitionsSplitType
 
@@ -358,6 +364,9 @@ typedef struct EntryPoint {
     uint8_t is_first_qg;                            // first quantization group
     MvField hmvp[MAX_NUM_HMVP_CANDS];               ///< HmvpCandList
     int     num_hmvp;                               ///< NumHmvpCand
+
+    MvField hmvp_ibc[MAX_NUM_HMVP_CANDS];           ///< HmvpIbcCandList
+    int     num_hmvp_ibc;                           ///< NumHmvpIbcCand
 } EntryPoint;
 
 typedef struct VVCLocalContext {

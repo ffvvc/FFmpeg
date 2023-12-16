@@ -119,6 +119,14 @@ typedef struct VVCFrameContext {
     struct FFRefStructPool *cu_pool;
     struct FFRefStructPool *tu_pool;
 
+    int ibc_buffer_width;
+    int num_ibc_vir_buf;
+    struct {
+        uint8_t *data[VVC_MAX_SAMPLE_ARRAYS];
+    } *ibc_vir_buf;
+
+    int8_t *has_ibc_block;
+
     struct {
         int16_t *slice_idx;
 

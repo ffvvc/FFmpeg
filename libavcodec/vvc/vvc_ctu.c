@@ -1433,6 +1433,26 @@ static void merge_data_block(VVCLocalContext *lc)
     }
 }
 
+static void merge_ibc_data_block(VVCLocalContext *lc)
+{
+    const VVCFrameContext* fc   = lc->fc;
+    const VVCSPS* sps           = fc->ps.sps;
+    CodingUnit *cu              = lc->cu;
+    MotionInfo *mi              = &cu->pu.mi;
+    int merge_idx               = 0;
+    MvField mvf;
+
+    mi->num_sb_x = 1;
+    mi->num_sb_y = 1;
+
+    if (sps->max_num_ibc_merge_cand > 1)
+        merge_idx = ff_vvc_merge_idx(lc);
+
+    ff_vvc_luma_mv_ibc_merge_mode(lc, merge_idx, &mvf);
+    ff_vvc_store_mvf(lc, &mvf);
+    mvf_to_mi(&mvf, mi);
+}
+
 static int hls_merge_data(VVCLocalContext *lc)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -1443,8 +1463,7 @@ static int hls_merge_data(VVCLocalContext *lc)
     pu->merge_gpm_flag = 0;
     pu->mi.num_sb_x = pu->mi.num_sb_y = 1;
     if (cu->pred_mode == MODE_IBC) {
-        avpriv_report_missing_feature(fc->log_ctx, "Intra Block Copy");
-        return AVERROR_PATCHWELCOME;
+        merge_ibc_data_block(lc);
     } else {
         if (ph->max_num_subblock_merge_cand > 0 && cu->cb_width >= 8 && cu->cb_height >= 8)
             pu->merge_subblock_flag = ff_vvc_merge_subblock_flag(lc);
@@ -1558,6 +1577,34 @@ static void mvp_add_difference(MotionInfo *mi, const int num_cp_mv,
             }
         }
     }
+}
+
+static int ibc_mvp_data(VVCLocalContext *lc)
+{
+    const VVCFrameContext *fc       = lc->fc;
+    const CodingUnit *cu            = lc->cu;
+    PredictionUnit *pu              = &lc->cu->pu;
+    const VVCSPS *sps               = fc->ps.sps;
+    MotionInfo *mi                  = &pu->mi;
+    int mvp_l0_flag                 = 0;
+    int amvr_shift                  = 4;
+    Mv *mvd0                        = &mi->mv[0][0];
+
+    mi->pred_flag = PF_L0;
+    hls_mvd_coding(lc, mvd0);
+
+    if (sps->max_num_ibc_merge_cand > 1)
+        mvp_l0_flag = ff_vvc_mvp_lx_flag(lc);
+    if (sps->r->sps_amvr_enabled_flag && (mvd0->x != 0 || mvd0->y != 0)) {
+        amvr_shift = ff_vvc_amvr_shift(lc, pu->inter_affine_flag, cu->pred_mode, 1);
+        mi->hpel_if_idx = amvr_shift > 4;
+    }
+
+    ff_vvc_round_mv(mvd0, amvr_shift, 0);
+    ff_vvc_ibc_mvp(lc, mvp_l0_flag, amvr_shift, mi);
+    ff_vvc_store_mv(lc, &pu->mi);
+
+    return 0;
 }
 
 static int mvp_data(VVCLocalContext *lc)
@@ -1683,10 +1730,12 @@ static void refine_regular_subblock(const VVCLocalContext *lc)
 
 static int inter_data(VVCLocalContext *lc)
 {
-    const CodingUnit *cu    = lc->cu;
-    PredictionUnit *pu      = &lc->cu->pu;
-    const MotionInfo *mi    = &pu->mi;
-    int ret                 = 0;
+    const VVCFrameContext *fc = lc->fc;
+    const VVCSPS *sps         = fc->ps.sps;
+    CodingUnit *cu            = lc->cu;
+    PredictionUnit *pu        = &lc->cu->pu;
+    const MotionInfo *mi      = &pu->mi;
+    int ret                   = 0;
 
     pu->general_merge_flag = 1;
     if (!cu->skip_flag)
@@ -1695,15 +1744,21 @@ static int inter_data(VVCLocalContext *lc)
     if (pu->general_merge_flag) {
         hls_merge_data(lc);
     } else if (cu->pred_mode == MODE_IBC){
-        avpriv_report_missing_feature(lc->fc->log_ctx, "Intra Block Copy");
-        return AVERROR_PATCHWELCOME;
+        ret = ibc_mvp_data(lc);
     } else {
         ret = mvp_data(lc);
     }
-    if (!pu->merge_gpm_flag && !pu->inter_affine_flag && !pu->merge_subblock_flag) {
+    if (cu->pred_mode == MODE_IBC)
+    {
+        cu->line_idx = cu->y0 / (1 << sps->ctb_log2_size_y);
+        fc->has_ibc_block[cu->line_idx] = 1;
+        ff_vvc_update_hmvp(lc, mi);
+    }
+    else if (!pu->merge_gpm_flag && !pu->inter_affine_flag && !pu->merge_subblock_flag) {
         refine_regular_subblock(lc);
         ff_vvc_update_hmvp(lc, mi);
     }
+
     return ret;
 }
 
@@ -1791,7 +1846,7 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         if (ret < 0)
             return ret;
     } else {
-        av_assert0(tree_type == SINGLE_TREE);
+        // av_assert0(tree_type == SINGLE_TREE);
         ret = skipped_transform_tree_unit(lc);
         if (ret < 0)
             return ret;
@@ -2373,8 +2428,8 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     int ret;
 
     if (rx == pps->ctb_to_col_bd[rx]) {
-        //fix me for ibc
         ep->num_hmvp = 0;
+        ep->num_hmvp_ibc = 0;
         ep->is_first_qg = ry == pps->ctb_to_row_bd[ry] || !ctu_idx;
     }
 

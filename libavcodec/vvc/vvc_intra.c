@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "libavutil/frame.h"
+#include "libavutil/imgutils.h"
 
 #include "vvc_data.h"
 #include "vvc_inter.h"
@@ -493,6 +494,35 @@ static int reconstruct(VVCLocalContext *lc)
     return 0;
 }
 
+#define GET_BUF(data, x, y, stride) ((data) + (x) + (y) * (stride))
+static void fill_ibc_buffer(VVCLocalContext *lc, CodingUnit *cu)
+{
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSPS *sps           = fc->ps.sps;
+    const int line_idx          = cu->line_idx;
+    int x, y;
+
+    uint8_t *src, *dst;
+    int srcstride, dststride;
+
+    for (int c_idx = 0; c_idx < VVC_MAX_SAMPLE_ARRAYS; c_idx++) {
+        const ReconstructedArea *area = ff_vvc_get_reconstructed_area(lc, cu->x0, cu->y0, c_idx);
+        if (!area)
+            continue;
+
+        x = area->x & ((fc->ibc_buffer_width >> sps->hshift[c_idx]) - 1);
+        y = area->y & ((1 << sps->ctb_log2_size_y) - 1);
+
+        x <<= sps->pixel_shift;
+        srcstride = fc->frame->linesize[c_idx];
+        dststride = fc->ibc_buffer_width << sps->pixel_shift >> sps->hshift[c_idx];
+        src = GET_BUF(fc->frame->data[c_idx],                x, y, srcstride);
+        dst = GET_BUF(fc->ibc_vir_buf[line_idx].data[c_idx], x, y, dststride);
+
+        av_image_copy_plane(dst, dststride, src, srcstride, area->w << sps->pixel_shift, area->h);
+    }
+}
+
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -518,6 +548,8 @@ int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const in
             add_reconstructed_area(lc, LUMA, cu->x0, cu->y0, cu->cb_width, cu->cb_height);
             add_reconstructed_area(lc, CHROMA, cu->x0, cu->y0, cu->cb_width, cu->cb_height);
         }
+        if (sps->r->sps_ibc_enabled_flag && fc->has_ibc_block[cu->line_idx])
+            fill_ibc_buffer(lc, cu);
         cu = cu->next;
     }
     ff_vvc_ctu_free_cus(ctu);
@@ -569,7 +601,7 @@ int ff_vvc_need_pdpc(const int w, const int h, const uint8_t bdpcm_flag, const i
     return 0;
 }
 
-static const ReconstructedArea* get_reconstructed_area(const VVCLocalContext *lc, const int x, const int y, const int c_idx)
+const ReconstructedArea *ff_vvc_get_reconstructed_area(const VVCLocalContext *lc, const int x, const int y, const int c_idx)
 {
     const int ch_type = c_idx > 0;
     for (int i = lc->num_ras[ch_type] - 1; i >= 0; i--) {
@@ -609,7 +641,7 @@ int ff_vvc_get_top_available(const VVCLocalContext *lc, const int x, const int y
     }
 
     target_size = FFMAX(0, FFMIN(target_size, max_x - x));
-    while (target_size > 0 && (a = get_reconstructed_area(lc, px, y - 1, c_idx))) {
+    while (target_size > 0 && (a = ff_vvc_get_reconstructed_area(lc, px, y - 1, c_idx))) {
         const int sz = FFMIN(target_size, a->x + a->w - px);
         px += sz;
         target_size -= sz;
@@ -637,7 +669,7 @@ int ff_vvc_get_left_available(const VVCLocalContext *lc, const int x, const int 
     if (!x0b)
         return target_size;
 
-    while (target_size > 0 && (a = get_reconstructed_area(lc, x - 1, py, c_idx))) {
+    while (target_size > 0 && (a = ff_vvc_get_reconstructed_area(lc, x - 1, py, c_idx))) {
         const int sz = FFMIN(target_size, a->y + a->h - py);
         py += sz;
         target_size -= sz;

@@ -336,6 +336,47 @@ static int pixel_buffer_init(VVCFrameContext *fc, const int width, const int hei
     return 0;
 }
 
+
+static void ibc_vir_buffer_free(VVCFrameContext *fc)
+{
+    for (int i = 0; i < fc->num_ibc_vir_buf; i++) {
+        for (int j = 0; j < VVC_MAX_SAMPLE_ARRAYS; j++)
+            av_freep(&fc->ibc_vir_buf[i].data[j]);
+    }
+    av_freep(&fc->ibc_vir_buf);
+    av_freep(&fc->has_ibc_block);
+}
+
+static int ibc_vir_buffer_init(VVCFrameContext *fc, const int ctu_height, const int chroma_format_idc,
+    const int ctu_size, const int ps)
+{
+    const VVCSPS *sps = fc->ps.sps;
+    const int c_end   = chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
+
+    fc->ibc_buffer_width = 256 * 128 / ctu_size;
+    fc->num_ibc_vir_buf  = ctu_height;
+
+    fc->ibc_vir_buf = av_mallocz(fc->num_ibc_vir_buf * sizeof(*fc->ibc_vir_buf));
+    if (!fc->ibc_vir_buf)
+        return AVERROR(ENOMEM);
+
+    fc->has_ibc_block = av_mallocz(fc->num_ibc_vir_buf * sizeof(*fc->has_ibc_block));
+    if (!fc->has_ibc_block)
+        return AVERROR(ENOMEM);
+
+    for (int i = 0; i < fc->num_ibc_vir_buf; i++) {
+        for (int c_idx = 0; c_idx < c_end; c_idx++) {
+            const int w = fc->ibc_buffer_width >> sps->hshift[c_idx];
+            const int h = ctu_size             >> sps->vshift[c_idx];
+            fc->ibc_vir_buf[i].data[c_idx] = av_malloc((w * h) << ps);
+            if (!fc->ibc_vir_buf[i].data[c_idx])
+                return AVERROR(ENOMEM);
+        }
+    }
+
+    return 0;
+}
+
 static void pic_arrays_free(VVCFrameContext *fc)
 {
     ctb_arrays_free(fc);
@@ -344,6 +385,7 @@ static void pic_arrays_free(VVCFrameContext *fc)
     min_tu_arrays_free(fc);
     bs_arrays_free(fc);
     pixel_buffer_free(fc);
+    ibc_vir_buffer_free(fc);
 
     for (int i = 0; i < 2; i++)
         av_freep(&fc->tab.msm[i]);
@@ -415,6 +457,11 @@ static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
             goto fail;
     } else {
         memset(fc->tab.ispmf, 0, w64 * h64);
+    }
+
+    if (sps->r->sps_ibc_enabled_flag &&
+        (ret = ibc_vir_buffer_init(fc, pps->ctb_height, sps->r->sps_chroma_format_idc, 1 << sps->ctb_log2_size_y, sps->pixel_shift)) < 0) {
+        goto fail;
     }
 
     fc->tab.ctu_count = pps->ctb_count;

@@ -35,6 +35,7 @@
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry);
 
 //utils for vvc_intra_template
+const ReconstructedArea *ff_vvc_get_reconstructed_area(const VVCLocalContext *lc, const int x, const int y, const int c_idx);
 int ff_vvc_get_top_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
 int ff_vvc_get_left_available(const VVCLocalContext *lc, int x0, int y0, int target_size, int c_idx);
 int ff_vvc_get_mip_size_id(int w, int h);

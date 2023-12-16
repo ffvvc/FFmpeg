@@ -1568,7 +1568,7 @@ int ff_vvc_amvr_shift(VVCLocalContext *lc, const int inter_affine_flag,
 {
     int amvr_shift = 2;
     if (has_amvr_flag) {
-        if (amvr_flag(lc, inter_affine_flag)) {
+        if (pred_mode == MODE_IBC || amvr_flag(lc, inter_affine_flag)) {
             int idx;
             if (inter_affine_flag) {
                 idx = amvr_precision_idx(lc, 2, 1);

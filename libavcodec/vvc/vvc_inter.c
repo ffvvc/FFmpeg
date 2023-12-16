@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "libavutil/frame.h"
+#include "libavutil/imgutils.h"
 
 #include "vvc_data.h"
 #include "vvc_inter.h"
@@ -886,18 +887,70 @@ static void pred_affine_blk(VVCLocalContext *lc)
     }
 }
 
+#define IBC_POS(c_idx, x, y) ((fc->ibc_vir_buf[cu->line_idx].data[c_idx]) + ((x + y * fc->ibc_buffer_width) << sps->pixel_shift))
+static void intra_block_copy(VVCLocalContext *lc, const int c_idx)
+{
+    const CodingUnit *cu        = lc->cu;
+    const PredictionUnit *pu    = &cu->pu;
+    const VVCFrameContext *fc   = lc->fc;
+    const VVCSPS *sps           = fc->ps.sps;
+    Mv bv                       = pu->mi.mv[0][0];
+    const int hshift            = sps->hshift[c_idx];
+    const int vshift            = sps->vshift[c_idx];
+    int ref_x                   = cu->x0;
+    int ref_y                   = cu->y0;
+    int w                       = cu->cb_width;
+    int h                       = cu->cb_height;
+    int srcstride               = fc->ibc_buffer_width << sps->pixel_shift;
+    int dststride               = fc->frame->linesize[c_idx];
+
+    uint8_t *src, *dst;
+
+    if (c_idx != LUMA) {
+        ref_x >>= hshift;
+        ref_y >>= vshift;
+        w     >>= hshift;
+        h     >>= vshift;
+    }
+
+    ff_vvc_round_mv(&bv, 0, 4);
+
+    ref_x += (bv.x >> hshift);
+    ref_y += (bv.y >> vshift);
+    ref_x &= ((fc->ibc_buffer_width >> hshift) - 1);
+    ref_y &= ((1 << sps->ctb_log2_size_y) - 1);
+
+    if (ref_x + w <= (fc->ibc_buffer_width >> hshift)) {
+        src = IBC_POS(c_idx, ref_x, ref_y);
+        dst = POS(c_idx, ref_x, ref_y);
+        av_image_copy_plane(dst, dststride, src, srcstride, w << sps->pixel_shift, h);
+    }
+    else {
+        av_assert0(ref_x + w <= (fc->ibc_buffer_width >> hshift));
+    }
+}
+
 static void predict_inter(VVCLocalContext *lc)
 {
     const VVCFrameContext *fc   = lc->fc;
     const CodingUnit *cu        = lc->cu;
     const PredictionUnit *pu    = &cu->pu;
+    const VVCSPS *sps           = fc->ps.sps;
 
     if (pu->merge_gpm_flag)
         pred_gpm_blk(lc);
     else if (pu->inter_affine_flag)
         pred_affine_blk(lc);
+    else if (cu->pred_mode == MODE_IBC) {
+        intra_block_copy(lc, LUMA);
+        if (sps->r->sps_chroma_format_idc) {
+            intra_block_copy(lc, CB);
+            intra_block_copy(lc, CR);
+        }
+        return;
+    }
     else
-        pred_regular_blk(lc, 1);    //intra block is not ready yet, skip ciip
+        pred_regular_blk(lc, 1);
 
     if (!pu->dmvr_flag)
         fill_dmvr_info(fc, cu->x0, cu->y0, cu->cb_width, cu->cb_height);

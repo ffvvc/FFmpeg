@@ -502,6 +502,8 @@ void ff_vvc_store_mv(const VVCLocalContext *lc, const MotionInfo *mi)
     const CodingUnit *cu = lc->cu;
     MvField mvf;
 
+    mvf.ref_idx[0] = MF_NOT_VALID;
+    mvf.ref_idx[1] = MF_NOT_VALID;
     mvf.hpel_if_idx = mi->hpel_if_idx;
     mvf.bcw_idx = mi->bcw_idx;
     mvf.pred_flag = mi->pred_flag;
@@ -1594,6 +1596,116 @@ void ff_vvc_mvp(VVCLocalContext *lc, const int *mvp_lx_flag, const int amvr_shif
         mvp(lc, mvp_lx_flag[L1], L1, mi->ref_idx, amvr_shift, &mi->mv[L1][0]);
 }
 
+static void ibc_mvp_spatial_candidates(const VVCLocalContext *lc, int merge_cand_idx, MvField *cand_list, int *nb_merge_cand)
+{
+    const CodingUnit *cu        = lc->cu;
+    const VVCFrameContext *fc   = lc->fc;
+    const int min_pu_width      = fc->ps.pps->min_pu_width;
+    const MvField *tab_mvf      = fc->tab.mvf;
+    int is_gt4by4               = (cu->cb_width * cu->cb_height) > 16;
+    int available_a1            = 0;
+    int available_b1            = 0;
+    int num_cands               = *nb_merge_cand;
+
+    NeighbourContext nctx;
+    Neighbour *a1, *b1;
+
+    if (!is_gt4by4)
+        return;
+
+    init_neighbour_context(&nctx, lc);
+
+    a1 = &nctx.neighbours[A1];
+    b1 = &nctx.neighbours[B1];
+    available_a1 = check_available(a1, lc, 1);
+    available_b1 = check_available(b1, lc, 1);
+
+    if (available_a1)
+        cand_list[num_cands++] = TAB_MVF(a1->x, a1->y);
+    if (available_b1) {
+        const MvField *mvf_b1 = &TAB_MVF(b1->x, b1->y);
+        if (!available_a1 || !IS_SAME_MV(cand_list[num_cands - 1].mv, mvf_b1->mv))
+            cand_list[num_cands++] = *mvf_b1;
+    }
+
+    *nb_merge_cand = num_cands;
+}
+
+static int ibc_mvp_history_candidates(const VVCLocalContext *lc, int merge_cand_idx, MvField *cand_list, int *nb_merge_cand)
+{
+    const CodingUnit *cu            = lc->cu;
+    const EntryPoint *ep            = lc->ep;
+    const VVCFrameContext *fc       = lc->fc;
+    const VVCSPS *sps               = fc->ps.sps;
+    const MvField *mvf              = NULL;
+    int num_cands                   = *nb_merge_cand;
+    int same_motion                 = 0;
+    int is_gt4by4                   = (cu->cb_width * cu->cb_height) > 16;
+
+    for (int i = 1; i <= ep->num_hmvp_ibc; i++) {
+        mvf = &ep->hmvp_ibc[ep->num_hmvp_ibc - i];
+        for (int j = 0; j < *nb_merge_cand; j++) {
+            same_motion = is_gt4by4 && i == 1 && compare_mv_ref_idx(mvf, &cand_list[j]);
+            if (same_motion)
+                break;
+        }
+        if (!same_motion) {
+            cand_list[num_cands++] = *mvf;
+            if (num_cands > merge_cand_idx || num_cands > sps->max_num_ibc_merge_cand)
+                break;
+        }
+    }
+
+    *nb_merge_cand = num_cands;
+    return 0;
+}
+
+static inline void clip_mv_to_storage_bitdpeth(Mv *mv)
+{
+    mv->x = (mv->x + MV_CLIP_PERIOD) & (MV_CLIP_PERIOD - 1);
+    mv->x = (mv->x >= MV_CLIP_PERIOD_HALF) ? (mv->x - MV_CLIP_PERIOD) : mv->x;
+    mv->y = (mv->y + MV_CLIP_PERIOD) & (MV_CLIP_PERIOD - 1);
+    mv->y = (mv->y >= MV_CLIP_PERIOD_HALF) ? (mv->y - MV_CLIP_PERIOD) : mv->y;
+}
+
+static void get_ibc_merge_candinates(VVCLocalContext *lc, const int merge_cand_idx, MvField *cand_list, int *nb_merge_cand)
+{
+    const CodingUnit *cu                 = lc->cu;
+
+    ff_vvc_set_neighbour_available(lc, cu->x0, cu->y0, cu->cb_width, cu->cb_height);
+    ibc_mvp_spatial_candidates(lc, merge_cand_idx, cand_list, nb_merge_cand);
+    ibc_mvp_history_candidates(lc, merge_cand_idx, cand_list, nb_merge_cand);
+}
+
+void ff_vvc_ibc_mvp(VVCLocalContext *lc, const int mvp_l0_flag, const int amvr_shift, MotionInfo *mi)
+{
+    MvField cand_list[MRG_MAX_NUM_CANDS] = {};
+    int num_curr_cand                    = 0;
+
+    mi->num_sb_x = 1;
+    mi->num_sb_y = 1;
+
+    get_ibc_merge_candinates(lc, mvp_l0_flag, cand_list, &num_curr_cand);
+
+    for (int i = 0; i < num_curr_cand; i++)
+        ff_vvc_round_mv(cand_list[i].mv, amvr_shift, amvr_shift);
+
+    mi->mv[0][0].x += cand_list[mvp_l0_flag].mv->x;
+    mi->mv[0][0].y += cand_list[mvp_l0_flag].mv->y;
+    clip_mv_to_storage_bitdpeth(&mi->mv[0][0]);
+
+    return;
+}
+
+void ff_vvc_luma_mv_ibc_merge_mode(VVCLocalContext *lc, const int merge_idx, MvField *mv)
+{
+    MvField cand_list[MRG_MAX_NUM_CANDS] = {};
+    int num_curr_cand                    = 0;
+
+    get_ibc_merge_candinates(lc, merge_idx, cand_list, &num_curr_cand);
+    *mv = cand_list[merge_idx];
+}
+
 static int affine_mvp_constructed_cp(NeighbourContext *ctx,
     const NeighbourIdx *neighbour, const int num_neighbour,
     const int lx, const int8_t ref_idx, const int amvr_shift, Mv *cp)
@@ -1771,23 +1883,53 @@ void ff_vvc_update_hmvp(VVCLocalContext *lc, const MotionInfo *mi)
     const MvField *mvf;
     int i;
 
-    if (!is_greater_mer(fc, cu->x0, cu->y0, cu->x0 + cu->cb_width, cu->y0 + cu->cb_height))
-        return;
-    mvf = &TAB_MVF(cu->x0, cu->y0);
+    if (cu->pred_mode == MODE_IBC && (cu->cb_width * cu->cb_height) > 16) {
+        mvf = &TAB_MVF(cu->x0, cu->y0);
+        for (i = 0; i < ep->num_hmvp_ibc; i++) {
+            if (compare_mv_ref_idx(mvf, ep->hmvp_ibc + i)) {
+                ep->num_hmvp_ibc--;
+                break;
+            }
+        }
+        if (i == MAX_NUM_HMVP_CANDS) {
+            ep->num_hmvp_ibc--;
+            i = 0;
+        }
+        memmove(ep->hmvp_ibc + i, ep->hmvp_ibc + i + 1, (ep->num_hmvp_ibc - i) * sizeof(MvField));
+        ep->hmvp_ibc[ep->num_hmvp_ibc++] = *mvf;
 
-    for (i = 0; i < ep->num_hmvp; i++) {
-        if (compare_mv_ref_idx(mvf, ep->hmvp + i)) {
-            ep->num_hmvp--;
-            break;
+        static int cnt = 0;
+        printf("#%d: [%d, %d]-[%d, %d]-[%d, %d]-[%d, %d]-[%d, %d] input: [%d, %d]\n", cnt++,
+            ep->hmvp_ibc[0].mv[0].x, ep->hmvp_ibc[0].mv[0].y,
+            ep->hmvp_ibc[1].mv[0].x, ep->hmvp_ibc[1].mv[0].y,
+            ep->hmvp_ibc[2].mv[0].x, ep->hmvp_ibc[2].mv[0].y,
+            ep->hmvp_ibc[3].mv[0].x, ep->hmvp_ibc[3].mv[0].y,
+            ep->hmvp_ibc[4].mv[0].x, ep->hmvp_ibc[4].mv[0].y, mvf->mv[0].x, mvf->mv[0].y);
+        if (cnt == 668)
+        {
+            int i = 0;
+            return;
         }
     }
-    if (i == MAX_NUM_HMVP_CANDS) {
-        ep->num_hmvp--;
-        i = 0;
-    }
+    else {
+        if (!is_greater_mer(fc, cu->x0, cu->y0, cu->x0 + cu->cb_width, cu->y0 + cu->cb_height))
+            return;
+        mvf = &TAB_MVF(cu->x0, cu->y0);
 
-    memmove(ep->hmvp + i, ep->hmvp + i + 1, (ep->num_hmvp - i) * sizeof(MvField));
-    ep->hmvp[ep->num_hmvp++] = *mvf;
+        for (i = 0; i < ep->num_hmvp; i++) {
+            if (compare_mv_ref_idx(mvf, ep->hmvp + i)) {
+                ep->num_hmvp--;
+                break;
+            }
+        }
+        if (i == MAX_NUM_HMVP_CANDS) {
+            ep->num_hmvp--;
+            i = 0;
+        }
+
+        memmove(ep->hmvp + i, ep->hmvp + i + 1, (ep->num_hmvp - i) * sizeof(MvField));
+        ep->hmvp[ep->num_hmvp++] = *mvf;
+    }
 }
 
 MvField* ff_vvc_get_mvf(const VVCFrameContext *fc, const int x0, const int y0)
