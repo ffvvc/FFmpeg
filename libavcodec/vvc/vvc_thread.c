@@ -376,27 +376,11 @@ static int task_priority_higher(const AVTask *_a, const AVTask *_b)
     return a->ry < b->ry;
 }
 
-static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
-{
-    int ret, rs;
-
-    lc->sc = t->sc;
-    lc->ep = t->ep;
-
-    rs = t->sc->sh.ctb_addr_in_curr_slice[t->ctu_idx];
-    ret = ff_vvc_coding_tree_unit(lc, t->ctu_idx, rs, t->rx, t->ry);
-    if (ret < 0)
-        return ret;
-
-    return 0;
-}
-
 static void report_frame_progress(VVCFrameContext *fc,
-   const int ry, const VVCTaskType type)
+   const int ry, const VVCProgress idx)
 {
     VVCFrameThread *ft  = fc->ft;
     const int ctu_size  = ft->ctu_size;
-    const int idx       = type == VVC_TASK_TYPE_INTER ? VVC_PROGRESS_MV : VVC_PROGRESS_PIXEL;
     int old;
 
     if (atomic_fetch_add(&ft->rows[ry].progress[idx], 1) == ft->ctu_width - 1) {
@@ -414,18 +398,41 @@ static void report_frame_progress(VVCFrameContext *fc,
     }
 }
 
+static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
+{
+    int ret;
+    VVCFrameContext *fc = lc->fc;
+    const int rs        = t->sc->sh.ctb_addr_in_curr_slice[t->ctu_idx];
+    const CTU *ctu      = fc->tab.ctus + rs;
+
+    lc->sc = t->sc;
+    lc->ep = t->ep;
+
+    ret = ff_vvc_coding_tree_unit(lc, t->ctu_idx, rs, t->rx, t->ry);
+    if (ret < 0)
+        return ret;
+
+    if (!ctu->has_dmvr)
+        report_frame_progress(lc->fc, t->ry, VVC_PROGRESS_MV);
+
+    return 0;
+}
+
 static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
     VVCFrameThread *ft  = fc->ft;
     const int rs        = t->ry * ft->ctu_width + t->rx;
+    const CTU *ctu      = fc->tab.ctus + rs;
     const int slice_idx = fc->tab.slice_idx[rs];
 
     if (slice_idx != -1) {
         lc->sc = fc->slices[slice_idx];
         ff_vvc_predict_inter(lc, rs);
     }
-    report_frame_progress(fc, t->ry, VVC_TASK_TYPE_INTER);
+
+    if (ctu->has_dmvr)
+        report_frame_progress(fc, t->ry, VVC_PROGRESS_MV);
 
     return 0;
 }
@@ -544,7 +551,7 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
             ff_vvc_alf_filter(lc, x0, y0);
         }
     }
-    report_frame_progress(fc, t->ry, VVC_TASK_TYPE_ALF);
+    report_frame_progress(fc, t->ry, VVC_PROGRESS_PIXEL);
 
     return 0;
 }
