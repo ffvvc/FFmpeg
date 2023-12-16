@@ -1216,6 +1216,7 @@ static CodingUnit* add_cu(VVCLocalContext *lc, const int x0, const int y0,
     cu->ciip_flag = 0;
     cu->coded_flag = 1;
     cu->num_intra_subpartitions = 1;
+    cu->pu.dmvr_flag = 0;
 
     set_cb_pos(fc, cu);
     return cu;
@@ -1643,7 +1644,6 @@ static void derive_dmvr_bdof_flag(const VVCLocalContext *lc, PredictionUnit *pu)
     const CodingUnit *cu        = lc->cu;
     const PredWeightTable *w    = pps->r->pps_wp_info_in_ph_flag ? &fc->ps.ph.pwt : &sh->pwt;
 
-    pu->dmvr_flag = 0;
     pu->bdof_flag = 0;
 
     if (mi->pred_flag == PF_BI &&
@@ -1681,6 +1681,20 @@ static void refine_regular_subblock(const VVCLocalContext *lc)
     }
 }
 
+static void fill_dmvr_info(const VVCFrameContext *fc, const int x0, const int y0,
+    const int width, const int height)
+{
+    const VVCPPS *pps = fc->ps.pps;
+    const int w = width >> MIN_PU_LOG2;
+
+    for (int y = y0 >> MIN_PU_LOG2; y < (y0 + height) >> MIN_PU_LOG2; y++) {
+        const int idx = pps->min_pu_width * y + (x0 >> MIN_PU_LOG2);
+        const MvField *mvf = fc->tab.mvf + idx;
+        MvField *dmvr_mvf  = fc->ref->tab_dmvr_mvf + idx;
+        memcpy(dmvr_mvf, mvf, sizeof(MvField) * w);
+    }
+}
+
 static int inter_data(VVCLocalContext *lc)
 {
     const CodingUnit *cu    = lc->cu;
@@ -1704,6 +1718,8 @@ static int inter_data(VVCLocalContext *lc)
         refine_regular_subblock(lc);
         ff_vvc_update_hmvp(lc, mi);
     }
+    if (!pu->dmvr_flag)
+        fill_dmvr_info(lc->fc, cu->x0, cu->y0, cu->cb_width, cu->cb_height);
     return ret;
 }
 
@@ -2339,7 +2355,7 @@ static void cu_get_max_y(const CodingUnit *cu, int max_y[2][VVC_MAX_REF_ENTRIES]
     }
 }
 
-static void pred_get_max_y(VVCLocalContext *lc, const int rs)
+static void ctu_get_pred(VVCLocalContext *lc, const int rs)
 {
     const VVCFrameContext *fc       = lc->fc;
     const H266RawSliceHeader *rsh   = lc->sc->sh.r;
@@ -2353,8 +2369,10 @@ static void pred_get_max_y(VVCLocalContext *lc, const int rs)
         memset(ctu->max_y[lx], -1, sizeof(ctu->max_y[0][0]) * rsh->num_ref_idx_active[lx]);
 
     while (cu) {
-        if (has_inter_luma(cu))
+        if (has_inter_luma(cu)) {
             cu_get_max_y(cu, ctu->max_y, fc);
+            ctu->has_dmvr |= cu->pu.dmvr_flag;
+        }
         cu = cu->next;
     }
     ctu->max_y_idx[0] = ctu->max_y_idx[1] = 0;
@@ -2386,7 +2404,7 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     ret = hls_coding_tree_unit(lc, x_ctb, y_ctb, ctu_idx, rx, ry);
     if (ret < 0)
         return ret;
-    pred_get_max_y(lc, rs);
+    ctu_get_pred(lc, rs);
 
     return 0;
 }

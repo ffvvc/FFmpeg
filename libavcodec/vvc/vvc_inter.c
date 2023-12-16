@@ -761,20 +761,6 @@ static void set_dmvr_info(VVCFrameContext *fc, const int x0, const int y0,
     }
 }
 
-static void fill_dmvr_info(const VVCFrameContext *fc, const int x0, const int y0,
-    const int width, const int height)
-{
-    const VVCPPS *pps = fc->ps.pps;
-    const int w = width >> MIN_PU_LOG2;
-
-    for (int y = y0 >> MIN_PU_LOG2; y < (y0 + height) >> MIN_PU_LOG2; y++) {
-        const int idx = pps->min_pu_width * y + (x0 >> MIN_PU_LOG2);
-        const MvField *mvf = fc->tab.mvf + idx;
-        MvField *dmvr_mvf  = fc->ref->tab_dmvr_mvf + idx;
-        memcpy(dmvr_mvf, mvf, sizeof(MvField) * w);
-    }
-}
-
 static void derive_sb_mv(VVCLocalContext *lc, MvField *mv, MvField *orig_mv, int *sb_bdof_flag,
     const int x0, const int y0, const int sbw, const int sbh)
 {
@@ -899,8 +885,6 @@ static void predict_inter(VVCLocalContext *lc)
     else
         pred_regular_blk(lc, 1);    //intra block is not ready yet, skip ciip
 
-    if (!pu->dmvr_flag)
-        fill_dmvr_info(fc, cu->x0, cu->y0, cu->cb_width, cu->cb_height);
     if (lc->sc->sh.r->sh_lmcs_used_flag && !cu->ciip_flag) {
         uint8_t* dst0 = POS(0, cu->x0, cu->y0);
         fc->vvcdsp.lmcs.filter(dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.lmcs.fwd_lut);
