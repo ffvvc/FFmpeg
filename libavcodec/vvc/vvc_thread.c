@@ -130,9 +130,14 @@ static void task_init_parse(VVCTask *t, SliceContext *sc, EntryPoint *ep, const 
     t->ctu_idx   = ctu_idx;
 }
 
-static uint8_t task_add_score(VVCTask *t, const VVCTaskStage type, const uint8_t count)
+static uint8_t task_add_score(VVCTask *t, const VVCTaskStage stage)
 {
-    return atomic_fetch_add(&t->score[type - VVC_TASK_STAGE_PARSE], count);
+    return atomic_fetch_add(&t->score[stage - VVC_TASK_STAGE_PARSE], 1) + 1;
+}
+
+static uint8_t task_get_score(VVCTask *t, const VVCTaskStage stage)
+{
+    return atomic_load(&t->score[stage - VVC_TASK_STAGE_PARSE]);
 }
 
 //first row in tile or slice
@@ -148,7 +153,7 @@ static int is_first_row(const VVCFrameContext *fc, const int rx, const int ry)
     return 1;
 }
 
-static int task_has_target_score(VVCTask *t, const VVCTaskStage stage)
+static int task_has_target_score(VVCTask *t, const VVCTaskStage stage, const uint8_t score)
 {
     // l:left, r:right, t: top, b: bottom
     static const uint8_t target_score[] =
@@ -160,7 +165,6 @@ static int task_has_target_score(VVCTask *t, const VVCTaskStage stage)
         5,          //VVC_TASK_STAGE_SAO,       need l + r + lb + b + rb deblock h
         8,          //VVC_TASK_STAGE_ALF,       need sao around the ctu
     };
-    const uint8_t score = task_add_score(t, stage, 1);
     uint8_t target = 0;
     VVCFrameContext *fc = t->fc;
 
@@ -174,20 +178,22 @@ static int task_has_target_score(VVCTask *t, const VVCTaskStage stage)
         target = target_score[stage - VVC_TASK_STAGE_RECON];
     }
 
-    av_assert0(score <= target);
+    av_assert0(score <= target + 1);
 
-    return score == target;
+    return score == target + 1;
 }
 
 static void frame_thread_add_score(VVCContext *s, VVCFrameThread *ft,
     const int rx, const int ry, const VVCTaskStage stage)
 {
     VVCTask *t = ft->tasks + ft->ctu_width * ry + rx;
+    uint8_t score;
 
     if (rx < 0 || rx >= ft->ctu_width || ry < 0 || ry >= ft->ctu_height)
         return;
 
-    if (task_has_target_score(t, stage)) {
+    score = task_add_score(t, stage);
+    if (task_has_target_score(t, stage, score)) {
         av_assert0(s);
         av_assert0(stage == t->stage + 1);
         t->stage++;
@@ -302,19 +308,17 @@ static void parse_task_done(VVCContext *s, VVCFrameContext *fc, const int rx, co
     schedule_inter(s, fc, sc, t, rs);
 }
 
-static void task_stage_done(const VVCTask *task, VVCContext *s)
+static void task_stage_done(const VVCTask *t, VVCContext *s, const int shedule_next_stage)
 {
-    VVCFrameContext *fc      = task->fc;
+    VVCFrameContext *fc      = t->fc;
     VVCFrameThread *ft       = fc->ft;
-    const int rx             = task->rx;
-    const int ry             = task->ry;
-    const VVCTaskStage stage = task->stage;
+    const VVCTaskStage stage = t->stage;
 
-#define ADD(dx, dy, stage) frame_thread_add_score(s, ft, rx + (dx), ry + (dy), stage)
+#define ADD(dx, dy, stage) frame_thread_add_score(s, ft, t->rx + (dx), t->ry + (dy), stage)
 
     //this is a reserve map of ready_score, ordered by zigzag
     if (stage == VVC_TASK_STAGE_PARSE) {
-        parse_task_done(s, fc, task->rx, task->ry);
+        parse_task_done(s, fc, t->rx, t->ry);
     } else if (stage == VVC_TASK_STAGE_RECON) {
         ADD(-1,  1, VVC_TASK_STAGE_RECON);
         ADD( 1,  0, VVC_TASK_STAGE_RECON);
@@ -343,7 +347,7 @@ static void task_stage_done(const VVCTask *task, VVCContext *s)
         ADD( 0,  1,  VVC_TASK_STAGE_ALF);
         ADD( 1,  1,  VVC_TASK_STAGE_ALF);
     }
-    if (stage < VVC_TASK_STAGE_ALF)
+    if (stage < VVC_TASK_STAGE_ALF && shedule_next_stage)
         ADD(0, 0, stage + 1);
 }
 
@@ -572,16 +576,13 @@ const static char* task_name[] = {
 
 typedef int (*run_func)(VVCContext *s, VVCLocalContext *lc, VVCTask *t);
 
-static int task_run(AVTask *_t, void *local_context, void *user_data)
+static void task_run_stage(VVCTask *t, VVCContext *s, VVCLocalContext *lc)
 {
-    VVCTask *t               = (VVCTask*)_t;
-    VVCContext *s            = (VVCContext *)user_data;
-    VVCLocalContext *lc      = local_context;
+    int ret;
     VVCFrameContext *fc      = t->fc;
     VVCFrameThread *ft       = fc->ft;
     const VVCTaskStage stage = t->stage;
     const int idx            = stage - VVC_TASK_STAGE_PARSE;
-    int ret = 0;
     run_func run[] = {
         run_parse,
         run_inter,
@@ -592,8 +593,6 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
         run_sao,
         run_alf,
     };
-
-    lc->fc = t->fc;
 
 #ifdef VVC_THREAD_DEBUG
     av_log(s->avctx, AV_LOG_DEBUG, "frame %5d, %s(%3d, %3d)\r\n", (int)t->fc->decode_order, task_name[idx], t->rx, t->ry);
@@ -609,14 +608,46 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
             atomic_compare_exchange_strong(&ft->ret, &zero, ret);
             av_log(s->avctx, AV_LOG_ERROR,
                 "frame %5d, %s(%3d, %3d) failed with %d\r\n",
-                (int)t->fc->decode_order, task_name[idx], t->rx, t->ry, ret);
+                (int)fc->decode_order, task_name[idx], t->rx, t->ry, ret);
         }
     }
 
-    task_stage_done(t, s);
+    task_stage_done(t, s, 0);
+    return;
+}
+
+static int task_is_stage_ready(VVCTask *t)
+{
+    const VVCTaskStage stage = t->stage;
+    uint8_t score;
+    if (stage > VVC_TASK_STAGE_ALF)
+        return 0;
+    score = task_get_score(t, stage);
+    return task_has_target_score(t, stage, score);
+}
+
+static int task_run(AVTask *_t, void *local_context, void *user_data)
+{
+    VVCTask *t              = (VVCTask*)_t;
+    VVCContext *s           = (VVCContext *)user_data;
+    VVCLocalContext *lc     = local_context;
+    VVCFrameThread *ft      = t->fc->ft;
+
+    lc->fc = t->fc;
+
+    while (task_is_stage_ready(t)) {
+        task_run_stage(t, s, lc);
+        t->stage++;
+    }
+
+    if (t->stage != VVC_TASK_STAGE_LAST) {
+        t->stage--;
+        frame_thread_add_score(s, ft, t->rx, t->ry, t->stage + 1);
+    }
+
     sheduled_done(ft, &ft->nb_scheduled_tasks);
 
-    return ret;
+    return 0;
 }
 
 AVExecutor* ff_vvc_executor_alloc(VVCContext *s, const int thread_count)
@@ -662,16 +693,16 @@ static void frame_thread_init_score(VVCFrameContext *fc)
 
         for (task.rx = -1; task.rx <= ft->ctu_width; task.rx++) {
             task.ry = -1;                           //top
-            task_stage_done(&task, NULL);
+            task_stage_done(&task, NULL, 1);
             task.ry = ft->ctu_height;               //bottom
-            task_stage_done(&task, NULL);
+            task_stage_done(&task, NULL, 1);
         }
 
         for (task.ry = 0; task.ry < ft->ctu_height; task.ry++) {
             task.rx = -1;                           //left
-            task_stage_done(&task, NULL);
+            task_stage_done(&task, NULL, 1);
             task.rx = ft->ctu_width;                //right
-            task_stage_done(&task, NULL);
+            task_stage_done(&task, NULL, 1);
         }
     }
 }
@@ -780,7 +811,7 @@ void ff_vvc_frame_submit(VVCContext *s, VVCFrameContext *fc)
 
                 task_init_parse(t, sc, ep, k);
                 check_colocation(s, t);
-                task_stage_done(t, s);
+                task_stage_done(t, s, 1);
             }
             submit_entry_point(s, ft, sc, ep);
         }
