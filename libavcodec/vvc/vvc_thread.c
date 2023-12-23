@@ -59,8 +59,8 @@ typedef struct VVCTask {
 
     VVCTaskStage stage;
 
-    // ctu x, y in raster order
-    int rx, ry;
+    // ctu x, y, and raster scan order
+    int rx, ry, rs;
     VVCFrameContext *fc;
 
     ProgressListener col_listener;
@@ -118,6 +118,7 @@ static void task_init(VVCTask *t, VVCTaskStage stage, VVCFrameContext *fc, const
     t->fc    = fc;
     t->rx    = rx;
     t->ry    = ry;
+    t->rs    = ry * fc->ft->ctu_width + rx;
     for (int i = 0; i < FF_ARRAY_ELEMS(t->score); i++)
         atomic_store(t->score + i, 0);
     atomic_store(&t->target_inter_score, 0);
@@ -406,7 +407,7 @@ static int run_parse(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     int ret;
     VVCFrameContext *fc = lc->fc;
-    const int rs        = t->sc->sh.ctb_addr_in_curr_slice[t->ctu_idx];
+    const int rs        = t->rs;
     const CTU *ctu      = fc->tab.ctus + rs;
 
     lc->sc = t->sc;
@@ -444,8 +445,7 @@ static int run_inter(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 static int run_recon(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
     VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->ft;
-    const int rs = t->ry * ft->ctu_width + t->rx;
+    const int rs        = t->rs;
     const int slice_idx = fc->tab.slice_idx[rs];
 
     if (slice_idx != -1) {
@@ -549,9 +549,8 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     if (fc->ps.sps->r->sps_alf_enabled_flag) {
         const int slice_idx = CTB(fc->tab.slice_idx, t->rx, t->ry);
         if (slice_idx != -1) {
-            const int rs = t->ry * fc->ps.pps->ctb_width + t->rx;
             lc->sc = fc->slices[slice_idx];
-            ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, rs);
+            ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, t->rs);
             ff_vvc_alf_filter(lc, x0, y0);
         }
     }
@@ -744,7 +743,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
             goto fail;
         }
     }
-
+    fc->ft = ft;
     ft->ret = 0;
     for (int y = 0; y < ft->ctu_height; y++) {
         VVCRowThread *row = ft->rows + y;
@@ -758,7 +757,6 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 
     memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
 
-    fc->ft = ft;
     frame_thread_init_score(fc);
 
     return 0;
