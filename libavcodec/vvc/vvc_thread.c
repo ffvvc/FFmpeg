@@ -39,7 +39,6 @@ typedef struct ProgressListener {
 } ProgressListener;
 
 typedef enum VVCTaskStage {
-    VVC_TASK_STAGE_INIT,
     VVC_TASK_STAGE_PARSE,
     VVC_TASK_STAGE_INTER,
     VVC_TASK_STAGE_RECON,
@@ -72,7 +71,7 @@ typedef struct VVCTask {
     int ctu_idx;                    //ctu idx in the current slice
 
     // tasks with target scores met are ready for scheduling
-    atomic_uchar score[VVC_TASK_STAGE_LAST - VVC_TASK_STAGE_PARSE];
+    atomic_uchar score[VVC_TASK_STAGE_LAST];
     atomic_uchar target_inter_score;
 } VVCTask;
 
@@ -133,12 +132,12 @@ static void task_init_parse(VVCTask *t, SliceContext *sc, EntryPoint *ep, const 
 
 static uint8_t task_add_score(VVCTask *t, const VVCTaskStage stage)
 {
-    return atomic_fetch_add(&t->score[stage - VVC_TASK_STAGE_PARSE], 1) + 1;
+    return atomic_fetch_add(&t->score[stage], 1) + 1;
 }
 
 static uint8_t task_get_score(VVCTask *t, const VVCTaskStage stage)
 {
-    return atomic_load(&t->score[stage - VVC_TASK_STAGE_PARSE]);
+    return atomic_load(&t->score[stage]);
 }
 
 //first row in tile or slice
@@ -172,15 +171,15 @@ static int task_has_target_score(VVCTask *t, const VVCTaskStage stage, const uin
     if (stage == VVC_TASK_STAGE_PARSE) {
         const H266RawSPS *rsps = fc->ps.sps->r;
         const int wpp = rsps->sps_entropy_coding_sync_enabled_flag && !is_first_row(fc, t->rx, t->ry);
-        target = 2 + wpp;                           //left parse + colocation + wpp
+        target = 2 + wpp - 1;                           //left parse + colocation + wpp - no previous stage
     } else if (stage == VVC_TASK_STAGE_INTER) {
         target = atomic_load(&t->target_inter_score);
     } else {
         target = target_score[stage - VVC_TASK_STAGE_RECON];
     }
 
+    //+1 for previous stage
     av_assert0(score <= target + 1);
-
     return score == target + 1;
 }
 
@@ -196,8 +195,7 @@ static void frame_thread_add_score(VVCContext *s, VVCFrameThread *ft,
     score = task_add_score(t, stage);
     if (task_has_target_score(t, stage, score)) {
         av_assert0(s);
-        av_assert0(stage == t->stage + 1);
-        t->stage++;
+        av_assert0(stage == t->stage);
         add_task(s, t);
     }
 }
@@ -309,7 +307,7 @@ static void parse_task_done(VVCContext *s, VVCFrameContext *fc, const int rx, co
     schedule_inter(s, fc, sc, t, rs);
 }
 
-static void task_stage_done(const VVCTask *t, VVCContext *s, const int shedule_next_stage)
+static void task_stage_done(const VVCTask *t, VVCContext *s)
 {
     VVCFrameContext *fc      = t->fc;
     VVCFrameThread *ft       = fc->ft;
@@ -348,13 +346,23 @@ static void task_stage_done(const VVCTask *t, VVCContext *s, const int shedule_n
         ADD( 0,  1,  VVC_TASK_STAGE_ALF);
         ADD( 1,  1,  VVC_TASK_STAGE_ALF);
     }
-    if (stage < VVC_TASK_STAGE_ALF && shedule_next_stage)
-        ADD(0, 0, stage + 1);
+}
+
+static int task_is_stage_ready(VVCTask *t, int add)
+{
+    const VVCTaskStage stage = t->stage;
+    uint8_t score;
+    if (stage > VVC_TASK_STAGE_ALF)
+        return 0;
+    score = task_get_score(t, stage) + add;
+    return task_has_target_score(t, stage, score);
 }
 
 static int task_ready(const AVTask *_t, void *user_data)
 {
-    return 1;
+    VVCTask *t = (VVCTask*)_t;
+
+    return task_is_stage_ready(t, 0);
 }
 
 #define CHECK(a, b)                         \
@@ -581,7 +589,6 @@ static void task_run_stage(VVCTask *t, VVCContext *s, VVCLocalContext *lc)
     VVCFrameContext *fc      = t->fc;
     VVCFrameThread *ft       = fc->ft;
     const VVCTaskStage stage = t->stage;
-    const int idx            = stage - VVC_TASK_STAGE_PARSE;
     run_func run[] = {
         run_parse,
         run_inter,
@@ -594,11 +601,11 @@ static void task_run_stage(VVCTask *t, VVCContext *s, VVCLocalContext *lc)
     };
 
 #ifdef VVC_THREAD_DEBUG
-    av_log(s->avctx, AV_LOG_DEBUG, "frame %5d, %s(%3d, %3d)\r\n", (int)t->fc->decode_order, task_name[idx], t->rx, t->ry);
+    av_log(s->avctx, AV_LOG_DEBUG, "frame %5d, %s(%3d, %3d)\r\n", (int)t->fc->decode_order, task_name[stage], t->rx, t->ry);
 #endif
 
     if (!atomic_load(&ft->ret)) {
-        if ((ret = run[idx](s, lc, t)) < 0) {
+        if ((ret = run[stage](s, lc, t)) < 0) {
 #ifdef COMPAT_ATOMICS_WIN32_STDATOMIC_H
             intptr_t zero = 0;
 #else
@@ -607,22 +614,12 @@ static void task_run_stage(VVCTask *t, VVCContext *s, VVCLocalContext *lc)
             atomic_compare_exchange_strong(&ft->ret, &zero, ret);
             av_log(s->avctx, AV_LOG_ERROR,
                 "frame %5d, %s(%3d, %3d) failed with %d\r\n",
-                (int)fc->decode_order, task_name[idx], t->rx, t->ry, ret);
+                (int)fc->decode_order, task_name[stage], t->rx, t->ry, ret);
         }
     }
 
-    task_stage_done(t, s, 0);
+    task_stage_done(t, s);
     return;
-}
-
-static int task_is_stage_ready(VVCTask *t)
-{
-    const VVCTaskStage stage = t->stage;
-    uint8_t score;
-    if (stage > VVC_TASK_STAGE_ALF)
-        return 0;
-    score = task_get_score(t, stage);
-    return task_has_target_score(t, stage, score);
 }
 
 static int task_run(AVTask *_t, void *local_context, void *user_data)
@@ -634,15 +631,13 @@ static int task_run(AVTask *_t, void *local_context, void *user_data)
 
     lc->fc = t->fc;
 
-    while (task_is_stage_ready(t)) {
+    do {
         task_run_stage(t, s, lc);
         t->stage++;
-    }
+    } while (task_is_stage_ready(t, 1));
 
-    if (t->stage != VVC_TASK_STAGE_LAST) {
-        t->stage--;
-        frame_thread_add_score(s, ft, t->rx, t->ry, t->stage + 1);
-    }
+    if (t->stage != VVC_TASK_STAGE_LAST)
+        frame_thread_add_score(s, ft, t->rx, t->ry, t->stage);
 
     sheduled_done(ft, &ft->nb_scheduled_tasks);
 
@@ -692,16 +687,16 @@ static void frame_thread_init_score(VVCFrameContext *fc)
 
         for (task.rx = -1; task.rx <= ft->ctu_width; task.rx++) {
             task.ry = -1;                           //top
-            task_stage_done(&task, NULL, 1);
+            task_stage_done(&task, NULL);
             task.ry = ft->ctu_height;               //bottom
-            task_stage_done(&task, NULL, 1);
+            task_stage_done(&task, NULL);
         }
 
         for (task.ry = 0; task.ry < ft->ctu_height; task.ry++) {
             task.rx = -1;                           //left
-            task_stage_done(&task, NULL, 1);
+            task_stage_done(&task, NULL);
             task.rx = ft->ctu_width;                //right
-            task_stage_done(&task, NULL, 1);
+            task_stage_done(&task, NULL);
         }
     }
 }
@@ -752,7 +747,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
 
     for (int rs = 0; rs < ft->ctu_count; rs++) {
         VVCTask *t = ft->tasks + rs;
-        task_init(t, VVC_TASK_STAGE_INIT, fc, rs % ft->ctu_width, rs / ft->ctu_width);
+        task_init(t, VVC_TASK_STAGE_PARSE, fc, rs % ft->ctu_width, rs / ft->ctu_width);
     }
 
     memset(&ft->row_progress[0], 0, sizeof(ft->row_progress));
@@ -809,7 +804,6 @@ void ff_vvc_frame_submit(VVCContext *s, VVCFrameContext *fc)
 
                 task_init_parse(t, sc, ep, k);
                 check_colocation(s, t);
-                task_stage_done(t, s, 1);
             }
             submit_entry_point(s, ft, sc, ep);
         }
