@@ -103,7 +103,7 @@ typedef struct VVCFrameThread {
 
 static void add_task(VVCContext *s, VVCTask *t)
 {
-    VVCFrameThread *ft  = t->fc->ft;
+    VVCFrameThread *ft = t->fc->ft;
 
     atomic_fetch_add(&ft->nb_scheduled_tasks, 1);
 
@@ -125,9 +125,9 @@ static void task_init(VVCTask *t, VVCTaskStage stage, VVCFrameContext *fc, const
 
 static void task_init_parse(VVCTask *t, SliceContext *sc, EntryPoint *ep, const int ctu_idx)
 {
-    t->sc        = sc;
-    t->ep        = ep;
-    t->ctu_idx   = ctu_idx;
+    t->sc      = sc;
+    t->ep      = ep;
+    t->ctu_idx = ctu_idx;
 }
 
 static uint8_t task_add_score(VVCTask *t, const VVCTaskStage stage)
@@ -143,8 +143,8 @@ static uint8_t task_get_score(VVCTask *t, const VVCTaskStage stage)
 //first row in tile or slice
 static int is_first_row(const VVCFrameContext *fc, const int rx, const int ry)
 {
-    const VVCFrameThread *ft    = fc->ft;
-    const VVCPPS *pps           = fc->ps.pps;
+    const VVCFrameThread *ft = fc->ft;
+    const VVCPPS *pps        = fc->ps.pps;
 
     if (ry != pps->ctb_to_row_bd[ry]) {
         const int rs = ry * ft->ctu_width + rx;
@@ -211,9 +211,9 @@ static void sheduled_done(VVCFrameThread *ft, atomic_int *scheduled)
 
 static void progress_done(VVCProgressListener *_l, const int type)
 {
-    const ProgressListener *l   = (ProgressListener *)_l;
-    const VVCTask *t            = l->task;
-    VVCFrameThread *ft          = t->fc->ft;
+    const ProgressListener *l = (ProgressListener *)_l;
+    const VVCTask *t          = l->task;
+    VVCFrameThread *ft        = t->fc->ft;
 
     frame_thread_add_score(l->s, ft, t->rx, t->ry, type);
     sheduled_done(ft, &ft->nb_scheduled_listeners);
@@ -254,9 +254,9 @@ static void add_progress_listener(VVCFrame *ref, ProgressListener *l,
 
 static void schedule_next_parse(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc, VVCTask *t)
 {
-    VVCFrameThread *ft  = fc->ft;
-    EntryPoint *ep      = t->ep;
-    const VVCSPS *sps   = fc->ps.sps;
+    VVCFrameThread *ft = fc->ft;
+    EntryPoint *ep     = t->ep;
+    const VVCSPS *sps  = fc->ps.sps;
 
     if (sps->r->sps_entropy_coding_sync_enabled_flag) {
         if (t->rx == fc->ps.pps->ctb_to_col_bd[t->rx]) {
@@ -392,8 +392,8 @@ static int task_priority_higher(const AVTask *_a, const AVTask *_b)
 static void report_frame_progress(VVCFrameContext *fc,
    const int ry, const VVCProgress idx)
 {
-    VVCFrameThread *ft  = fc->ft;
-    const int ctu_size  = ft->ctu_size;
+    VVCFrameThread *ft = fc->ft;
+    const int ctu_size = ft->ctu_size;
     int old;
 
     if (atomic_fetch_add(&ft->rows[ry].progress[idx], 1) == ft->ctu_width - 1) {
@@ -624,10 +624,10 @@ static void task_run_stage(VVCTask *t, VVCContext *s, VVCLocalContext *lc)
 
 static int task_run(AVTask *_t, void *local_context, void *user_data)
 {
-    VVCTask *t              = (VVCTask*)_t;
-    VVCContext *s           = (VVCContext *)user_data;
-    VVCLocalContext *lc     = local_context;
-    VVCFrameThread *ft      = t->fc->ft;
+    VVCTask *t          = (VVCTask*)_t;
+    VVCContext *s       = (VVCContext *)user_data;
+    VVCLocalContext *lc = local_context;
+    VVCFrameThread *ft  = t->fc->ft;
 
     lc->fc = t->fc;
 
