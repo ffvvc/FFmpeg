@@ -160,7 +160,7 @@ static int task_has_target_score(VVCTask *t, const VVCTaskStage stage, const uin
     {
         2,          //VVC_TASK_STAGE_RECON,     need l + rt recon
         3,          //VVC_TASK_STAGE_LMCS,      need r + b + rb recon
-        2,          //VVC_TASK_STAGE_DEBLOCK_V, need r lmcs + l deblock v
+        1,          //VVC_TASK_STAGE_DEBLOCK_V, need l deblock v
         2,          //VVC_TASK_STAGE_DEBLOCK_H, need r deblock v + t deblock h
         5,          //VVC_TASK_STAGE_SAO,       need l + r + lb + b + rb deblock h
         8,          //VVC_TASK_STAGE_ALF,       need sao around the ctu
@@ -324,8 +324,6 @@ static void task_stage_done(const VVCTask *t, VVCContext *s)
         ADD(-1, -1, VVC_TASK_STAGE_LMCS);
         ADD( 0, -1, VVC_TASK_STAGE_LMCS);
         ADD(-1,  0, VVC_TASK_STAGE_LMCS);
-    } else if (stage == VVC_TASK_STAGE_LMCS) {
-        ADD(-1,  0,  VVC_TASK_STAGE_DEBLOCK_V);
     } else if (stage == VVC_TASK_STAGE_DEBLOCK_V) {
         ADD( 1,  0,  VVC_TASK_STAGE_DEBLOCK_V);
         ADD(-1,  0,  VVC_TASK_STAGE_DEBLOCK_H);
