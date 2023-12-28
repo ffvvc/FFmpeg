@@ -769,8 +769,9 @@ static void check_colocation(VVCContext *s, VVCTask *t)
     const VVCFrameContext *fc = t->fc;
 
     if (fc->ps.ph.r->ph_temporal_mvp_enabled_flag || fc->ps.sps->r->sps_sbtmvp_enabled_flag) {
-        VVCFrame *col = fc->ref->collocated_ref;
-        if (col) {
+        VVCFrame *col       = fc->ref->collocated_ref;
+        const int first_col = t->rx == fc->ps.pps->ctb_to_col_bd[t->rx];
+        if (col && first_col) {
             //we depend on bottom and right boundary, do not - 1 for y
             const int y = (t->ry << fc->ps.sps->ctb_log2_size_y);
             add_progress_listener(col, &t->col_listener, t, s, VVC_PROGRESS_MV, y);
