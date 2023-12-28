@@ -956,11 +956,12 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
     const uint8_t no_p[4] = { 0 };
     const uint8_t no_q[4] = { 0 } ;
 
-    int ctb_log2_size_y = fc->ps.sps->ctb_log2_size_y;
+    const int ctb_log2_size_y = fc->ps.sps->ctb_log2_size_y;
     int x_end, y_end;
-    int ctb_size = 1 << ctb_log2_size_y;
-    int ctb = (x0 >> ctb_log2_size_y) +
+    const int ctb_size = 1 << ctb_log2_size_y;
+    const int ctb = (x0 >> ctb_log2_size_y) +
         (y0 >> ctb_log2_size_y) * fc->ps.pps->ctb_width;
+    const DBParams *params = fc->tab.deblock + ctb;
 
     vvc_deblock_bs(lc, x0, y0, 0);
 
@@ -972,9 +973,11 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
         y_end = fc->ps.sps->height;
 
     for (int c_idx = 0; c_idx < c_end; c_idx++) {
-        const int hs            = sps->hshift[c_idx];
-        const int vs            = sps->vshift[c_idx];
-        const int grid          = c_idx ? (CHROMA_GRID << vs) : LUMA_GRID;
+        const int hs          = sps->hshift[c_idx];
+        const int vs          = sps->vshift[c_idx];
+        const int grid        = c_idx ? (CHROMA_GRID << vs) : LUMA_GRID;
+        const int beta_offset = params->beta_offset[c_idx];
+        const int tc_offset   = params->tc_offset[c_idx];
 
         for (y = y0; y < y_end; y += grid) {
             const uint8_t horizontal_ctu_edge = !(y % fc->ps.sps->ctb_size_y);
@@ -987,9 +990,6 @@ void ff_vvc_deblock_horizontal(const VVCLocalContext *lc, int x0, int y0)
 
                 for (int i = 0; i < DEBLOCK_STEP >> (2 - hs); i++) {
                     const int dx = i << 2;
-                    const DBParams *params = fc->tab.deblock + ctb - (x + dx < x0);
-                    const int beta_offset = params->beta_offset[c_idx];
-                    const int tc_offset = params->tc_offset[c_idx];
 
                     bs[i] = (x + dx < x_end) ? TAB_BS(fc->tab.horizontal_bs[c_idx], x + dx, y) : 0;
                     if (bs[i]) {
