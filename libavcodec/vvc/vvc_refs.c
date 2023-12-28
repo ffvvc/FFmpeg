@@ -65,10 +65,10 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
 
 const RefPicList *ff_vvc_get_ref_list(const VVCFrameContext *fc, const VVCFrame *ref, int x0, int y0)
 {
-    int x_cb         = x0 >> fc->ps.sps->ctb_log2_size_y;
-    int y_cb         = y0 >> fc->ps.sps->ctb_log2_size_y;
-    int pic_width_cb = fc->ps.pps->ctb_width;
-    int ctb_addr_rs  = y_cb * pic_width_cb + x_cb;
+    const int x_cb         = x0 >> fc->ps.sps->ctb_log2_size_y;
+    const int y_cb         = y0 >> fc->ps.sps->ctb_log2_size_y;
+    const int pic_width_cb = fc->ps.pps->ctb_width;
+    const int ctb_addr_rs  = y_cb * pic_width_cb + x_cb;
 
     return (const RefPicList *)ref->rpl_tab[ctb_addr_rs];
 }
@@ -150,10 +150,9 @@ int ff_vvc_set_new_ref(VVCContext *s, VVCFrameContext *fc, AVFrame **frame)
     const VVCPH *ph= &fc->ps.ph;
     const int poc = ph->poc;
     VVCFrame *ref;
-    int i;
 
     /* check that this POC doesn't already exist */
-    for (i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
+    for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
         VVCFrame *frame = &fc->DPB[i];
 
         if (frame->frame->buf[0] && frame->sequence == s->seq_decode &&
@@ -290,7 +289,7 @@ void ff_vvc_bump_frame(VVCContext *s, VVCFrameContext *fc)
 
 static VVCFrame *find_ref_idx(VVCContext *s, VVCFrameContext *fc, int poc, uint8_t use_msb)
 {
-    int mask = use_msb ? ~0 : fc->ps.sps->max_pic_order_cnt_lsb - 1;
+    const int mask = use_msb ? ~0 : fc->ps.sps->max_pic_order_cnt_lsb - 1;
 
     for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
         VVCFrame *ref = &fc->DPB[i];
