@@ -109,9 +109,7 @@ static int tab_list_init(TabList *l, const size_t nb_tabs, const int zero,
 
 static void tab_list_clear(TabList *l, const size_t nb_tabs)
 {
-    size_t size = 0;
-    for (int i = 0; i < nb_tabs; i++)
-        size += l[i].size;
+    const size_t size = tab_list_get_size(l, nb_tabs);
     memset(*l->tab, 0, size);
 }
 
