@@ -1000,7 +1000,7 @@ int ff_vvc_sao_band_position_decode(VVCLocalContext *lc)
 int ff_vvc_sao_offset_abs_decode(VVCLocalContext *lc)
 {
     int i = 0;
-    int length = (1 << (FFMIN(lc->fc->ps.sps->bit_depth, 10) - 5)) - 1;
+    const int length = (1 << (FFMIN(lc->fc->ps.sps->bit_depth, 10) - 5)) - 1;
 
     while (i < length && get_cabac_bypass(&lc->ep->cc))
         i++;
@@ -1155,14 +1155,14 @@ static int mtt_split_cu_vertical_flag_decode(VVCLocalContext *lc, const int x0, 
 
 static int mtt_split_cu_binary_flag_decode(VVCLocalContext *lc, const int mtt_split_cu_vertical_flag, const int mtt_depth)
 {
-    int inc = (2 * mtt_split_cu_vertical_flag) + ((mtt_depth <= 1) ? 1 : 0);
+    const int inc = (2 * mtt_split_cu_vertical_flag) + ((mtt_depth <= 1) ? 1 : 0);
     return GET_CABAC(MTT_SPLIT_CU_BINARY_FLAG + inc);
 }
 
 VVCSplitMode ff_vvc_split_mode(VVCLocalContext *lc, const int x0, const int y0, const int cb_width, const int cb_height,
     const int cqt_depth, const int mtt_depth, const int ch_type, const VVCAllowedSplit *a)
 {
-    int allow_no_qt = a->btv || a->bth || a->ttv || a->tth;
+    const int allow_no_qt = a->btv || a->bth || a->ttv || a->tth;
     int split_qt_flag;
     int mtt_split_cu_vertical_flag;
     int mtt_split_cu_binary_flag;
@@ -1421,6 +1421,7 @@ static PredMode get_luma_pred_mode(VVCLocalContext *lc)
     const VVCFrameContext *fc  = lc->fc;
     const CodingUnit *cu = lc->cu;
     PredMode pred_mode;
+
     if (cu->tree_type != DUAL_TREE_CHROMA) {
         pred_mode = cu->pred_mode;
     } else {
@@ -1658,6 +1659,7 @@ int ff_vvc_cu_chroma_qp_offset_flag(VVCLocalContext *lc)
 {
     return GET_CABAC(CU_CHROMA_QP_OFFSET_FLAG);
 }
+
 int ff_vvc_cu_chroma_qp_offset_idx(VVCLocalContext *lc)
 {
     const int c_max = lc->fc->ps.pps->r->pps_chroma_qp_offset_list_len_minus1;
@@ -1897,6 +1899,7 @@ static int abs_remainder_decode(VVCLocalContext *lc, const ResidualCoding* rc, c
     const int c_rice_param = abs_get_rice_param(lc, rc, xc, yc,
         base_level[sps->r->sps_rrc_rice_extension_flag][sps->bit_depth > 12][IS_I(rsh)]);
     const int rem = abs_decode(lc, c_rice_param);
+
     return rem;
 }
 
@@ -1986,9 +1989,9 @@ static void ep_update_hist(EntryPoint *ep, ResidualCoding *rc,
     }
 }
 
-static void init_residual_coding(VVCLocalContext *lc, ResidualCoding *rc,
-        const int log2_zo_tb_width, const int log2_zo_tb_height,
-        TransformBlock *tb)
+static void init_residual_coding(const VVCLocalContext *lc, ResidualCoding *rc,
+    const int log2_zo_tb_width, const int log2_zo_tb_height,
+    TransformBlock *tb)
 {
     const VVCSPS *sps   = lc->fc->ps.sps;
     int log2_sb_w = (FFMIN(log2_zo_tb_width, log2_zo_tb_height ) < 2 ? 1 : 2 );
@@ -2306,8 +2309,7 @@ static inline int residual_coding_subblock(VVCLocalContext *lc, ResidualCoding *
     return 0;
 }
 
-static void derive_last_scan_pos(ResidualCoding *rc,
-    const int log2_zo_tb_width, int log2_zo_tb_height)
+static void derive_last_scan_pos(ResidualCoding *rc)
 {
     int xc, yc, xs, ys;
     do {
@@ -2376,7 +2378,7 @@ static int hls_residual_coding(VVCLocalContext *lc, TransformBlock *tb)
 
     init_residual_coding(lc, &rc, log2_zo_tb_width, log2_zo_tb_height, tb);
     last_significant_coeff_x_y_decode(&rc, lc, log2_zo_tb_width, log2_zo_tb_height);
-    derive_last_scan_pos(&rc, log2_zo_tb_width, log2_zo_tb_height);
+    derive_last_scan_pos(&rc);
 
     if (rc.last_sub_block == 0 && log2_tb_width >= 2 && log2_tb_height >= 2 && !tb->ts && rc.last_scan_pos > 0)
         lc->parse.lfnst_dc_only = 0;
