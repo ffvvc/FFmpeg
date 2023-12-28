@@ -76,7 +76,7 @@ typedef struct VVCTask {
 } VVCTask;
 
 typedef struct VVCRowThread {
-    atomic_int progress[VVC_PROGRESS_LAST];
+    atomic_int col_progress[VVC_PROGRESS_LAST];
 } VVCRowThread;
 
 typedef struct VVCFrameThread {
@@ -394,11 +394,11 @@ static void report_frame_progress(VVCFrameContext *fc,
     const int ctu_size = ft->ctu_size;
     int old;
 
-    if (atomic_fetch_add(&ft->rows[ry].progress[idx], 1) == ft->ctu_width - 1) {
+    if (atomic_fetch_add(&ft->rows[ry].col_progress[idx], 1) == ft->ctu_width - 1) {
         int y;
         ff_mutex_lock(&ft->lock);
         y = old = ft->row_progress[idx];
-        while (y < ft->ctu_height && atomic_load(&ft->rows[y].progress[idx]) == ft->ctu_width)
+        while (y < ft->ctu_height && atomic_load(&ft->rows[y].col_progress[idx]) == ft->ctu_width)
             y++;
         if (old != y) {
             const int progress = y == ft->ctu_height ? INT_MAX : y * ctu_size;
@@ -740,7 +740,7 @@ int ff_vvc_frame_thread_init(VVCFrameContext *fc)
     ft->ret = 0;
     for (int y = 0; y < ft->ctu_height; y++) {
         VVCRowThread *row = ft->rows + y;
-        memset(row->progress, 0, sizeof(row->progress));
+        memset(row->col_progress, 0, sizeof(row->col_progress));
     }
 
     for (int rs = 0; rs < ft->ctu_count; rs++) {
