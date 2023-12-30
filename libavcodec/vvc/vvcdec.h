@@ -171,19 +171,21 @@ typedef struct VVCFrameContext {
         struct CTU  *ctus;
 
         //used in arrays_init only
-        int ctu_count;
-        int ctu_size;
-        int pic_size_in_min_cb;
-        int pic_size_in_min_pu;
-        int pic_size_in_min_tu;
-        int ctu_width;
-        int ctu_height;
-        int width;
-        int height;
-        int chroma_format_idc;
-        int pixel_shift;
-        int bs_width;
-        int bs_height;
+        struct {
+            int ctu_count;
+            int ctu_size;
+            int pic_size_in_min_cb;
+            int pic_size_in_min_pu;
+            int pic_size_in_min_tu;
+            int ctu_width;
+            int ctu_height;
+            int width;
+            int height;
+            int chroma_format_idc;
+            int pixel_shift;
+            int bs_width;
+            int bs_height;
+        } size;
     } tab;
 } VVCFrameContext;
 
