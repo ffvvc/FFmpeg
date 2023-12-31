@@ -1206,7 +1206,6 @@ static int affine_merge_const4(const MvField *c1, const MvField *c2, const MvFie
         }
     }
     return 0;
-
 }
 
 static int affine_merge_const5(const MvField *c0, const MvField *c1, MotionInfo *mi)

@@ -472,7 +472,6 @@ static void vvc_deblock_subblock_bs_horizontal(const VVCLocalContext *lc,
             TAB_MAX_LEN(fc->tab.horizontal_q, x, y) = max_len_q;
         }
     }
-
 }
 
 static void vvc_deblock_bs_luma_vertical(const VVCLocalContext *lc,
