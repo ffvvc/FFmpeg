@@ -252,7 +252,7 @@ static void add_progress_listener(VVCFrame *ref, ProgressListener *l,
     ff_vvc_add_progress_listener(ref, (VVCProgressListener*)l);
 }
 
-static void schedule_next_parse(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc, VVCTask *t)
+static void schedule_next_parse(VVCContext *s, VVCFrameContext *fc, const SliceContext *sc, const VVCTask *t)
 {
     VVCFrameThread *ft = fc->ft;
     EntryPoint *ep     = t->ep;
@@ -383,7 +383,7 @@ static int task_priority_higher(const AVTask *_a, const AVTask *_b)
     }
 
     CHECK(a->rx + a->ry + a->stage, b->rx + b->ry + b->stage);    //zigzag with type
-    CHECK(a->rx + a->ry, b->rx + b->ry);                        //zigzag
+    CHECK(a->rx + a->ry, b->rx + b->ry);                          //zigzag
     return a->ry < b->ry;
 }
 
