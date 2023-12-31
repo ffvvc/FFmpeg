@@ -185,7 +185,7 @@ typedef struct VVCFrameContext {
             int pixel_shift;
             int bs_width;
             int bs_height;
-        } size;
+        } sz;
     } tab;
 } VVCFrameContext;
 

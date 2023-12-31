@@ -140,7 +140,7 @@ static void ctu_tl_init(TabList *l, VVCFrameContext *fc)
 {
     const VVCPPS *pps   = fc->ps.pps;
     const int ctu_count = pps ? pps->ctb_count : 0;
-    const int changed   = fc->tab.size.ctu_count != ctu_count;
+    const int changed   = fc->tab.sz.ctu_count != ctu_count;
 
     tl_init(l, 1, changed);
 
@@ -156,7 +156,7 @@ static void ctu_nz_tl_init(TabList *l, VVCFrameContext *fc)
     const VVCPPS *pps   = fc->ps.pps;
     const int ctu_size  = sps ? (1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y) : 0;
     const int ctu_count = pps ? pps->ctb_count : 0;
-    const int changed   = fc->tab.size.ctu_count != ctu_count || fc->tab.size.ctu_size != ctu_size;
+    const int changed   = fc->tab.sz.ctu_count != ctu_count || fc->tab.sz.ctu_size != ctu_size;
 
     tl_init(l, 0, changed);
     TL_ADD(slice_idx, ctu_count);
@@ -167,7 +167,7 @@ static void min_cb_tl_init(TabList *l, VVCFrameContext *fc)
 {
     const VVCPPS *pps            = fc->ps.pps;
     const int pic_size_in_min_cb = pps ? pps->min_cb_width * pps->min_cb_height : 0;
-    const int changed            = fc->tab.size.pic_size_in_min_cb != pic_size_in_min_cb;
+    const int changed            = fc->tab.sz.pic_size_in_min_cb != pic_size_in_min_cb;
 
     tl_init(l, 1, changed);
 
@@ -192,7 +192,7 @@ static void min_pu_tl_init(TabList *l, VVCFrameContext *fc)
 {
     const VVCPPS *pps            = fc->ps.pps;
     const int pic_size_in_min_pu = pps ? pps->min_pu_width * pps->min_pu_height : 0;
-    const int changed            = fc->tab.size.pic_size_in_min_pu != pic_size_in_min_pu;
+    const int changed            = fc->tab.sz.pic_size_in_min_pu != pic_size_in_min_pu;
 
     tl_init(l, 1, changed);
 
@@ -206,7 +206,7 @@ static void min_tu_tl_init(TabList *l, VVCFrameContext *fc)
 {
     const VVCPPS *pps            = fc->ps.pps;
     const int pic_size_in_min_tu = pps ? pps->min_tu_width * pps->min_tu_height : 0;
-    const int changed            = fc->tab.size.pic_size_in_min_tu != pic_size_in_min_tu;
+    const int changed            = fc->tab.sz.pic_size_in_min_tu != pic_size_in_min_tu;
 
     tl_init(l, 1, changed);
 
@@ -231,8 +231,8 @@ static void bs_tl_init(TabList *l, VVCFrameContext *fc)
     const int bs_width  = pps ? (pps->width >>  2) + 1 : 0;
     const int bs_height = pps ? (pps->height >> 2) + 1 : 0;
     const int bs_count  = bs_width * bs_height;
-    const int changed   = fc->tab.size.bs_width != bs_width ||
-        fc->tab.size.bs_height != bs_height;
+    const int changed   = fc->tab.sz.bs_width != bs_width ||
+        fc->tab.sz.bs_height != bs_height;
 
     tl_init(l, 1, changed);
 
@@ -257,9 +257,9 @@ static void pixel_buffer_nz_tl_init(TabList *l, VVCFrameContext *fc)
     const int chroma_idc = sps ? sps->r->sps_chroma_format_idc : 0;
     const int ps         = sps ? sps->pixel_shift : 0;
     const int c_end      = chroma_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
-    const int changed    = fc->tab.size.chroma_format_idc != chroma_idc ||
-        fc->tab.size.width != width || fc->tab.size.height != height ||
-        fc->tab.size.ctu_width != ctu_width || fc->tab.size.ctu_height != ctu_height;
+    const int changed    = fc->tab.sz.chroma_format_idc != chroma_idc ||
+        fc->tab.sz.width != width || fc->tab.sz.height != height ||
+        fc->tab.sz.ctu_width != ctu_width || fc->tab.sz.ctu_height != ctu_height;
 
     tl_init(l, 0, changed);
 
@@ -286,8 +286,8 @@ static void msm_tl_init(TabList *l, VVCFrameContext *fc)
     const VVCPPS *pps = fc->ps.pps;
     const int w32     = pps ? AV_CEIL_RSHIFT(pps->width,  5) : 0;
     const int h32     = pps ? AV_CEIL_RSHIFT(pps->height, 5) : 0;
-    const int changed = AV_CEIL_RSHIFT(fc->tab.size.width,  5) != w32 ||
-        AV_CEIL_RSHIFT(fc->tab.size.height,  5) != h32;
+    const int changed = AV_CEIL_RSHIFT(fc->tab.sz.width,  5) != w32 ||
+        AV_CEIL_RSHIFT(fc->tab.sz.height,  5) != h32;
 
     tl_init(l, 1, changed);
 
@@ -300,8 +300,8 @@ static void ispmf_tl_init(TabList *l, VVCFrameContext *fc)
     const VVCPPS *pps = fc->ps.pps;
     const int w64     = pps ? AV_CEIL_RSHIFT(pps->width,  6) : 0;
     const int h64     = pps ? AV_CEIL_RSHIFT(pps->height, 6) : 0;
-    const int changed = AV_CEIL_RSHIFT(fc->tab.size.width,  6) != w64 ||
-        AV_CEIL_RSHIFT(fc->tab.size.height,  6) != h64;
+    const int changed = AV_CEIL_RSHIFT(fc->tab.sz.width,  6) != w64 ||
+        AV_CEIL_RSHIFT(fc->tab.sz.height,  6) != h64;
 
     tl_init(l, 1, changed);
 
@@ -312,8 +312,7 @@ typedef void (*tl_init_fn)(TabList *l, VVCFrameContext *fc);
 
 static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabList *l))
 {
-    int ret;
-    tl_init_fn init[] = {
+    const tl_init_fn init[] = {
         ctu_tl_init,
         ctu_nz_tl_init,
         min_cb_tl_init,
@@ -327,6 +326,7 @@ static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabLis
 
     for (int i = 0; i < FF_ARRAY_ELEMS(init); i++) {
         TabList l;
+        int ret;
 
         init[i](&l, fc);
         ret = unary_fn(&l);
@@ -339,7 +339,7 @@ static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabLis
 static void free_cus(VVCFrameContext *fc)
 {
     if (fc->tab.ctus) {
-        for (int i = 0; i < fc->tab.size.ctu_count; i++)
+        for (int i = 0; i < fc->tab.sz.ctu_count; i++)
             ff_vvc_ctu_free_cus(fc->tab.ctus + i);
     }
 }
@@ -351,15 +351,15 @@ static void pic_arrays_free(VVCFrameContext *fc)
     ff_refstruct_pool_uninit(&fc->rpl_tab_pool);
     ff_refstruct_pool_uninit(&fc->tab_dmvr_mvf_pool);
 
-    memset(&fc->tab.size, 0, sizeof(fc->tab.size));
+    memset(&fc->tab.sz, 0, sizeof(fc->tab.sz));
 }
 
 static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
 {
-    const VVCSPS *sps               = fc->ps.sps;
-    const VVCPPS *pps               = fc->ps.pps;
-    const int ctu_count             = pps->ctb_count;
-    const int pic_size_in_min_pu    = pps->min_pu_width * pps->min_pu_height;
+    const VVCSPS *sps            = fc->ps.sps;
+    const VVCPPS *pps            = fc->ps.pps;
+    const int ctu_count          = pps->ctb_count;
+    const int pic_size_in_min_pu = pps->min_pu_width * pps->min_pu_height;
     int ret;
 
     free_cus(fc);
@@ -368,36 +368,36 @@ static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
     if (ret < 0)
         goto fail;
 
-    memset(fc->tab.slice_idx, -1, sizeof(*fc->tab.slice_idx) * fc->tab.size.ctu_count);
+    memset(fc->tab.slice_idx, -1, sizeof(*fc->tab.slice_idx) * fc->tab.sz.ctu_count);
 
-    if (fc->tab.size.ctu_count != ctu_count) {
+    if (fc->tab.sz.ctu_count != ctu_count) {
         ff_refstruct_pool_uninit(&fc->rpl_tab_pool);
         fc->rpl_tab_pool = ff_refstruct_pool_alloc(ctu_count * sizeof(RefPicListTab), 0);
         if (!fc->rpl_tab_pool)
             return AVERROR(ENOMEM);
     }
 
-    if (fc->tab.size.pic_size_in_min_pu != pic_size_in_min_pu) {
+    if (fc->tab.sz.pic_size_in_min_pu != pic_size_in_min_pu) {
         ff_refstruct_pool_uninit(&fc->tab_dmvr_mvf_pool);
-        fc->tab_dmvr_mvf_pool  = ff_refstruct_pool_alloc(
+        fc->tab_dmvr_mvf_pool = ff_refstruct_pool_alloc(
             pic_size_in_min_pu * sizeof(MvField), FF_REFSTRUCT_POOL_FLAG_ZERO_EVERY_TIME);
         if (!fc->tab_dmvr_mvf_pool)
             return AVERROR(ENOMEM);
     }
 
-    fc->tab.size.ctu_count          = pps->ctb_count;
-    fc->tab.size.ctu_size           = 1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y;;
-    fc->tab.size.pic_size_in_min_cb = pps->min_cb_width * pps->min_cb_height;
-    fc->tab.size.pic_size_in_min_pu = pic_size_in_min_pu;
-    fc->tab.size.pic_size_in_min_tu = pps->min_tu_width * pps->min_tu_height;
-    fc->tab.size.width              = pps->width;
-    fc->tab.size.height             = pps->height;
-    fc->tab.size.ctu_width          = pps->ctb_width;
-    fc->tab.size.ctu_height         = pps->ctb_height;
-    fc->tab.size.chroma_format_idc  = sps->r->sps_chroma_format_idc;
-    fc->tab.size.pixel_shift        = sps->pixel_shift;
-    fc->tab.size.bs_width           = (fc->ps.pps->width >> 2) + 1;
-    fc->tab.size.bs_height          = (fc->ps.pps->height >> 2) + 1;
+    fc->tab.sz.ctu_count          = pps->ctb_count;
+    fc->tab.sz.ctu_size           = 1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y;;
+    fc->tab.sz.pic_size_in_min_cb = pps->min_cb_width * pps->min_cb_height;
+    fc->tab.sz.pic_size_in_min_pu = pic_size_in_min_pu;
+    fc->tab.sz.pic_size_in_min_tu = pps->min_tu_width * pps->min_tu_height;
+    fc->tab.sz.width              = pps->width;
+    fc->tab.sz.height             = pps->height;
+    fc->tab.sz.ctu_width          = pps->ctb_width;
+    fc->tab.sz.ctu_height         = pps->ctb_height;
+    fc->tab.sz.chroma_format_idc  = sps->r->sps_chroma_format_idc;
+    fc->tab.sz.pixel_shift        = sps->pixel_shift;
+    fc->tab.sz.bs_width           = (fc->ps.pps->width >> 2) + 1;
+    fc->tab.sz.bs_height          = (fc->ps.pps->height >> 2) + 1;
 
     return 0;
 fail:
@@ -419,11 +419,11 @@ typedef int (*smvd_find_fxn)(const int idx, const int diff, const int old_diff);
 
 static int8_t smvd_find(const VVCFrameContext *fc, const SliceContext *sc, int lx, smvd_find_fxn find)
 {
-    const H266RawSliceHeader *rsh   = sc->sh.r;
-    const RefPicList *rpl           = sc->rpl + lx;
-    const int poc                   = fc->ref->poc;
-    int8_t idx                      = -1;
-    int old_diff                    = -1;
+    const H266RawSliceHeader *rsh = sc->sh.r;
+    const RefPicList *rpl         = sc->rpl + lx;
+    const int poc                 = fc->ref->poc;
+    int8_t idx                    = -1;
+    int old_diff                  = -1;
     for (int i = 0; i < rsh->num_ref_idx_active[lx]; i++) {
         if (!rpl->isLongTerm[i]) {
             int diff = poc - rpl->list[i];
@@ -799,8 +799,8 @@ static int decode_nal_unit(VVCContext *s, VVCFrameContext *fc, const H2645NAL *n
 
 static int decode_nal_units(VVCContext *s, VVCFrameContext *fc, AVPacket *avpkt)
 {
-    const CodedBitstreamH266Context *h266   = s->cbc->priv_data;
-    CodedBitstreamFragment *frame           = &s->current_frame;
+    const CodedBitstreamH266Context *h266 = s->cbc->priv_data;
+    CodedBitstreamFragment *frame         = &s->current_frame;
     int ret = 0;
     int eos_at_start = 1;
     s->last_eos = s->eos;
@@ -814,8 +814,8 @@ static int decode_nal_units(VVCContext *s, VVCFrameContext *fc, AVPacket *avpkt)
     }
     /* decode the NAL units */
     for (int i = 0; i < frame->nb_units; i++) {
-        const H2645NAL *nal             = h266->common.read_packet.nals + i;
-        const CodedBitstreamUnit *unit  = frame->units + i;
+        const H2645NAL *nal            = h266->common.read_packet.nals + i;
+        const CodedBitstreamUnit *unit = frame->units + i;
 
         if (unit->type == VVC_EOB_NUT || unit->type == VVC_EOS_NUT) {
             if (eos_at_start)
@@ -855,7 +855,7 @@ static int set_output_format(const VVCContext *s, const AVFrame *output)
 static int wait_delayed_frame(VVCContext *s, AVFrame *output, int *got_output)
 {
     VVCFrameContext *delayed = get_frame_context(s, s->fcs, s->nb_frames - s->nb_delayed);
-    int ret = ff_vvc_frame_wait(s, delayed);
+    int ret                  = ff_vvc_frame_wait(s, delayed);
 
     if (!ret && delayed->output_frame->buf[0] && output) {
         av_frame_move_ref(output, delayed->output_frame);
@@ -967,11 +967,11 @@ static av_cold void init_default_scale_m(void)
 #define VVC_MAX_DELAYED_FRAMES 16
 static av_cold int vvc_decode_init(AVCodecContext *avctx)
 {
-    VVCContext *s = avctx->priv_data;
+    VVCContext *s                  = avctx->priv_data;
     static AVOnce init_static_once = AV_ONCE_INIT;
-    const int cpu_count = av_cpu_count();
-    const int delayed = FFMIN(cpu_count, VVC_MAX_DELAYED_FRAMES);
-    const int thread_count = avctx->thread_count ? avctx->thread_count : delayed;
+    const int cpu_count            = av_cpu_count();
+    const int delayed              = FFMIN(cpu_count, VVC_MAX_DELAYED_FRAMES);
+    const int thread_count         = avctx->thread_count ? avctx->thread_count : delayed;
     int ret;
 
     s->avctx = avctx;
@@ -1004,17 +1004,17 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
 }
 
 const FFCodec ff_vvc_decoder = {
-    .p.name                  = "vvc",
-    .p.long_name             = NULL_IF_CONFIG_SMALL("VVC (Versatile Video Coding)"),
-    .p.type                  = AVMEDIA_TYPE_VIDEO,
-    .p.id                    = AV_CODEC_ID_VVC,
-    .priv_data_size          = sizeof(VVCContext),
-    .init                    = vvc_decode_init,
-    .close                   = vvc_decode_free,
+    .p.name         = "vvc",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("VVC (Versatile Video Coding)"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_VVC,
+    .priv_data_size = sizeof(VVCContext),
+    .init           = vvc_decode_init,
+    .close          = vvc_decode_free,
     FF_CODEC_DECODE_CB(vvc_decode_frame),
-    .flush                   = vvc_decode_flush,
-    .p.capabilities          = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY | AV_CODEC_CAP_OTHER_THREADS,
-    .caps_internal           = FF_CODEC_CAP_EXPORTS_CROPPING | FF_CODEC_CAP_INIT_CLEANUP |
-                               FF_CODEC_CAP_AUTO_THREADS,
-    .p.profiles              = NULL_IF_CONFIG_SMALL(ff_vvc_profiles),
+    .flush          = vvc_decode_flush,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY | AV_CODEC_CAP_OTHER_THREADS,
+    .caps_internal  = FF_CODEC_CAP_EXPORTS_CROPPING | FF_CODEC_CAP_INIT_CLEANUP |
+                      FF_CODEC_CAP_AUTO_THREADS,
+    .p.profiles     = NULL_IF_CONFIG_SMALL(ff_vvc_profiles),
 };
