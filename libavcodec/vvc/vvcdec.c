@@ -144,9 +144,6 @@ static void ctu_tl_init(TabList *l, VVCFrameContext *fc)
 
     tl_init(l, 1, changed);
 
-    TL_ADD(deblock, ctu_count);
-    TL_ADD(sao,     ctu_count);
-    TL_ADD(alf,     ctu_count);
     TL_ADD(ctus,    ctu_count);
 }
 
@@ -159,6 +156,10 @@ static void ctu_nz_tl_init(TabList *l, VVCFrameContext *fc)
     const int changed   = fc->tab.sz.ctu_count != ctu_count || fc->tab.sz.ctu_size != ctu_size;
 
     tl_init(l, 0, changed);
+
+    TL_ADD(deblock, ctu_count);
+    TL_ADD(sao,     ctu_count);
+    TL_ADD(alf,     ctu_count);
     TL_ADD(slice_idx, ctu_count);
     TL_ADD(coeffs,    ctu_count * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
 }
@@ -171,21 +172,34 @@ static void min_cb_tl_init(TabList *l, VVCFrameContext *fc)
 
     tl_init(l, 1, changed);
 
-    TL_ADD(skip, pic_size_in_min_cb);
     TL_ADD(imf,  pic_size_in_min_cb);
-    TL_ADD(imtf, pic_size_in_min_cb);
     TL_ADD(imm,  pic_size_in_min_cb);
+
+    for (int i = LUMA; i <= CHROMA; i++) {
+        TL_ADD(cb_width[i],  pic_size_in_min_cb);   //is_a0_available requires this
+        TL_ADD(cpm[i],       pic_size_in_min_cb);
+    };
+}
+
+static void min_cb_nz_tl_init(TabList *l, VVCFrameContext *fc)
+{
+    const VVCPPS *pps            = fc->ps.pps;
+    const int pic_size_in_min_cb = pps ? pps->min_cb_width * pps->min_cb_height : 0;
+    const int changed            = fc->tab.sz.pic_size_in_min_cb != pic_size_in_min_cb;
+
+    tl_init(l, 0, changed);
+
+    TL_ADD(skip, pic_size_in_min_cb);
+    TL_ADD(imtf, pic_size_in_min_cb);
     TL_ADD(ipm,  pic_size_in_min_cb);
 
     for (int i = LUMA; i <= CHROMA; i++) {
+        TL_ADD(cqt_depth[i], pic_size_in_min_cb);
         TL_ADD(cb_pos_x[i],  pic_size_in_min_cb);
         TL_ADD(cb_pos_y[i],  pic_size_in_min_cb);
-        TL_ADD(cb_width[i],  pic_size_in_min_cb);
         TL_ADD(cb_height[i], pic_size_in_min_cb);
-        TL_ADD(cqt_depth[i], pic_size_in_min_cb);
-        TL_ADD(cpm[i],       pic_size_in_min_cb);
         TL_ADD(cp_mv[i],     pic_size_in_min_cb * MAX_CONTROL_POINTS);
-    };
+    }
 }
 
 static void min_pu_tl_init(TabList *l, VVCFrameContext *fc)
@@ -211,13 +225,9 @@ static void min_tu_tl_init(TabList *l, VVCFrameContext *fc)
     tl_init(l, 1, changed);
 
     TL_ADD(tu_joint_cbcr_residual_flag, pic_size_in_min_tu);
-    for (int i = LUMA; i <= CHROMA; i++) {
-        TL_ADD(tb_pos_x0[i], pic_size_in_min_tu);
-        TL_ADD(tb_pos_y0[i], pic_size_in_min_tu);
-        TL_ADD(tb_width[i],  pic_size_in_min_tu);
-        TL_ADD(tb_height[i], pic_size_in_min_tu);
-        TL_ADD(pcmf[i],      pic_size_in_min_tu);
-    }
+
+    for (int i = LUMA; i <= CHROMA; i++)
+        TL_ADD(pcmf[i], pic_size_in_min_tu);
 
     for (int i = 0; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
         TL_ADD(tu_coded_flag[i], pic_size_in_min_tu);
@@ -225,6 +235,23 @@ static void min_tu_tl_init(TabList *l, VVCFrameContext *fc)
         TL_ADD(horizontal_bs[i], pic_size_in_min_tu);
         TL_ADD(vertical_bs[i],   pic_size_in_min_tu);
     }
+}
+
+static void min_tu_nz_tl_init(TabList *l, VVCFrameContext *fc)
+{
+    const VVCPPS *pps            = fc->ps.pps;
+    const int pic_size_in_min_tu = pps ? pps->min_tu_width * pps->min_tu_height : 0;
+    const int changed            = fc->tab.sz.pic_size_in_min_tu != pic_size_in_min_tu;
+
+    tl_init(l, 0, changed);
+
+    for (int i = LUMA; i <= CHROMA; i++) {
+        TL_ADD(tb_pos_x0[i], pic_size_in_min_tu);
+        TL_ADD(tb_pos_y0[i], pic_size_in_min_tu);
+        TL_ADD(tb_width[i],  pic_size_in_min_tu);
+        TL_ADD(tb_height[i], pic_size_in_min_tu);
+    }
+
     TL_ADD(horizontal_q, pic_size_in_min_tu);
     TL_ADD(horizontal_p, pic_size_in_min_tu);
     TL_ADD(vertical_p,   pic_size_in_min_tu);
@@ -301,8 +328,10 @@ static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabLis
         ctu_tl_init,
         ctu_nz_tl_init,
         min_cb_tl_init,
+        min_cb_nz_tl_init,
         min_pu_tl_init,
         min_tu_tl_init,
+        min_tu_nz_tl_init,
         pixel_buffer_nz_tl_init,
         msm_tl_init,
         ispmf_tl_init,
