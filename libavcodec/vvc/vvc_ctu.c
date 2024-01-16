@@ -2386,6 +2386,52 @@ static void ctu_get_pred(VVCLocalContext *lc, const int rs)
     ctu->max_y_idx[0] = ctu->max_y_idx[1] = 0;
 }
 
+static void ctu_init_tu_tabs(const VVCFrameContext *fc, const int x0, const int y0)
+{
+    const VVCPPS *pps  = fc->ps.pps;
+    const int ctu_size = fc->ps.sps->ctb_size_y;
+    const int w        = FFMIN(ctu_size, pps->width - x0)  >> MIN_TU_LOG2;
+    const int y_end    = FFMIN(y0 + ctu_size, pps->height) >> MIN_TU_LOG2;
+    for (int y = y0 >> MIN_TU_LOG2; y < y_end; y++) {
+        const int off = y * pps->min_tu_width + (x0 >> MIN_TU_LOG2);
+        memset(fc->tab.tu_joint_cbcr_residual_flag + off, 0, w);
+        for (int i = LUMA; i <= CHROMA; i++)
+            memset(fc->tab.pcmf[i] + off, 0, w);
+        for (int i = LUMA; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
+            memset(fc->tab.tu_coded_flag[i] + off, 0, w);
+            memset(fc->tab.horizontal_bs[i] + off, 0, w);
+            memset(fc->tab.vertical_bs[i]   + off, 0, w);
+        }
+    }
+}
+
+static void ctu_init_min_cb_tabs(const VVCFrameContext *fc, const int x0, const int y0)
+{
+    const VVCSPS *sps  = fc->ps.sps;
+    const VVCPPS *pps  = fc->ps.pps;
+    const int ctu_size = sps->ctb_size_y;
+    const int w        = FFMIN(ctu_size, pps->width - x0) >> sps->min_cb_log2_size_y;
+    const int y_end    = FFMIN(y0 + ctu_size,pps->height) >> sps->min_cb_log2_size_y;
+
+    for (int y = y0 >> sps->min_cb_log2_size_y; y < y_end; y++) {
+        const int off = y * pps->min_cb_width + (x0 >> sps->min_cb_log2_size_y);
+        memset(fc->tab.iaf + off, 0, w);
+        memset(fc->tab.imf + off, 0, w);
+        memset(fc->tab.imm + off, 0, w);
+        for (int i = LUMA; i <= CHROMA; i++)
+            memset(fc->tab.cb_width[i] + off, 0, w);
+    }
+}
+
+static void ctu_init_tabs(const VVCFrameContext *fc, const int rx, const int ry)
+{
+    const int x0 = rx * fc->ps.sps->ctb_size_y;
+    const int y0 = ry * fc->ps.sps->ctb_size_y;
+
+    ctu_init_min_cb_tabs(fc, x0, y0);
+    ctu_init_tu_tabs(fc, x0, y0);
+}
+
 int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
     const int ctu_idx, const int rs, const int rx, const int ry)
 {
@@ -2403,6 +2449,8 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
         ep->num_hmvp = 0;
         ep->is_first_qg = ry == pps->ctb_to_row_bd[ry] || !ctu_idx;
     }
+
+    ctu_init_tabs(fc, rx, ry);
 
     lc->coeffs = fc->tab.coeffs + rs * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
     lc->cu     = NULL;
