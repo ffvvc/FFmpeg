@@ -176,28 +176,13 @@ static void min_tu_tl_init(TabList *l, VVCFrameContext *fc)
     for (int i = 0; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
         TL_ADD(tu_coded_flag[i], pic_size_in_min_tu);
         TL_ADD(qp[i],            pic_size_in_min_tu);
+        TL_ADD(horizontal_bs[i], pic_size_in_min_tu);
+        TL_ADD(vertical_bs[i],   pic_size_in_min_tu);
     }
-}
-
-static void bs_tl_init(TabList *l, VVCFrameContext *fc)
-{
-    const VVCPPS *pps   = fc->ps.pps;
-    const int bs_width  = pps ? (pps->width >>  2) + 1 : 0;
-    const int bs_height = pps ? (pps->height >> 2) + 1 : 0;
-    const int bs_count  = bs_width * bs_height;
-    const int changed   = fc->tab.sz.bs_width != bs_width ||
-        fc->tab.sz.bs_height != bs_height;
-
-    tl_init(l, 1, changed);
-
-    for (int i = 0; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
-        TL_ADD(horizontal_bs[i], bs_count);
-        TL_ADD(vertical_bs[i],   bs_count);
-    }
-    TL_ADD(horizontal_q, bs_count);
-    TL_ADD(horizontal_p, bs_count);
-    TL_ADD(vertical_p,   bs_count);
-    TL_ADD(vertical_q,   bs_count);
+    TL_ADD(horizontal_q, pic_size_in_min_tu);
+    TL_ADD(horizontal_p, pic_size_in_min_tu);
+    TL_ADD(vertical_p,   pic_size_in_min_tu);
+    TL_ADD(vertical_q,   pic_size_in_min_tu);
 }
 
 static void pixel_buffer_nz_tl_init(TabList *l, VVCFrameContext *fc)
@@ -272,7 +257,6 @@ static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabLis
         min_cb_tl_init,
         min_pu_tl_init,
         min_tu_tl_init,
-        bs_tl_init,
         pixel_buffer_nz_tl_init,
         msm_tl_init,
         ispmf_tl_init,
@@ -350,8 +334,6 @@ static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
     fc->tab.sz.ctu_height         = pps->ctb_height;
     fc->tab.sz.chroma_format_idc  = sps->r->sps_chroma_format_idc;
     fc->tab.sz.pixel_shift        = sps->pixel_shift;
-    fc->tab.sz.bs_width           = (fc->ps.pps->width >> 2) + 1;
-    fc->tab.sz.bs_height          = (fc->ps.pps->height >> 2) + 1;
 
     return 0;
 }
