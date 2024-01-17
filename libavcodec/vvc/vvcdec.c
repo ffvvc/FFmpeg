@@ -189,6 +189,7 @@ static void min_cb_nz_tl_init(TabList *l, VVCFrameContext *fc)
         TL_ADD(cp_mv[i],     pic_size_in_min_cb * MAX_CONTROL_POINTS);
         TL_ADD(cpm[i],       pic_size_in_min_cb);
     }
+    TL_ADD(qp[LUMA], pic_size_in_min_cb);
 }
 
 static void min_pu_tl_init(TabList *l, VVCFrameContext *fc)
@@ -230,7 +231,6 @@ static void min_tu_tl_init(TabList *l, VVCFrameContext *fc)
 
     for (int i = 0; i < VVC_MAX_SAMPLE_ARRAYS; i++) {
         TL_ADD(tu_coded_flag[i], pic_size_in_min_tu);
-        TL_ADD(qp[i],            pic_size_in_min_tu);
         TL_ADD(horizontal_bs[i], pic_size_in_min_tu);
         TL_ADD(vertical_bs[i],   pic_size_in_min_tu);
     }
@@ -255,6 +255,9 @@ static void min_tu_nz_tl_init(TabList *l, VVCFrameContext *fc)
     TL_ADD(horizontal_p, pic_size_in_min_tu);
     TL_ADD(vertical_p,   pic_size_in_min_tu);
     TL_ADD(vertical_q,   pic_size_in_min_tu);
+
+    for (int i = CB; i < VVC_MAX_SAMPLE_ARRAYS; i++)
+        TL_ADD(qp[i], pic_size_in_min_tu);
 }
 
 static void pixel_buffer_nz_tl_init(TabList *l, VVCFrameContext *fc)
