@@ -2362,6 +2362,8 @@ static void ctu_get_pred(VVCLocalContext *lc, const int rs)
     CTU *ctu                        = fc->tab.ctus + rs;
     const CodingUnit *cu            = ctu->cus;
 
+    ctu->has_dmvr = 0;
+
     if (IS_I(rsh))
         return;
 
