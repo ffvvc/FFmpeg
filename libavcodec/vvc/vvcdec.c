@@ -136,17 +136,6 @@ static int tl_create(TabList *l)
     return 0;
 }
 
-static void ctu_tl_init(TabList *l, VVCFrameContext *fc)
-{
-    const VVCPPS *pps   = fc->ps.pps;
-    const int ctu_count = pps ? pps->ctb_count : 0;
-    const int changed   = fc->tab.sz.ctu_count != ctu_count;
-
-    tl_init(l, 1, changed);
-
-    TL_ADD(ctus,    ctu_count);
-}
-
 static void ctu_nz_tl_init(TabList *l, VVCFrameContext *fc)
 {
     const VVCSPS *sps   = fc->ps.sps;
@@ -157,6 +146,7 @@ static void ctu_nz_tl_init(TabList *l, VVCFrameContext *fc)
 
     tl_init(l, 0, changed);
 
+    TL_ADD(ctus,    ctu_count);
     TL_ADD(deblock, ctu_count);
     TL_ADD(sao,     ctu_count);
     TL_ADD(alf,     ctu_count);
@@ -325,7 +315,6 @@ typedef void (*tl_init_fn)(TabList *l, VVCFrameContext *fc);
 static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabList *l))
 {
     const tl_init_fn init[] = {
-        ctu_tl_init,
         ctu_nz_tl_init,
         min_cb_tl_init,
         min_cb_nz_tl_init,
