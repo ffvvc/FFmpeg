@@ -153,9 +153,7 @@ static void min_pu_tl_init(TabList *l, VVCFrameContext *fc)
 
     tl_init(l, 1, changed);
 
-    TL_ADD(msf, pic_size_in_min_pu);
     TL_ADD(iaf, pic_size_in_min_pu);
-    TL_ADD(mmi, pic_size_in_min_pu);
 }
 
 static void min_pu_nz_tl_init(TabList *l, VVCFrameContext *fc)
@@ -166,6 +164,8 @@ static void min_pu_nz_tl_init(TabList *l, VVCFrameContext *fc)
 
     tl_init(l, 0, changed);
 
+    TL_ADD(msf, pic_size_in_min_pu);
+    TL_ADD(mmi, pic_size_in_min_pu);
     TL_ADD(mvf, pic_size_in_min_pu);
 }
 
