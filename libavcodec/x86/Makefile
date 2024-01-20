@@ -79,6 +79,7 @@ OBJS-$(CONFIG_VP9_DECODER)             += x86/vp9dsp_init.o            \
                                           x86/vp9dsp_init_12bpp.o      \
                                           x86/vp9dsp_init_16bpp.o
 OBJS-$(CONFIG_WEBP_DECODER)            += x86/vp8dsp_init.o
+include $(SRC_PATH)/libavcodec/x86/vvc/Makefile
 
 
 # GCC inline assembly optimizations

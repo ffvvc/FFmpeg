@@ -250,4 +250,9 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
         VVC_DSP(8);
         break;
     }
+#if ARCH_X86
+    ff_vvc_dsp_init_x86(vvcdsp, bit_depth);
+#elif ARCH_AARCH64
+    ff_vvc_dsp_init_aarch64(vvcdsp, bit_depth);
+#endif
 }
