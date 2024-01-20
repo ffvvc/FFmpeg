@@ -131,6 +131,10 @@ void checkasm_check_vp8dsp(void);
 void checkasm_check_vp9dsp(void);
 void checkasm_check_videodsp(void);
 void checkasm_check_vorbisdsp(void);
+void checkasm_check_vvc_alf(void);
+void checkasm_check_vvc_sao(void);
+void checkasm_check_vvc_mc(void);
+void checkasm_check_vvc_itx(void);
 
 struct CheckasmPerf;
 
