@@ -21,16 +21,15 @@
 
 #include <string.h>
 
-#include "checkasm.h"
-#include "libavcodec/avcodec.h"
-#include "libavcodec/vvc/vvc_ctu.h"
-#include "libavcodec/vvc/vvc_data.h"
-
-#include "libavutil/common.h"
-#include "libavutil/internal.h"
-#include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/mem_internal.h"
+
+#include "libavcodec/avcodec.h"
+
+#include "checkasm.h"
+
+#include "libavcodec/vvc/vvc_ctu.h"
+#include "libavcodec/vvc/vvc_data.h"
 
 static const uint32_t pixel_mask[] = { 0xffffffff, 0x03ff03ff, 0x0fff0fff, 0x3fff3fff, 0xffffffff };
 static const int sizes[] = { 2, 4, 8, 16, 32, 64, 128 };
