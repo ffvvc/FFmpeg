@@ -27,6 +27,7 @@ version <next>:
 - LCEVC enhancement data exporting in H.26x and MP4/ISOBMFF
 - LCEVC filter
 - MV-HEVC decoding
+- VVC VAAPI decoder
 
 
 version 7.0:
