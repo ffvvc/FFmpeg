@@ -280,25 +280,31 @@ static int pps_bd(VVCPPS *pps)
 {
     const H266RawPPS *r = pps->r;
 
-    pps->col_bd        = av_calloc(r->num_tile_columns  + 1, sizeof(*pps->col_bd));
-    pps->row_bd        = av_calloc(r->num_tile_rows  + 1,    sizeof(*pps->row_bd));
-    pps->ctb_to_col_bd = av_calloc(pps->ctb_width  + 1,      sizeof(*pps->ctb_to_col_bd));
-    pps->ctb_to_row_bd = av_calloc(pps->ctb_height + 1,      sizeof(*pps->ctb_to_col_bd));
+    pps->col_bd         = av_calloc(r->num_tile_columns  + 1, sizeof(*pps->col_bd));
+    pps->row_bd         = av_calloc(r->num_tile_rows  + 1,    sizeof(*pps->row_bd));
+    pps->ctb_to_col_bd  = av_calloc(pps->ctb_width  + 1,      sizeof(*pps->ctb_to_col_bd));
+    pps->ctb_to_row_bd  = av_calloc(pps->ctb_height + 1,      sizeof(*pps->ctb_to_col_bd));
+    pps->ctb_to_col_idx = av_calloc(pps->ctb_width  + 1,      sizeof(*pps->ctb_to_col_idx));
+    pps->ctb_to_row_idx = av_calloc(pps->ctb_height + 1,      sizeof(*pps->ctb_to_col_idx));
     if (!pps->col_bd || !pps->row_bd || !pps->ctb_to_col_bd || !pps->ctb_to_row_bd)
         return AVERROR(ENOMEM);
 
-    for (int i = 0, j = 0; i < r->num_tile_columns; i++) {
+    for (int i = 0, j = 0; i <= r->num_tile_columns; i++) {
         pps->col_bd[i] = j;
         j += r->col_width_val[i];
-        for (int k = pps->col_bd[i]; k < j; k++)
+        for (int k = pps->col_bd[i]; k < j; k++) {
             pps->ctb_to_col_bd[k] = pps->col_bd[i];
+            pps->ctb_to_col_idx[k] = i;
+        }
     }
 
-    for (int i = 0, j = 0; i < r->num_tile_rows; i++) {
+    for (int i = 0, j = 0; i <= r->num_tile_rows; i++) {
         pps->row_bd[i] = j;
         j += r->row_height_val[i];
-        for (int k = pps->row_bd[i]; k < j; k++)
+        for (int k = pps->row_bd[i]; k < j; k++) {
             pps->ctb_to_row_bd[k] = pps->row_bd[i];
+            pps->ctb_to_row_idx[k] = i;
+        }
     }
     return 0;
 }
@@ -346,6 +352,67 @@ static int pps_add_ctus(VVCPPS *pps, int *off, const int ctu_x, const int ctu_y,
     return *off - start;
 }
 
+static void pps_subpic_slice(VVCPPS *pps, const VVCSPS *sps, int i, int *off)
+{
+    const H266RawPPS *r = pps->r;
+    const H266RawSPS *rs = sps->r;
+
+    const uint16_t left_x = rs->sps_subpic_ctu_top_left_x[i];
+    const uint16_t right_x = rs->sps_subpic_ctu_top_left_x[i] + rs->sps_subpic_width_minus1[i];
+    const uint16_t top_y = rs->sps_subpic_ctu_top_left_y[i];
+    const uint16_t bottom_y = rs->sps_subpic_ctu_top_left_y[i] + rs->sps_subpic_height_minus1[i];
+    const uint16_t subpic_width_in_tiles = pps->ctb_to_col_idx[right_x] + 1 - pps->ctb_to_col_idx[left_x];
+    const uint16_t subpic_height_in_tiles = pps->ctb_to_row_idx[bottom_y] + 1 - pps->ctb_to_row_idx[top_y];
+
+    uint8_t subpic_height_less_than_one_tile_flag;
+    if (subpic_height_in_tiles == 1 && rs->sps_subpic_height_minus1[i] + 1 < r->row_height_val[pps->ctb_to_row_idx[top_y]])
+        subpic_height_less_than_one_tile_flag = 1;
+    else
+        subpic_height_less_than_one_tile_flag = 0;
+
+    pps->slice_start_offset[i] = *off;
+    pps->num_ctus_in_slice[i] = 0;
+
+    if (subpic_height_less_than_one_tile_flag) {
+        pps->num_ctus_in_slice[i] = pps_add_ctus(pps, off, left_x, top_y,
+                                                 rs->sps_subpic_width_minus1[i] + 1,
+                                                 rs->sps_subpic_height_minus1[i] + 1);
+    } else {
+        int tile_x = pps->ctb_to_col_idx[left_x];
+        int tile_y = pps->ctb_to_row_idx[top_y];
+        for (int j = 0; j < subpic_height_in_tiles; j++) {
+            for (int k = 0; k < subpic_width_in_tiles; k++) {
+                const int tile_width = pps->col_bd[tile_x + k + 1] - pps->col_bd[tile_x + k];
+                const int tile_height = pps->row_bd[tile_y + j + 1] - pps->row_bd[tile_y + j];
+                pps->num_ctus_in_slice[i] += pps_add_ctus(pps, off,
+                                                          pps->col_bd[tile_x + k], pps->row_bd[tile_y + j],
+                                                          tile_width, tile_height);
+            }
+        }
+    }
+}
+
+static void pps_subpic_slices(VVCPPS *pps, const VVCSPS *sps, int *off)
+{
+    const H266RawPPS *r = pps->r;
+    const H266RawSPS *rs = sps->r;
+
+    if (!rs->sps_subpic_info_present_flag) {
+        for (int j = 0; j < r->num_tile_rows; j++) {
+            for (int i = 0; i < r->num_tile_columns; i++) {
+                pps->num_ctus_in_slice[0] += pps_add_ctus(pps, off,
+                                                          pps->col_bd[i], pps->row_bd[j],
+                                                          pps->col_bd[i+1] - pps->col_bd[i],
+                                                          pps->row_bd[j+1] - pps->row_bd[j]);
+            }
+        }
+    } else {
+        for (int i = 0; i < r->pps_num_slices_in_pic_minus1 + 1; i++) {
+            pps_subpic_slice(pps, sps, i, off);
+        }
+    }
+}
+
 static int pps_one_tile_slices(VVCPPS *pps, const int tile_idx, int i, int *off)
 {
     const H266RawPPS *r = pps->r;
@@ -381,20 +448,23 @@ static void pps_multi_tiles_slice(VVCPPS *pps, const int tile_idx, const int i, 
     }
 }
 
-static void pps_rect_slice(VVCPPS* pps)
+static void pps_rect_slice(VVCPPS* pps, const VVCSPS *sps)
 {
     const H266RawPPS* r = pps->r;
     int tile_idx = 0, off = 0;
 
-    for (int i = 0; i < r->pps_num_slices_in_pic_minus1 + 1; i++) {
-        if (!r->pps_slice_width_in_tiles_minus1[i] &&
-            !r->pps_slice_height_in_tiles_minus1[i]) {
-            i = pps_one_tile_slices(pps, tile_idx, i, &off);
-        } else {
-            pps_multi_tiles_slice(pps, tile_idx, i, &off);
-
+    if (r->pps_single_slice_per_subpic_flag)
+        pps_subpic_slices(pps, sps, &off);
+    else {
+        for (int i = 0; i < r->pps_num_slices_in_pic_minus1 + 1; i++) {
+            if (!r->pps_slice_width_in_tiles_minus1[i] &&
+                !r->pps_slice_height_in_tiles_minus1[i]) {
+                i = pps_one_tile_slices(pps, tile_idx, i, &off);
+            } else {
+                pps_multi_tiles_slice(pps, tile_idx, i, &off);
+            }
+            tile_idx = next_tile_idx(tile_idx, i, r);
         }
-        tile_idx = next_tile_idx(tile_idx, i, r);
     }
 }
 
@@ -411,14 +481,14 @@ static void pps_no_rect_slice(VVCPPS* pps)
     }
 }
 
-static int pps_slice_map(VVCPPS *pps)
+static int pps_slice_map(VVCPPS *pps, const VVCSPS *sps)
 {
     pps->ctb_addr_in_slice = av_calloc(pps->ctb_count, sizeof(*pps->ctb_addr_in_slice));
     if (!pps->ctb_addr_in_slice)
         return AVERROR(ENOMEM);
 
     if (pps->r->pps_rect_slice_flag)
-        pps_rect_slice(pps);
+        pps_rect_slice(pps, sps);
     else
         pps_no_rect_slice(pps);
 
@@ -444,7 +514,7 @@ static int pps_derive(VVCPPS *pps, const VVCSPS *sps)
     if (ret < 0)
         return ret;
 
-    ret = pps_slice_map(pps);
+    ret = pps_slice_map(pps, sps);
     if (ret < 0)
         return ret;
 
