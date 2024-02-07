@@ -1,0 +1,110 @@
+name: test
+run-name: ${{ github.workflow }} - ${{ github.sha }}
+on:
+  push:
+    branches: [ main, up ]
+  pull_request:
+    branches: [ main, up ]
+  workflow_dispatch:
+
+
+jobs:
+  ffvvc-test:
+    name: ffvvc-test / ${{ matrix.os.name }}/${{ matrix.compiler.name }}/${{ matrix.assembler.name }}
+    env:
+      configure_flags: --enable-ffmpeg --disable-everything --enable-decoder=vvc --enable-parser=vvc --enable-demuxer=vvc --enable-protocol=file,pipe --enable-encoder=rawvideo,wrapped_avframe --enable-muxer=rawvideo,md5,null
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
+          - { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
+        compiler:
+          - { name: gcc, flags: --cc=gcc }
+          - { name: clang, flags: --cc=clang }
+          - { name: msvc, flags: --toolchain=msvc }
+          - { name: clang-usan, flags: '--toolchain=clang-usan' }
+          - { name: clang-asan, flags: '--toolchain=clang-asan' }
+        assembler:
+          - { name: no asm, flags: --disable-asm }
+          - { name: yasm, flags: --as=yasm }
+          - { name: nasm, flags: --as=nasm }
+        exclude:
+          # GitHub's Actions runners do not support AVX2.
+          - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4}
+            compiler: { name: msvc, flags: --toolchain=msvc }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
+            assembler: { name: yasm, flags: --as=yasm }
+          - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
+            assembler: { name: nasm, flags: --as=nasm }
+          # Address sanitizer cannot be run with handwritten assembly.
+          - compiler: { name: clang-asan, flags: '--toolchain=clang-asan' }
+            assembler: { name: nasm, flags: --as=nasm }
+          - compiler: { name: clang-asan, flags: '--toolchain=clang-asan' }
+            assembler: { name: yasm, flags: --as=yasm }
+          # Windows only supports MSVC.
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
+            compiler: { name: gcc, flags: --cc=gcc }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
+            compiler: { name: clang, flags: --cc=clang }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
+            compiler: { name: clang-usan, flags: '--toolchain=clang-usan' }
+          - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
+            compiler: { name: clang-asan, flags: '--toolchain=clang-asan' }
+
+    runs-on: ${{ matrix.os.runner }}
+    defaults:
+      run:
+        shell: ${{ matrix.os.shell }}
+
+    steps:
+    - name: Get MSVC
+      if: ${{ matrix.compiler.name == 'msvc' && matrix.os.name == 'windows' }}
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Set up MSYS2
+      if: ${{ matrix.os.shell == 'msys2 {0}' }}
+      uses: msys2/setup-msys2@v2
+      with:
+        release: false
+        msystem: UCRT64
+        path-type: inherit
+        install: >-
+          make
+          diffutils
+
+    - name: Setup python package
+      run: python3 -m pip install tqdm pyyaml
+
+    - name: Get assembler
+      if: ${{ matrix.os.shell == 'msys2 {0}' && matrix.assembler.name != 'no asm' }}
+      run: pacman --noconfirm -S ${{ matrix.assembler.name }}
+
+    - name: Get source
+      uses: actions/checkout@v3
+      with:
+        path: FFmpeg
+
+    - name: Configure
+      run: cd FFmpeg && ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
+
+    - name: Build
+      run: cd FFmpeg && make -j8
+
+    - name: Get tests
+      uses: actions/checkout@v3
+      with:
+        repository: ffvvc/tests
+        path: tests
+
+    - name: Unit test
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/passed
+
+    - name: Check ASM
+      run: cd FFmpeg && make checkasm -j && ./tests/checkasm/checkasm
+
+    - name: Negative test
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
+
+    - name: Check for fuzz regressions
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg --no-output-check --allow-decode-error tests/fuzz/passed
