@@ -816,13 +816,16 @@ static void derive_affine_mvc(MvField *mvc, const VVCFrameContext *fc, const MvF
     const int hs = fc->ps.sps->hshift[1];
     const int vs = fc->ps.sps->vshift[1];
     const MvField* mv2 = ff_vvc_get_mvf(fc, x0 + hs * sbw, y0 + vs * sbh);
+
     *mvc = *mv;
-    mvc->mv[0].x += mv2->mv[0].x;
-    mvc->mv[0].y += mv2->mv[0].y;
-    mvc->mv[1].x += mv2->mv[1].x;
-    mvc->mv[1].y += mv2->mv[1].y;
-    ff_vvc_round_mv(mvc->mv + 0, 0, 1);
-    ff_vvc_round_mv(mvc->mv + 1, 0, 1);
+    for (int i = L0; i <= L1; i++) {
+        PredFlag mask = 1 << i;
+        if (mv2->pred_flag & mask) {
+            mvc->mv[i].x += mv2->mv[i].x;
+            mvc->mv[i].y += mv2->mv[i].y;
+            ff_vvc_round_mv(mvc->mv + i, 0, 1);
+        }
+    }
 }
 
 static void pred_affine_blk(VVCLocalContext *lc)
