@@ -839,7 +839,12 @@ static int FUNC(vvc_v_loop_ladf_level)(const uint8_t *pix, ptrdiff_t stride)
 
 static void FUNC(ff_vvc_lmcs_dsp_init)(VVCLMCSDSPContext *const lmcs)
 {
-    lmcs->filter = FUNC(lmcs_filter_luma);
+    lmcs->filter[0] = FUNC(lmcs_filter_luma); // 4 
+    lmcs->filter[1] = FUNC(lmcs_filter_luma); // 8
+    lmcs->filter[2] = FUNC(lmcs_filter_luma); // 16
+    lmcs->filter[3] = FUNC(lmcs_filter_luma); // 32
+    lmcs->filter[4] = FUNC(lmcs_filter_luma); // 64
+    lmcs->filter[5] = FUNC(lmcs_filter_luma); // 128
 }
 
 static void FUNC(ff_vvc_lf_dsp_init)(VVCLFDSPContext *const lf)
