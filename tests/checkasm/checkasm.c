@@ -199,6 +199,7 @@ static const struct {
     #endif
     #if CONFIG_VVC_DECODER
         { "vvc_mc", checkasm_check_vvc_mc },
+        { "vvc_lmcs", checkasm_check_vvc_lmcs },
     #endif
 #endif
 #if CONFIG_AVFILTER
