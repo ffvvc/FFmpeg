@@ -570,8 +570,15 @@ static void pred_regular_luma(VVCLocalContext *lc, const int hf_idx, const int v
     if (ciip_flag) {
         const int intra_weight = ciip_derive_intra_weight(lc, x0, y0, sbw, sbh);
         fc->vvcdsp.intra.intra_pred(lc, x0, y0, sbw, sbh, 0);
-        if (sc->sh.r->sh_lmcs_used_flag)
-            fc->vvcdsp.lmcs.filter[0](inter, inter_stride, sbw, sbh, fc->ps.lmcs.fwd_lut);
+        if (sc->sh.r->sh_lmcs_used_flag) {
+            if(sbw == 4) {
+                fc->vvcdsp.lmcs.filter[0](inter, inter_stride, sbw, sbh, fc->ps.lmcs.fwd_lut.u8);
+            } else if (sbw == 8) {
+                fc->vvcdsp.lmcs.filter[1](inter, inter_stride, sbw, sbh, fc->ps.lmcs.fwd_lut.u8);
+            } else {
+                fc->vvcdsp.lmcs.filter[2](inter, inter_stride, sbw, sbh, fc->ps.lmcs.fwd_lut.u8);
+            }
+        }
         fc->vvcdsp.inter.put_ciip(dst, dst_stride, sbw, sbh, inter, inter_stride, intra_weight);
 
     }
@@ -887,7 +894,13 @@ static void predict_inter(VVCLocalContext *lc)
 
     if (lc->sc->sh.r->sh_lmcs_used_flag && !cu->ciip_flag) {
         uint8_t* dst0 = POS(0, cu->x0, cu->y0);
-        fc->vvcdsp.lmcs.filter[0](dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.lmcs.fwd_lut);
+        if(cu->cb_width >= 16) {
+            fc->vvcdsp.lmcs.filter[2](dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.lmcs.fwd_lut.u8);
+        } else if(cu->cb_width == 4) {
+            fc->vvcdsp.lmcs.filter[0](dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.lmcs.fwd_lut.u8);
+        } else if (cu->cb_width == 8) {
+            fc->vvcdsp.lmcs.filter[2](dst0, fc->frame->linesize[LUMA], cu->cb_width, cu->cb_height, fc->ps.lmcs.fwd_lut.u8);
+        }
     }
 }
 

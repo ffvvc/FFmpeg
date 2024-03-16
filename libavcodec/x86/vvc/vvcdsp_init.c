@@ -207,6 +207,10 @@ AVG_FUNCS(16, 12, avx2)
 } while (0)
 #endif
 
+void ff_lmcs_8bpc_avx2(uint8_t *_dst, ptrdiff_t dst_stride, const int width, const int height, const uint8_t *_lut);
+void ff_lmcs_16bpc_avx2(uint8_t *_dst, ptrdiff_t dst_stride, const int width, const int height, const uint8_t *_lut);
+void ff_lmcs_16bpc_8pix_avx2(uint8_t *_dst, ptrdiff_t dst_stride, const int width, const int height, const uint8_t *_lut);
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
 #if ARCH_X86_64
@@ -241,12 +245,25 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
         switch (bd) {
             case 8:
                 AVG_INIT(8, avx2);
+                c->lmcs.filter[3] = ff_lmcs_8bpc_avx2; // 32
+                c->lmcs.filter[4] = ff_lmcs_8bpc_avx2; // 64
+                c->lmcs.filter[5] = ff_lmcs_8bpc_avx2; // 128
                 break;
             case 10:
                 AVG_INIT(10, avx2);
+                c->lmcs.filter[1] = ff_lmcs_16bpc_8pix_avx2; // 8
+                c->lmcs.filter[2] = ff_lmcs_16bpc_avx2; // 16
+                c->lmcs.filter[3] = ff_lmcs_16bpc_avx2; // 32
+                c->lmcs.filter[4] = ff_lmcs_16bpc_avx2; // 64
+                c->lmcs.filter[5] = ff_lmcs_16bpc_avx2; // 128
                 break;
             case 12:
                 AVG_INIT(12, avx2);
+                c->lmcs.filter[1] = ff_lmcs_16bpc_8pix_avx2; // 8
+                c->lmcs.filter[2] = ff_lmcs_16bpc_avx2; // 16
+                c->lmcs.filter[3] = ff_lmcs_16bpc_avx2; // 32
+                c->lmcs.filter[4] = ff_lmcs_16bpc_avx2; // 64
+                c->lmcs.filter[5] = ff_lmcs_16bpc_avx2; // 128
                 break;
             default:
                 break;
