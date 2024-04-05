@@ -51,11 +51,13 @@ struct AVExecutor {
     ThreadInfo *threads;
     uint8_t *local_contexts;
 
-    AVMutex lock;
+    AVMutex unready_lock;
+    AVMutex ready_lock;
     AVCond cond;
     int die;
 
-    AVTask *tasks;
+    AVTask *unready_tasks;
+    AVTask *ready_tasks;
 };
 
 static AVTask* remove_task(AVTask **prev, AVTask *t)
@@ -71,18 +73,54 @@ static void add_task(AVTask **prev, AVTask *t)
     *prev   = t;
 }
 
+static void update_tasks(AVExecutor *e)
+{
+    AVTask **prev;
+    AVTask *task_buff=NULL;
+    AVTask *t = NULL;
+    AVTaskCallbacks *cb = &e->cb;
+    ff_mutex_lock(&e->unready_lock);
+    prev = &e->unready_tasks;
+    while(*prev){
+        if (cb->ready(*prev, cb->user_data)) {
+            t = *prev;
+            remove_task(prev,t);
+            add_task(&task_buff,t);
+        }else
+            prev=&(*prev)->next;
+    }
+    ff_mutex_unlock(&e->unready_lock);
+    if(task_buff){
+        ff_mutex_lock(&e->ready_lock);
+        do{
+            t = task_buff;
+            for (prev = &e->ready_tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
+                /* nothing */;
+            remove_task(&task_buff,t);
+            add_task(prev,t);
+            ff_cond_signal(&e->cond);
+        }while(task_buff);
+        ff_mutex_unlock(&e->ready_lock);
+    }
+}
+
 static int run_one_task(AVExecutor *e, void *lc)
 {
     AVTaskCallbacks *cb = &e->cb;
-    AVTask **prev;
+    AVTask **prev = &e->ready_tasks;
 
-    for (prev = &e->tasks; *prev && !cb->ready(*prev, cb->user_data); prev = &(*prev)->next)
-        /* nothing */;
+    if(!*prev){
+        ff_mutex_unlock(&e->ready_lock);
+        update_tasks(e);
+        ff_mutex_lock(&e->ready_lock);
+    }
+
+    prev = &e->ready_tasks;
     if (*prev) {
         AVTask *t = remove_task(prev, *prev);
-        ff_mutex_unlock(&e->lock);
+        ff_mutex_unlock(&e->ready_lock);
         cb->run(t, lc, cb->user_data);
-        ff_mutex_lock(&e->lock);
+        ff_mutex_lock(&e->ready_lock);
         return 1;
     }
     return 0;
@@ -95,16 +133,16 @@ static void *executor_worker_task(void *data)
     AVExecutor *e  = ti->e;
     void *lc       = e->local_contexts + (ti - e->threads) * e->cb.local_context_size;
 
-    ff_mutex_lock(&e->lock);
+    ff_mutex_lock(&e->ready_lock);
     while (1) {
         if (e->die) break;
 
         if (!run_one_task(e, lc)) {
             //no task in one loop
-            ff_cond_wait(&e->cond, &e->lock);
+            ff_cond_wait(&e->cond, &e->ready_lock);
         }
     }
-    ff_mutex_unlock(&e->lock);
+    ff_mutex_unlock(&e->ready_lock);
     return NULL;
 }
 #endif
@@ -113,18 +151,20 @@ static void executor_free(AVExecutor *e, const int has_lock, const int has_cond)
 {
     if (e->thread_count) {
         //signal die
-        ff_mutex_lock(&e->lock);
+        ff_mutex_lock(&e->ready_lock);
         e->die = 1;
         ff_cond_broadcast(&e->cond);
-        ff_mutex_unlock(&e->lock);
+        ff_mutex_unlock(&e->ready_lock);
 
         for (int i = 0; i < e->thread_count; i++)
             executor_thread_join(e->threads[i].thread, NULL);
     }
     if (has_cond)
         ff_cond_destroy(&e->cond);
-    if (has_lock)
-        ff_mutex_destroy(&e->lock);
+    if (has_lock){
+        ff_mutex_destroy(&e->ready_lock);
+        ff_mutex_destroy(&e->unready_lock);
+    }
 
     av_free(e->threads);
     av_free(e->local_contexts);
@@ -152,7 +192,8 @@ AVExecutor* av_executor_alloc(const AVTaskCallbacks *cb, int thread_count)
     if (!e->threads)
         goto free_executor;
 
-    has_lock = !ff_mutex_init(&e->lock, NULL);
+    has_lock = !ff_mutex_init(&e->ready_lock, NULL);
+    has_lock &= !ff_mutex_init(&e->unready_lock, NULL);
     has_cond = !ff_cond_init(&e->cond, NULL);
 
     if (!has_lock || !has_cond)
@@ -183,15 +224,20 @@ void av_executor_execute(AVExecutor *e, AVTask *t)
 {
     AVTaskCallbacks *cb = &e->cb;
     AVTask **prev;
-
-    ff_mutex_lock(&e->lock);
     if (t) {
-        for (prev = &e->tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
-            /* nothing */;
-        add_task(prev, t);
+        if (cb->ready(t, cb->user_data)) {
+            ff_mutex_lock(&e->ready_lock);
+            for (prev = &e->ready_tasks; *prev && cb->priority_higher(*prev, t); prev = &(*prev)->next)
+              /* nothing */;
+            add_task(prev,t);
+            ff_cond_signal(&e->cond);
+            ff_mutex_unlock(&e->ready_lock);
+        }else{
+            ff_mutex_lock(&e->unready_lock);
+            add_task(&e->unready_tasks, t);
+            ff_mutex_unlock(&e->unready_lock);
+        }
     }
-    ff_cond_signal(&e->cond);
-    ff_mutex_unlock(&e->lock);
 
 #if !HAVE_THREADS
     // We are running in a single-threaded environment, so we must handle all tasks ourselves
