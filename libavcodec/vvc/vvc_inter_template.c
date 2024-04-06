@@ -458,7 +458,12 @@ static void FUNC(ff_vvc_inter_dsp_init)(VVCInterDSPContext *const inter)
     inter->apply_prof_uni_w     = FUNC(apply_prof_uni_w);
     inter->apply_bdof           = FUNC(apply_bdof);
     inter->prof_grad_filter     = FUNC(prof_grad_filter);
-    inter->sad                  = vvc_sad;
+    inter->sad[0]                  = vvc_sad;
+    inter->sad[1]                  = vvc_sad;
+    inter->sad[2]                  = vvc_sad;
+    inter->sad[3]                  = vvc_sad;
+    inter->sad[4]                  = vvc_sad;
+    inter->sad[5]                  = vvc_sad;
 }
 
 #undef FUNCS

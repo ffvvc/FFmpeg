@@ -291,6 +291,20 @@ AVG_FUNCS(16, 12, avx2)
     c->inter.w_avg  = bf(w_avg, bd, opt);                               \
 } while (0)
 
+int ff_vvc_sad_8_16bpc_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+int ff_vvc_sad_16_16bpc_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+int ff_vvc_sad_128_16bpc_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+int ff_vvc_sad_64_16bpc_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+int ff_vvc_sad_32_16bpc_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+
+#define SAD_INIT() do {                                                 \
+    c->inter.sad[1] = ff_vvc_sad_8_16bpc_avx2;                          \
+    c->inter.sad[2] = ff_vvc_sad_16_16bpc_avx2;                         \
+    c->inter.sad[3] = ff_vvc_sad_32_16bpc_avx2;                         \
+    c->inter.sad[4] = ff_vvc_sad_64_16bpc_avx2;                         \
+    c->inter.sad[5] = ff_vvc_sad_128_16bpc_avx2;                        \
+} while (0)
+
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
     const int cpu_flags = av_get_cpu_flags();
@@ -326,17 +340,20 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
                 case 8:
                 ALF_INIT(8);
                     AVG_INIT(8, avx2);
-                c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
-                c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
+                    c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_8_avx2;
+                    c->sao.band_filter[1] = ff_vvc_sao_band_filter_16_8_avx2;
+                    SAD_INIT();
                     break;
                 case 10:
                 ALF_INIT(10);
                     AVG_INIT(10, avx2);
-                c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
+                    c->sao.band_filter[0] = ff_vvc_sao_band_filter_8_10_avx2;
+                    SAD_INIT();
                     break;
                 case 12:
                 ALF_INIT(12);
                     AVG_INIT(12, avx2);
+                    SAD_INIT();
                     break;
                 default:
                     break;
@@ -347,12 +364,15 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             switch (bd) {
                 case 8:
                     SAO_INIT(8, avx2);
+                    SAD_INIT();
                     break;
                 case 10:
                     SAO_INIT(10, avx2);
+                    SAD_INIT();
                     break;
                 case 12:
                     SAO_INIT(12, avx2);
+                    SAD_INIT();
                 default:
                     break;
             }
