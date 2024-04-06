@@ -86,7 +86,8 @@ typedef struct VVCInterDSPContext {
 
     void (*apply_bdof)(uint8_t *dst, ptrdiff_t dst_stride, int16_t *src0, int16_t *src1, int block_w, int block_h);
 
-    int (*sad)(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+    int (*sad[6])(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+
     void (*dmvr[2][2])(int16_t *dst, const uint8_t *src, ptrdiff_t src_stride, int height,
         intptr_t mx, intptr_t my, int width);
 } VVCInterDSPContext;
