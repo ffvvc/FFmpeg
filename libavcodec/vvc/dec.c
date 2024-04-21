@@ -857,8 +857,6 @@ static int decode_nal_units(VVCContext *s, VVCFrameContext *fc, AVPacket *avpkt)
     return 0;
 
 fail:
-    if (fc->ref)
-        ff_vvc_report_frame_finished(fc->ref);
     return ret;
 }
 
@@ -949,16 +947,24 @@ static int vvc_decode_frame(AVCodecContext *avctx, AVFrame *output,
 
     ret = decode_nal_units(s, fc, avpkt);
     if (ret < 0)
-        return ret;
+        goto fail;
 
-    if (!fc->ft)
-        return avpkt->size;
+    if (!fc->ft) {
+        // special case, the packet contain no nal unit, we still need to report finished
+        ret = avpkt->size;
+        goto fail;
+    }
 
     ret = submit_frame(s, fc, output, got_output);
     if (ret < 0)
-        return ret;
+        goto fail;
 
     return avpkt->size;
+
+fail:
+    if (fc->ref)
+        ff_vvc_report_frame_finished(fc->ref);
+    return ret;
 }
 
 static av_cold void vvc_decode_flush(AVCodecContext *avctx)
