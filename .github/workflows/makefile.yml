@@ -107,4 +107,4 @@ jobs:
       run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg tests/conformance/failed || true
 
     - name: Check for fuzz regressions
-      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg --no-output-check --allow-decode-error tests/conformance/failed || true
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg --no-output-check --allow-decode-error tests/fuzz/passed
