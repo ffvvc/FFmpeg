@@ -233,6 +233,11 @@ typedef enum IntraPredMode {
     INTRA_T_CCLM
 } IntraPredMode;
 
+typedef enum TravScanOrder {
+    TRAV_HORIZ,
+    TRAV_VERT,
+} TravScanOrder;
+
 typedef struct MotionInfo {
     MotionModelIdc motion_model_idc; ///< MotionModelIdc
     int8_t   ref_idx[2];             ///< refIdxL0, refIdxL1
