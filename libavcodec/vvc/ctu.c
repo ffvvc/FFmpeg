@@ -246,9 +246,9 @@ static TransformUnit* add_tu(VVCFrameContext *fc, CodingUnit *cu, const int x0, 
 static TransformBlock* add_tb(TransformUnit *tu, VVCLocalContext *lc,
     const int x0, const int y0, const int tb_width, const int tb_height, const int c_idx)
 {
-    TransformBlock *tb;
+    const VVCSPS   *sps = lc->fc->ps.sps;
+    TransformBlock *tb  = &tu->tbs[tu->nb_tbs++];
 
-    tb = &tu->tbs[tu->nb_tbs++];
     tb->has_coeffs = 0;
     tb->x0 = x0;
     tb->y0 = y0;
@@ -265,6 +265,17 @@ static TransformBlock* add_tb(TransformUnit *tu, VVCLocalContext *lc,
     tb->coeffs = lc->coeffs;
     lc->coeffs += tb_width * tb_height;
     tu->avail[!!c_idx] = true;
+
+    if (sps->r->sps_palette_enabled_flag) {
+        tb->palette_index_map  = lc->palette_index_map;
+        lc->palette_index_map += tb_width * tb_height;
+
+        if (c_idx < CR) {
+            tb->copy_above_indices_flag = lc->copy_above_indices_flag;
+            lc->copy_above_indices_flag += tb_width * tb_height;
+        }
+    }
+
     return tb;
 }
 
@@ -952,6 +963,56 @@ static av_always_inline uint8_t pack_mip_info(int intra_mip_flag,
     return (intra_mip_mode << 2) | (intra_mip_transposed_flag << 1) | intra_mip_flag;
 }
 
+static void derive_predictor_palette_entries(const VVCLocalContext *lc, const CodingUnit *cu)
+{
+    const VVCSPS *sps = lc->fc->ps.sps;
+    const VVCSH  *sh  = &lc->sc->sh;
+
+    int16_t new_predictor_palette_entries[VVC_MAX_SAMPLE_ARRAYS][VVC_MAX_NUM_PALETTE_PREDICTOR_SIZE] = { 0 };
+
+    int new_predictor_size = 0;
+    int local_dual_tree_flags = (cu->tree_type != SINGLE_TREE &&
+        (!IS_I(sh->r) || (IS_I(sh->r) && sps->r->sps_qtbtt_dual_tree_intra_flag == 0))) ? 1 : 0;
+
+    int i, c, start_comp, num_comp;
+    int max_num_palette_predictorSize;
+
+    if (cu->tree_type == SINGLE_TREE || local_dual_tree_flags) {
+        start_comp                    = 0;
+        num_comp                      = local_dual_tree_flags || sps->r->sps_chroma_format_idc != 0 ? VVC_MAX_SAMPLE_ARRAYS : 1;
+        max_num_palette_predictorSize = VVC_MAX_NUM_PALETTE_PREDICTOR_SIZE;
+    } else {
+        max_num_palette_predictorSize = VVC_MAX_NUM_PALETTE_PREDICTOR_SIZE >> 1;
+        if (cu->tree_type == DUAL_TREE_LUMA) {
+            start_comp = 0;
+            num_comp   = 1;
+        } else {
+            start_comp = 1;
+            num_comp = 2;
+        }
+    }
+
+    for (c = start_comp; c < (start_comp + num_comp); c++)
+        memcpy(new_predictor_palette_entries[c], cu->palette[c].current_entries, cu->palette[start_comp].current_size * sizeof(int16_t));
+
+    new_predictor_size = cu->palette[start_comp].current_size;
+
+    for (i = 0; i < lc->fc->tab.predictor_palette[start_comp].size && new_predictor_size < max_num_palette_predictorSize; i++) {
+        if (!cu->palette_predictor_reuse_flags[i]) {
+            for (c = start_comp; c < (start_comp + num_comp); c++)
+                new_predictor_palette_entries[c][new_predictor_size] = lc->fc->tab.predictor_palette[c].entries[i];
+            new_predictor_size++;
+        }
+    }
+
+    lc->fc->tab.predictor_palette[start_comp].size = new_predictor_size;
+    if (sps->r->sps_qtbtt_dual_tree_intra_flag == 0 || !IS_I(sh->r))
+        lc->fc->tab.predictor_palette[1].size = new_predictor_size;
+
+    for (c = start_comp; c < (start_comp + num_comp); c++)
+        memcpy(lc->fc->tab.predictor_palette[c].entries, new_predictor_palette_entries[c], new_predictor_size * sizeof(int16_t));
+}
+
 static void intra_luma_pred_modes(VVCLocalContext *lc)
 {
     VVCFrameContext *fc             = lc->fc;
@@ -1047,13 +1108,15 @@ static PredMode pred_mode_decode(VVCLocalContext *lc,
     const H266RawSliceHeader *rsh   = lc->sc->sh.r;
     const int ch_type               = tree_type == DUAL_TREE_CHROMA ? 1 : 0;
     const int is_4x4                = cu->cb_width == 4 && cu->cb_height == 4;
+    const int is_128                = cu->cb_width == 128 || cu->cb_height == 128;
+    const int hs                    = sps->hshift[CHROMA];
+    const int vs                    = sps->vshift[CHROMA];
     int pred_mode_flag;
     int pred_mode_ibc_flag;
     PredMode pred_mode;
 
     cu->skip_flag = 0;
     if (!IS_I(rsh) || sps->r->sps_ibc_enabled_flag) {
-        const int is_128 = cu->cb_width == 128 || cu->cb_height == 128;
         if (tree_type != DUAL_TREE_CHROMA &&
             ((!is_4x4 && mode_type != MODE_TYPE_INTRA) ||
             (sps->r->sps_ibc_enabled_flag && !is_128))) {
@@ -1086,6 +1149,14 @@ static PredMode pred_mode_decode(VVCLocalContext *lc,
             pred_mode = MODE_IBC;
     } else {
         pred_mode = MODE_INTRA;
+    }
+
+    if (pred_mode == MODE_INTRA && sps->r->sps_palette_enabled_flag && !is_128 && !cu->skip_flag &&
+        mode_type != MODE_TYPE_INTER && ((cu->cb_width * cu->cb_height) >
+            (tree_type != DUAL_TREE_CHROMA ? 16 : (16 << hs << vs))) &&
+        (mode_type != MODE_TYPE_INTRA || tree_type != DUAL_TREE_CHROMA)) {
+        if (ff_vvc_pred_mode_plt_flag(lc))
+            pred_mode = MODE_PLT;
     }
 
     set_cb_tab(lc, fc->tab.cpm[cu->ch_type], pred_mode);
@@ -1259,6 +1330,9 @@ static void set_cu_tabs(const VVCLocalContext *lc, const CodingUnit *cu)
         }
         tu = tu->next;
     }
+
+    if (cu->pred_mode == MODE_PLT)
+        derive_predictor_palette_entries(lc, cu);
 }
 
 //8.5.2.7 Derivation process for merge motion vector difference
@@ -1806,16 +1880,266 @@ static int inter_data(VVCLocalContext *lc)
     return ret;
 }
 
+#define PALETTE_VAL(v, c, xc, yc) tu->tbs[c].v[(yc) * tu->tbs[c].tb_width + (xc)]
+#define PALETTE_ESCAPE_VAL(c, xc, yc) PALETTE_VAL(coeffs, c, xc, yc)
+#define PALETTE_INDEX_MAP(c, xc, yc)  PALETTE_VAL(palette_index_map,       c, xc, yc)
+#define PALETTE_RUN_TYPE(c, xc, yc)   PALETTE_VAL(copy_above_indices_flag, c, xc, yc)
+static int palette_subblock_data(VVCLocalContext *lc, int start_comp, int num_comp,
+    const uint8_t *hs, const uint8_t *vs, int max_palette_index, int subset_id, int *prev_run_type,
+    int *prev_run_position, int palette_transpose_flag, int palette_escape_val_present_flag, int *adjust)
+{
+    const CodingUnit    *cu  = lc->cu;
+    const TransformUnit *tu  = cu->tus.head;
+    const VVCSPS        *sps = lc->fc->ps.sps;
+
+    uint8_t run_copy_map[16] = { 0 };
+    uint32_t xc, yc, prev_xc, prev_yc;
+
+    int current_palette_index      = 0;
+    int adjusted_ref_palette_index = 0;
+
+    int min_sub_pos = subset_id << 4;
+    int max_sub_pos = min_sub_pos + 16;
+    int scan_pos;
+
+    int width  = tu->tbs[start_comp].tb_width;
+    int height = tu->tbs[start_comp].tb_height;
+
+    uint32_t (*scan_order)[2] = (uint32_t (*)[2])lc->fc->tab.traverse_scan_order[palette_transpose_flag ? TRAV_VERT : TRAV_HORIZ][av_log2(width) - 1][av_log2(height) - 1];
+
+    max_sub_pos = FFMIN(max_sub_pos, width * height);
+    for (scan_pos = min_sub_pos; scan_pos < max_sub_pos; scan_pos++) {
+        xc = scan_order[scan_pos][0];
+        yc = scan_order[scan_pos][1];
+
+        prev_xc = 0;
+        prev_yc = 0;
+
+        if (scan_pos > 0) {
+            prev_xc = scan_order[scan_pos - 1][0];
+            prev_yc = scan_order[scan_pos - 1][1];
+            if (max_palette_index > 0)
+                run_copy_map[scan_pos - min_sub_pos] = ff_vvc_run_copy_flag(lc, *prev_run_type, *prev_run_position, scan_pos);
+        }
+
+        PALETTE_RUN_TYPE(start_comp, xc, yc) = 0;
+        if (max_palette_index > 0 && !run_copy_map[scan_pos - min_sub_pos]) {
+            if (((!palette_transpose_flag && yc > 0) || (palette_transpose_flag && xc > 0))
+                && PALETTE_RUN_TYPE(start_comp, prev_xc, prev_yc) == 0 && scan_pos > 0) {
+                PALETTE_RUN_TYPE(start_comp, xc, yc) = ff_vvc_copy_above_palette_indices_flag(lc);
+            }
+            *prev_run_type = PALETTE_RUN_TYPE(start_comp, xc, yc);
+            *prev_run_position = scan_pos;
+        } else if (scan_pos > 0) {
+            PALETTE_RUN_TYPE(start_comp, xc, yc) = PALETTE_RUN_TYPE(start_comp, prev_xc, prev_yc);
+        }
+    }
+
+    for (scan_pos = min_sub_pos; scan_pos < max_sub_pos; scan_pos++) {
+        xc = scan_order[scan_pos][0];
+        yc = scan_order[scan_pos][1];
+
+        prev_xc = scan_pos > 0 ? scan_order[scan_pos - 1][0] : 0;
+        prev_yc = scan_pos > 0 ? scan_order[scan_pos - 1][1] : 0;
+
+        current_palette_index = 0;
+        if (max_palette_index > 0 && !run_copy_map[scan_pos - min_sub_pos] && PALETTE_RUN_TYPE(start_comp, xc, yc) == 0) {
+            current_palette_index = ff_vvc_palette_idx_idc(lc, max_palette_index, *adjust);
+            if (scan_pos > 0) {
+                adjusted_ref_palette_index = max_palette_index + 1;
+                if (PALETTE_RUN_TYPE(start_comp, prev_xc, prev_yc) == 0)
+                    adjusted_ref_palette_index = PALETTE_INDEX_MAP(start_comp, prev_xc, prev_yc);
+                else {
+                    if (!palette_transpose_flag)
+                        adjusted_ref_palette_index = PALETTE_INDEX_MAP(start_comp, xc, yc - 1);
+                    else
+                        adjusted_ref_palette_index = PALETTE_INDEX_MAP(start_comp, xc - 1, yc);
+                }
+                if (current_palette_index >= adjusted_ref_palette_index)
+                    current_palette_index++;
+            }
+            *adjust = 1;
+        } else {
+            current_palette_index = PALETTE_INDEX_MAP(start_comp, prev_xc, prev_yc);
+        }
+
+        if (PALETTE_RUN_TYPE(start_comp, xc, yc) == 0)
+            PALETTE_INDEX_MAP(start_comp, xc, yc) = current_palette_index;
+        else if (!palette_transpose_flag)
+            PALETTE_INDEX_MAP(start_comp, xc, yc) = PALETTE_INDEX_MAP(start_comp, xc, yc - 1);
+        else
+            PALETTE_INDEX_MAP(start_comp, xc, yc) = PALETTE_INDEX_MAP(start_comp, xc - 1, yc);
+    }
+
+    for (int c = start_comp; c < (start_comp + num_comp); c++) {
+        for (scan_pos = min_sub_pos; scan_pos < max_sub_pos; scan_pos++) {
+            xc = scan_order[scan_pos][0];
+            yc = scan_order[scan_pos][1];
+            if (!(cu->tree_type == SINGLE_TREE && c != LUMA &&
+                (xc % (1 << sps->hshift[CB]) != 0 || yc % (1 << sps->vshift[CB]) != 0))) {
+                if (PALETTE_INDEX_MAP(start_comp, xc, yc) == cu->palette[start_comp].current_size)
+                    PALETTE_ESCAPE_VAL(c, xc >> hs[c], yc >> vs[c]) = ff_vvc_palette_escape_val(lc);
+            }
+        }
+    }
+
+    return 0;
+}
+
+static TransformUnit *add_palette_tu(VVCLocalContext *lc, const VVCTreeType tree_type)
+{
+    CodingUnit   *cu  = lc->cu;
+    const VVCSPS *sps = lc->fc->ps.sps;
+
+    TransformUnit *tu = add_tu(lc->fc, cu, cu->x0, cu->y0, cu->cb_width, cu->cb_height);
+    if (tree_type != DUAL_TREE_CHROMA)
+        add_tb(tu, lc, tu->x0, tu->y0, tu->width, tu->height, LUMA);
+    else
+        tu->tbs[tu->nb_tbs++];
+    if (sps->r->sps_chroma_format_idc && tree_type != DUAL_TREE_LUMA) {
+        add_tb(tu, lc, tu->x0, tu->y0, tu->width >> sps->hshift[CB], tu->height >> sps->vshift[CB], CB);
+        add_tb(tu, lc, tu->x0, tu->y0, tu->width >> sps->hshift[CR], tu->height >> sps->vshift[CR], CR);
+    }
+
+    for (int i = 0; i < tu->nb_tbs; i++) {
+        TransformBlock *tb = &tu->tbs[i];
+        if (tb->c_idx != CR)
+            set_tb_size(lc->fc, tb);
+    }
+
+    memset(cu->palette, 0, sizeof(cu->palette));
+    memset(cu->palette_predictor_reuse_flags, 0, sizeof(cu->palette_predictor_reuse_flags));
+
+    if (cu->tree_type != DUAL_TREE_CHROMA)
+        set_qp_y(lc, cu->x0, cu->y0, 0);
+    if (sps->r->sps_chroma_format_idc && cu->tree_type != DUAL_TREE_LUMA)
+        set_qp_c(lc);
+
+    return tu;
+}
+
+static int palette_coding(VVCLocalContext *lc, const VVCTreeType tree_type)
+{
+    CodingUnit               *cu  = lc->cu;
+    const VVCFrameContext    *fc  = lc->fc;
+    const VVCSPS             *sps = fc->ps.sps;
+    const VVCPPS             *pps = fc->ps.pps;
+    const VVCSH              *sh  = &lc->sc->sh;
+    const H266RawSliceHeader *rsh = sh->r;
+
+    uint8_t hs[VVC_MAX_SAMPLE_ARRAYS] = { 0 };
+    uint8_t vs[VVC_MAX_SAMPLE_ARRAYS] = { 0 };
+
+    int start_comp = tree_type == DUAL_TREE_CHROMA ? 1 : 0;
+    int num_comps  = (tree_type == SINGLE_TREE) ? (sps->r->sps_chroma_format_idc == 0 ? 1 : VVC_MAX_SAMPLE_ARRAYS) :
+                     (tree_type == DUAL_TREE_CHROMA) ? 2 : 1;
+    int max_num_palette_entries = tree_type == SINGLE_TREE ? 31 : 15;
+    int local_dual_tree_flags = (tree_type != SINGLE_TREE &&
+        (!IS_I(sh->r) || (IS_I(sh->r) && sps->r->sps_qtbtt_dual_tree_intra_flag == 0))) ? 1 : 0;
+
+    int num_predicted_entries           = 0;
+    int palette_predictor_run           = 0;
+    int num_signalled_palette_entries   = 0;
+    int palette_escape_val_present_flag = 0;
+    int max_palette_index               = 0;
+    int palette_transpose_flag          = 0;
+    int prev_run_type                   = 0;
+    int prev_run_pos                    = 0;
+
+    int i, c, num, adjust, total = 0;
+
+    TransformUnit *tu = add_palette_tu(lc, tree_type);
+
+    if (start_comp == LUMA) {
+        for (int c_idx = start_comp + 1; c_idx < start_comp + num_comps; c_idx++) {
+            hs[c_idx] = sps->hshift[c_idx];
+            vs[c_idx] = sps->vshift[c_idx];
+        }
+    }
+
+    for (i = 0; i < fc->tab.predictor_palette[start_comp].size && num_predicted_entries < max_num_palette_entries; i++) {
+        palette_predictor_run = ff_vvc_palette_predictor_run(lc);
+        if (palette_predictor_run == 1)
+            break;
+
+        if (palette_predictor_run > 1)
+            i += palette_predictor_run - 1;
+        cu->palette_predictor_reuse_flags[i] = 1;
+        num_predicted_entries++;
+    }
+
+    num_predicted_entries = 0;
+    for (i = 0; i < fc->tab.predictor_palette[start_comp].size; i++) {
+        if (cu->palette_predictor_reuse_flags[i]) {
+            if (local_dual_tree_flags) {
+                c = 0;
+                num = VVC_MAX_SAMPLE_ARRAYS;
+            } else {
+                c = start_comp;
+                num = start_comp + num_comps;
+            }
+
+            for (; c < num; c++)
+                cu->palette[c].current_entries[num_predicted_entries] = fc->tab.predictor_palette[c].entries[i];
+            num_predicted_entries++;
+        }
+    }
+
+    if (num_predicted_entries < max_num_palette_entries)
+        num_signalled_palette_entries = ff_vvc_num_signalled_palette_entries(lc);
+
+    cu->palette[start_comp].current_size = num_predicted_entries + num_signalled_palette_entries;
+    for (c = start_comp; c < (start_comp + num_comps); c++) {
+        for (i = num_predicted_entries; i < cu->palette[start_comp].current_size; i++) {
+            cu->palette[c].current_entries[i] = ff_vvc_new_palette_entries(lc, sps->bit_depth);
+            if (local_dual_tree_flags) {
+                if (tree_type == DUAL_TREE_LUMA) {
+                    cu->palette[CB].current_entries[i] = 1 << (sps->bit_depth - 1);
+                    cu->palette[CR].current_entries[i] = 1 << (sps->bit_depth - 1);
+                } else {
+                    cu->palette[LUMA].current_entries[i] = 1 << (sps->bit_depth - 1);
+                }
+            }
+        }
+    }
+
+    if (cu->palette[start_comp].current_size > 0)
+        palette_escape_val_present_flag = ff_vvc_palette_escape_val_present_flag(lc);
+
+    max_palette_index = cu->palette[start_comp].current_size - 1 + palette_escape_val_present_flag;
+    if (max_palette_index > 0) {
+        adjust = 0;
+        palette_transpose_flag = ff_vvc_palette_transpose_flag(lc);
+    }
+
+    if (palette_escape_val_present_flag) {
+        if (tree_type != DUAL_TREE_CHROMA) {
+            if (pps->r->pps_cu_qp_delta_enabled_flag && !lc->parse.is_cu_qp_delta_coded)
+                set_qp_y(lc, cu->x0, cu->y0, 1);
+        }
+        if (tree_type != DUAL_TREE_LUMA) {
+            if (rsh->sh_cu_chroma_qp_offset_enabled_flag && !lc->parse.is_cu_chroma_qp_offset_coded)
+                chroma_qp_offset_decode(lc, 0, 1);
+        }
+    }
+
+    for (i = 0; i <= (tu->tbs[start_comp].tb_width * tu->tbs[start_comp].tb_height - 1) >> 4; i++)
+        palette_subblock_data(lc, start_comp, num_comps, hs, vs, max_palette_index, i, &prev_run_type,
+            &prev_run_pos, palette_transpose_flag, palette_transpose_flag, &adjust);
+
+    return 0;
+}
+
 static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, int cb_height,
     int cqt_depth, const VVCTreeType tree_type, VVCModeType mode_type)
 {
-    const VVCFrameContext *fc       = lc->fc;
-    const VVCSPS *sps               = fc->ps.sps;
-    const H266RawSliceHeader *rsh   = lc->sc->sh.r;
-    const int hs                    = sps->hshift[CHROMA];
-    const int vs                    = sps->vshift[CHROMA];
-    const int is_128                = cb_width > 64 || cb_height > 64;
-    int pred_mode_plt_flag          = 0;
+    const VVCFrameContext *fc     = lc->fc;
+    const VVCSPS *sps             = fc->ps.sps;
+    const H266RawSliceHeader *rsh = lc->sc->sh.r;
+    const int hs                  = sps->hshift[CHROMA];
+    const int vs                  = sps->vshift[CHROMA];
+    const int is_128              = cb_width > 64 || cb_height > 64;
+    int pred_mode_plt_flag        = 0;
     int ret;
 
     CodingUnit *cu = add_cu(lc, x0, y0, cb_width, cb_height, cqt_depth, tree_type);
@@ -1828,17 +2152,8 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
     if (IS_I(rsh) && is_128)
         mode_type = MODE_TYPE_INTRA;
     cu->pred_mode = pred_mode_decode(lc, tree_type, mode_type);
+    pred_mode_plt_flag = cu->pred_mode == MODE_PLT;
 
-    if (cu->pred_mode == MODE_INTRA && sps->r->sps_palette_enabled_flag && !is_128 && !cu->skip_flag &&
-        mode_type != MODE_TYPE_INTER && ((cb_width * cb_height) >
-        (tree_type != DUAL_TREE_CHROMA ? 16 : (16 << hs << vs))) &&
-        (mode_type != MODE_TYPE_INTRA || tree_type != DUAL_TREE_CHROMA)) {
-        pred_mode_plt_flag = ff_vvc_pred_mode_plt_flag(lc);
-        if (pred_mode_plt_flag) {
-            avpriv_report_missing_feature(fc->log_ctx, "Palette");
-            return AVERROR_PATCHWELCOME;
-        }
-    }
     if (cu->pred_mode == MODE_INTRA && sps->r->sps_act_enabled_flag && tree_type == SINGLE_TREE) {
         avpriv_report_missing_feature(fc->log_ctx, "Adaptive Color Transform");
         return AVERROR_PATCHWELCOME;
@@ -1846,8 +2161,8 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
     if (cu->pred_mode == MODE_INTRA || cu->pred_mode == MODE_PLT) {
         if (tree_type == SINGLE_TREE || tree_type == DUAL_TREE_LUMA) {
             if (pred_mode_plt_flag) {
-                avpriv_report_missing_feature(fc->log_ctx, "Palette");
-                return AVERROR_PATCHWELCOME;
+                if ((ret = palette_coding(lc, tree_type)) < 0)
+                    return ret;
             } else {
                 intra_luma_pred_modes(lc);
             }
@@ -1855,8 +2170,8 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         }
         if ((tree_type == SINGLE_TREE || tree_type == DUAL_TREE_CHROMA) && sps->r->sps_chroma_format_idc) {
             if (pred_mode_plt_flag && tree_type == DUAL_TREE_CHROMA) {
-                avpriv_report_missing_feature(fc->log_ctx, "Palette");
-                return AVERROR_PATCHWELCOME;
+                if ((ret = palette_coding(lc, tree_type)) < 0)
+                    return ret;
             } else if (!pred_mode_plt_flag) {
                 if (!cu->act_enabled_flag)
                     intra_chroma_pred_modes(lc);
@@ -1887,7 +2202,7 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         cu->lfnst_idx = lfnst_idx_decode(lc);
         cu->mts_idx = mts_idx_decode(lc);
         set_qp_c(lc);
-    } else {
+    } else if (cu->pred_mode != MODE_PLT) {
         ret = skipped_transform_tree_unit(lc);
         if (ret < 0)
             return ret;
@@ -2486,6 +2801,11 @@ int ff_vvc_coding_tree_unit(VVCLocalContext *lc,
 
     lc->coeffs = fc->tab.coeffs + rs * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
     lc->cu     = NULL;
+
+    if (sps->r->sps_palette_enabled_flag) {
+        lc->palette_index_map       = fc->tab.palette_index_map + rs * ctb_size * VVC_MAX_SAMPLE_ARRAYS;
+        lc->copy_above_indices_flag = fc->tab.copy_above_indices_flag + rs * ctb_size * (VVC_MAX_SAMPLE_ARRAYS - 1);
+    }
 
     ff_vvc_cabac_init(lc, ctu_idx, rx, ry);
     ff_vvc_decode_neighbour(lc, x_ctb, y_ctb, rx, ry, rs);
