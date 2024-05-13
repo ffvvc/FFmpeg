@@ -968,6 +968,18 @@ static int limited_kth_order_egk_decode(CABACContext *c, const int k, const int 
     return val;
 }
 
+// 9.3.3.7 Fixed-length binarization process 
+static int fixed_length_decode(CABACContext* c, int cmax)
+{
+    int length = av_ceil_log2_c(cmax + 1);
+
+    int value = get_cabac_bypass(c);
+    for (int i = 1; i < length; i++)
+        value = (value << 1) | get_cabac_bypass(c);
+
+    return value;
+}
+
 static av_always_inline
 void get_left_top(const VVCLocalContext *lc, uint8_t *left, uint8_t *top,
     const int x0, const int y0, const uint8_t *left_ctx, const uint8_t *top_ctx)
