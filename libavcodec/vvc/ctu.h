@@ -156,6 +156,9 @@ typedef struct TransformBlock {
     int bd_offset;
 
     int *coeffs;
+
+    int16_t *palette_index_map;
+    uint8_t *copy_above_indices_flag;
 } TransformBlock;
 
 typedef enum VVCTreeType {
@@ -325,6 +328,13 @@ typedef struct CodingUnit {
 
     int8_t qp[4];                                   ///< QpY, Qp′Cb, Qp′Cr, Qp′CbCr
 
+    struct {
+        uint8_t current_size;
+        int16_t current_entries[VVC_MAX_NUM_PALETTE_PREDICTOR_SIZE >> 1];
+    } palette[VVC_MAX_SAMPLE_ARRAYS];
+
+    uint8_t palette_predictor_reuse_flags[VVC_MAX_NUM_PALETTE_PREDICTOR_SIZE];
+
     PredictionUnit pu;
 
     struct CodingUnit *next;                        ///< RefStruct reference
@@ -438,6 +448,9 @@ typedef struct VVCLocalContext {
     VVCFrameContext *fc;
     EntryPoint *ep;
     int *coeffs;
+
+    int16_t *palette_index_map;
+    uint8_t *copy_above_indices_flag;
 } VVCLocalContext;
 
 typedef struct VVCAllowedSplit {
