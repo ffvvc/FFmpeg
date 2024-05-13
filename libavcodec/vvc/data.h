@@ -77,4 +77,6 @@ extern const uint8_t ff_vvc_alf_aps_class_to_filt_map[25];
 
 const uint8_t* ff_vvc_get_mip_matrix(const int size_id, const int mode_idx);
 
+extern const uint8_t ff_vvc_palette_level_scale[6];
+
 #endif /* AVCODEC_VVC_DATA_H */
