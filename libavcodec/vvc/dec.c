@@ -34,6 +34,8 @@
 #include "refs.h"
 #include "thread.h"
 
+#define TRAV_SCAN_ORDER_SIZE 129032
+
 #define TAB_MAX 32
 
 typedef struct Tab {
@@ -288,6 +290,61 @@ static void ibc_tl_init(TabList *l, VVCFrameContext *fc)
     }
 }
 
+// 6.5.3 Horizontal and vertical traverse scan order array initialization process
+#define INIT_SCAN_ORDER(dir, width, height, pos_x, pos_y)             \
+fc->tab.traverse_scan_order[dir][i][j] = pos;                         \
+pos += width * height * 2;                                            \
+scan_order = (uint32_t (*)[2])fc->tab.traverse_scan_order[dir][i][j]; \
+for (int y = 0, index = 0; y < height; y++) {                         \
+    if (y % 2 == 0) {                                                 \
+        for (int x = 0; x < width; x++) {                             \
+            scan_order[index][0] = pos_x;                             \
+            scan_order[index][1] = pos_y;                             \
+            index++;                                                  \
+        }                                                             \
+    } else {                                                          \
+        for (int x = width - 1; x >= 0; x--) {                        \
+            scan_order[index][0] = pos_x;                             \
+            scan_order[index][1] = pos_y;                             \
+            index++;                                                  \
+        }                                                             \
+    }                                                                 \
+}
+
+static void init_traverse_scan_order(VVCFrameContext *fc)
+{
+    int i, j, width, height;
+    uint32_t (*scan_order)[2];
+
+    uint32_t *pos = fc->tab.traverse_scan_order_data;
+    for (i = 0; i < 7; i++) {
+        for (j = 0; j < 7; j++) {
+            width  = 1 << (i + 1);
+            height = 1 << (j + 1);
+            INIT_SCAN_ORDER(TRAV_HORIZ, width, height, x, y);
+            INIT_SCAN_ORDER(TRAV_VERT,  height, width, y, x);
+        }
+    }
+}
+
+static void palette_tl_init(TabList *l, VVCFrameContext* fc)
+{
+    const VVCSPS *sps   = fc->ps.sps;
+    const VVCPPS *pps   = fc->ps.pps;
+    const int ctu_size  = sps ? (1 << sps->ctb_log2_size_y << sps->ctb_log2_size_y) : 0;
+    const int ctu_count = pps ? pps->ctb_count : 0;
+    const int changed   = fc->tab.sz.ctu_count != ctu_count || fc->tab.sz.ctu_size != ctu_size;
+
+    if (sps && sps->r->sps_palette_enabled_flag) {
+        tl_init(l, 1, changed);
+
+        fc->tab.predictor_palette->size = 0;
+        TL_ADD(palette_index_map, ctu_count * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
+        TL_ADD(copy_above_indices_flag, ctu_count * ctu_size * (VVC_MAX_SAMPLE_ARRAYS - 1));
+        TL_ADD(traverse_scan_order_data, TRAV_SCAN_ORDER_SIZE * sizeof(uint32_t) * 2 /* horizontal + vertical */);
+    }
+}
+
 typedef void (*tl_init_fn)(TabList *l, VVCFrameContext *fc);
 
 static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabList *l))
@@ -303,6 +360,7 @@ static int frame_context_for_each_tl(VVCFrameContext *fc, int (*unary_fn)(TabLis
         msm_tl_init,
         ispmf_tl_init,
         ibc_tl_init,
+        palette_tl_init
     };
 
     for (int i = 0; i < FF_ARRAY_ELEMS(init); i++) {
@@ -350,6 +408,9 @@ static int pic_arrays_init(VVCContext *s, VVCFrameContext *fc)
         return ret;
 
     memset(fc->tab.slice_idx, -1, sizeof(*fc->tab.slice_idx) * ctu_count);
+
+    if (sps && sps->r->sps_palette_enabled_flag)
+        init_traverse_scan_order(fc);
 
     if (fc->tab.sz.ctu_count != ctu_count) {
         ff_refstruct_pool_uninit(&fc->rpl_tab_pool);
