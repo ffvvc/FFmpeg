@@ -1000,6 +1000,41 @@ static void FUNC(pred_angular_h)(uint8_t *_src, const uint8_t *_top, const uint8
     }
 }
 
+// 8.4.5.3 Decoding process for palette mode
+static void FUNC(palette_pred)(VVCLocalContext *lc, int start_comp, int num_comp, const int *qp)
+{
+    const VVCFrameContext *fc  = lc->fc;
+    const CodingUnit      *cu  = lc->cu;
+    TransformUnit         *tu  = cu->tus.head;
+    const VVCSPS          *sps = fc->ps.sps;
+    const uint8_t         *hs  = sps->hshift;
+    const uint8_t         *vs  = sps->vshift;
+    const int              ps  = sps->pixel_shift;
+
+    int value, index;
+    pixel *dst;
+
+    for (int y = 0; y < cu->cb_height; y++) {
+        for (int x = 0; x < cu->cb_width; x++) {
+            for (int c_idx = start_comp; c_idx < (start_comp + num_comp); c_idx++) {
+                if ((start_comp != LUMA || c_idx == LUMA) || (start_comp == LUMA && c_idx != LUMA &&
+                     y % (1 << vs[c_idx]) == 0 && x % (1 << hs[c_idx]) == 0)) {
+                    dst = (pixel *)&fc->frame->data[c_idx][((y + cu->y0) >> vs[c_idx]) * fc->frame->linesize[c_idx] + (((x + cu->x0) >> hs[c_idx]) << ps)];
+                    index = tu->tbs[start_comp].palette_index_map[(y >> vs[start_comp]) * tu->tbs[start_comp].tb_width + (x >> hs[start_comp])];
+
+                    if (index != cu->palette[start_comp].current_size)
+                        dst[0] = cu->palette[c_idx].current_entries[index];
+                    else {
+                        value = tu->tbs[c_idx].coeffs[(y >> vs[c_idx]) * tu->tbs[c_idx].tb_width + (x >> hs[c_idx])];
+                        value = (((value * ff_vvc_palette_level_scale[qp[c_idx] % 6]) << (qp[c_idx] / 6)) + 32) >> 6;
+                        dst[0] = av_clip(value, 0, (1 << sps->bit_depth) - 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
 static void FUNC(ff_vvc_intra_dsp_init)(VVCIntraDSPContext *const intra)
 {
     intra->lmcs_scale_chroma  = FUNC(lmcs_scale_chroma);
@@ -1012,4 +1047,5 @@ static void FUNC(ff_vvc_intra_dsp_init)(VVCIntraDSPContext *const intra)
     intra->pred_h             = FUNC(pred_h);
     intra->pred_angular_v     = FUNC(pred_angular_v);
     intra->pred_angular_h     = FUNC(pred_angular_h);
+    intra->palette_pred       = FUNC(palette_pred);
 }
