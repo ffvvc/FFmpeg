@@ -1001,6 +1001,39 @@ static void FUNC(pred_angular_h)(uint8_t *_src, const uint8_t *_top, const uint8
     }
 }
 
+// 8.4.5.3 Decoding process for palette mode
+static void FUNC(palette_pred)(VVCLocalContext *lc, int start_comp, int num_comp, const uint8_t *hs, const uint8_t *vs, const int *qp)
+{
+    const VVCFrameContext *fc  = lc->fc;
+    const CodingUnit      *cu  = lc->cu;
+    TransformUnit         *tu  = cu->tus.head;
+    const VVCSPS          *sps = fc->ps.sps;
+    const int              ps  = sps->pixel_shift;
+
+    int value, index;
+    pixel *dst;
+
+    for (int c_idx = start_comp; c_idx < (start_comp + num_comp); c_idx++) {
+        const int width  = tu->tbs[c_idx].tb_width;
+        const int height = tu->tbs[c_idx].tb_height;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                dst = (pixel *)&fc->frame->data[c_idx][((cu->y0 >> sps->vshift[c_idx]) + y) * fc->frame->linesize[c_idx] + (((cu->x0 >> sps->hshift[c_idx]) + x) << ps)];
+                index = tu->tbs[start_comp].palette_index_map[(y << vs[c_idx]) * tu->tbs[start_comp].tb_width + (x << hs[c_idx])];
+
+                if (index != cu->palette[start_comp].current_size)
+                    *dst = cu->palette[c_idx].current_entries[index];
+                else {
+                    value = tu->tbs[c_idx].coeffs[y * tu->tbs[c_idx].tb_width + x];
+                    value = (((value * ff_vvc_palette_level_scale[qp[c_idx] % 6]) << (qp[c_idx] / 6)) + 32) >> 6;
+                    *dst = av_clip(value, 0, (1 << sps->bit_depth) - 1);
+                }
+            }
+        }
+    }
+}
+
 static void FUNC(ff_vvc_intra_dsp_init)(VVCIntraDSPContext *const intra)
 {
     intra->lmcs_scale_chroma  = FUNC(lmcs_scale_chroma);
@@ -1013,4 +1046,5 @@ static void FUNC(ff_vvc_intra_dsp_init)(VVCIntraDSPContext *const intra)
     intra->pred_h             = FUNC(pred_h);
     intra->pred_angular_v     = FUNC(pred_angular_v);
     intra->pred_angular_h     = FUNC(pred_angular_h);
+    intra->palette_pred       = FUNC(palette_pred);
 }
