@@ -658,6 +658,48 @@ static void ibc_fill_vir_buf(const VVCLocalContext *lc, const CodingUnit *cu)
     }
 }
 
+// 8.4.5.3 Decoding process for palette mode
+static void vvc_predict_palette(VVCLocalContext *lc)
+{
+    const VVCFrameContext *fc  = lc->fc;
+    const CodingUnit      *cu  = lc->cu;
+    TransformUnit         *tu  = cu->tus.head;
+    const VVCSPS          *sps = fc->ps.sps;
+    const int qp_prime_ts_min  = 4 + 6 * sps->r->sps_min_qp_prime_ts;
+    uint8_t hs[VVC_MAX_SAMPLE_ARRAYS] = { 0 };
+    uint8_t vs[VVC_MAX_SAMPLE_ARRAYS] = { 0 };
+
+    int start_comp, num_comp;
+
+    int qp[VVC_MAX_SAMPLE_ARRAYS];
+    int c_idx;
+
+    if (cu->tree_type == SINGLE_TREE) {
+        start_comp = 0;
+        num_comp   = 1;
+        if (sps->r->sps_chroma_format_idc != 0) {
+            num_comp = VVC_MAX_SAMPLE_ARRAYS;
+            for (int c_idx = start_comp + 1; c_idx < (start_comp + num_comp); c_idx++) {
+                hs[c_idx] = sps->hshift[c_idx];
+                vs[c_idx] = sps->vshift[c_idx];
+            }
+        }
+    } else if (cu->tree_type == DUAL_TREE_LUMA) {
+        start_comp = 0;
+        num_comp = 1;
+    } else {
+        start_comp = 1;
+        num_comp = 2;
+    }
+
+    for (c_idx = start_comp; c_idx < (start_comp + num_comp); c_idx++) {
+        derive_qp(lc, tu, &tu->tbs[c_idx]);
+        qp[c_idx] = FFMAX(qp_prime_ts_min, tu->tbs[c_idx].qp);
+    }
+
+    fc->vvcdsp.intra.palette_pred(lc, start_comp, num_comp, hs, vs, qp);
+}
+
 int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const int ry)
 {
     const VVCFrameContext *fc   = lc->fc;
@@ -678,6 +720,8 @@ int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const in
             ff_vvc_predict_ciip(lc);
         else if (cu->pred_mode == MODE_IBC)
             vvc_predict_ibc(lc);
+        else if (cu->pred_mode == MODE_PLT)
+            vvc_predict_palette(lc);
         if (cu->coded_flag) {
             ret = reconstruct(lc);
         } else {
