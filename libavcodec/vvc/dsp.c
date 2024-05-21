@@ -46,7 +46,7 @@ static void av_always_inline pad_int16(int16_t *_dst, const ptrdiff_t dst_stride
     memcpy(_dst, _dst - dst_stride, padded_width * sizeof(int16_t));
 }
 
-static int vvc_sad(const int16_t *src0, const int16_t *src1, int dx, int dy,
+static int vvc_sad(const int16_t *src0, const int16_t *src1, intptr_t dx, intptr_t dy,
     const int block_w, const int block_h)
 {
     int sad = 0;
