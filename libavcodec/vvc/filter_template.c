@@ -576,8 +576,7 @@ static void FUNC(vvc_loop_filter_luma)(uint8_t* _pix, ptrdiff_t _xstride, ptrdif
             const int large_q = max_len_q > 3;
 
             const int beta    = _beta[i] << BIT_DEPTH - 8;
-            const int beta_3  = beta >> 3;
-            const int beta_2  = beta >> 2;
+
 
             if (large_p || large_q) {
                 const int dp0l = large_p ? ((dp0 + abs(P5 - 2 * P4 + P3) + 1) >> 1) : dp0;
@@ -608,7 +607,13 @@ static void FUNC(vvc_loop_filter_luma)(uint8_t* _pix, ptrdiff_t _xstride, ptrdif
                     }
                 }
             }
+
+// this is roughly the part 
+
             if (d0 + d3 < beta) {
+                const int beta_3  = beta >> 3;
+                const int beta_2  = beta >> 2;
+
                 if (max_len_p > 2 && max_len_q > 2 &&
                     abs(P3 - P0) + abs(Q3 - Q0) < beta_3 && abs(P0 - Q0) < tc25 &&
                     abs(TP3 - TP0) + abs(TQ3 - TQ0) < beta_3 && abs(TP0 - TQ0) < tc25 &&
@@ -698,11 +703,6 @@ static void FUNC(vvc_loop_filter_chroma)(uint8_t *_pix, const ptrdiff_t  _xstrid
             const uint8_t no_p = _no_p[i];
             const uint8_t no_q = _no_q[i];
 
-            const int beta     = _beta[i] << (BIT_DEPTH - 8);
-            const int beta_3   = beta >> 3;
-            const int beta_2   = beta >> 2;
-
-            const int tc25     = ((tc * 5 + 1) >> 1);
 
             uint8_t max_len_p  = _max_len_p[i];
             uint8_t max_len_q  = _max_len_q[i];
@@ -711,6 +711,10 @@ static void FUNC(vvc_loop_filter_chroma)(uint8_t *_pix, const ptrdiff_t  _xstrid
                 continue;
 
             if (max_len_q == 3){
+                const int beta     = _beta[i] << (BIT_DEPTH - 8);
+                const int beta_3   = beta >> 3;
+                const int beta_2   = beta >> 2;
+                const int tc25     = ((tc * 5 + 1) >> 1);
                 const int p1n  = shift ? FP1 : TP1;
                 const int p2n = max_len_p == 1 ? p1n : (shift ? FP2 : TP2);
                 const int p0n  = shift ? FP0 : TP0;
@@ -753,6 +757,7 @@ static void FUNC(vvc_loop_filter_chroma)(uint8_t *_pix, const ptrdiff_t  _xstrid
     }
 }
 
+// HEVC asm hooks the equivalent of these functions ... which makes it a bit problematic for incrementally updating the hevc code...
 static void FUNC(vvc_h_loop_filter_chroma)(uint8_t *pix, ptrdiff_t stride,
     const int32_t *beta, const int32_t *tc, const uint8_t *no_p, const uint8_t *no_q,
     const uint8_t *max_len_p, const uint8_t *max_len_q, int shift)
@@ -850,6 +855,9 @@ static void FUNC(ff_vvc_lf_dsp_init)(VVCLFDSPContext *const lf)
     lf->filter_luma[1]     = FUNC(vvc_v_loop_filter_luma);
     lf->filter_chroma[0]   = FUNC(vvc_h_loop_filter_chroma);
     lf->filter_chroma[1]   = FUNC(vvc_v_loop_filter_chroma);
+
+    lf->filter_chroma_asm[0]   = FUNC(vvc_h_loop_filter_chroma);
+    lf->filter_chroma_asm[1]   = FUNC(vvc_v_loop_filter_chroma);
 }
 
 static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)

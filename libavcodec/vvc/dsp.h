@@ -140,7 +140,10 @@ typedef struct VVCLFDSPContext {
 
     void (*filter_luma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
         const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int hor_ctu_edge);
+        
     void (*filter_chroma[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
+        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
+    void (*filter_chroma_asm[2 /* h, v */])(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
         const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
 } VVCLFDSPContext;
 
