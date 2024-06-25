@@ -928,6 +928,27 @@ static int truncated_binary_decode(VVCLocalContext *lc, const int c_max)
     return v;
 }
 
+// 9.3.3.5 k-th order Exp - Golomb binarization process
+static int kth_order_egk_decode(CABACContext *c, int k)
+{
+    int bit    = 1;
+    int value  = 0;
+    int symbol = 0;
+
+    while (bit) {
+        bit = get_cabac_bypass(c);
+        value += bit << k++;
+    }
+
+    if (--k) {
+        for (int i = 0; i < k; i++)
+            symbol = (symbol << 1) | get_cabac_bypass(c);
+        value += symbol;
+    }
+
+    return value;
+}
+
 // 9.3.3.6 Limited k-th order Exp-Golomb binarization process
 static int limited_kth_order_egk_decode(CABACContext *c, const int k, const int max_pre_ext_len, const int trunc_suffix_len)
 {
@@ -945,6 +966,18 @@ static int limited_kth_order_egk_decode(CABACContext *c, const int k, const int 
     }
     val += ((1 << pre_ext_len) - 1) << k;
     return val;
+}
+
+// 9.3.3.7 Fixed-length binarization process 
+static int fixed_length_decode(CABACContext* c, int cmax)
+{
+    int length = av_ceil_log2_c(cmax + 1);
+
+    int value = get_cabac_bypass(c);
+    for (int i = 1; i < length; i++)
+        value = (value << 1) | get_cabac_bypass(c);
+
+    return value;
 }
 
 static av_always_inline
@@ -1341,6 +1374,58 @@ int ff_vvc_intra_chroma_pred_mode(VVCLocalContext *lc)
     if (!GET_CABAC(INTRA_CHROMA_PRED_MODE))
         return 4;
     return (get_cabac_bypass(&lc->ep->cc) << 1) | get_cabac_bypass(&lc->ep->cc);
+}
+
+int ff_vvc_palette_predictor_run(VVCLocalContext *lc)
+{
+    return kth_order_egk_decode(&lc->ep->cc, 0);
+}
+
+int ff_vvc_num_signalled_palette_entries(VVCLocalContext *lc)
+{
+    return kth_order_egk_decode(&lc->ep->cc, 0);
+}
+
+int ff_vvc_new_palette_entries(VVCLocalContext *lc, int bit_depth)
+{   
+    return fixed_length_decode(&lc->ep->cc, (1 << bit_depth) - 1);
+}
+
+int ff_vvc_palette_escape_val_present_flag(VVCLocalContext *lc)
+{
+    return fixed_length_decode(&lc->ep->cc, 1);
+}
+
+int ff_vvc_palette_transpose_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(PALETTE_TRANSPOSE_FLAG);
+}
+
+int ff_vvc_run_copy_flag(VVCLocalContext *lc, int prev_run_type, int prev_run_position, int cur_pos)
+{
+    uint8_t run_left_lut[] = { 0, 1, 2, 3, 4 };
+    uint8_t run_top_lut[] = { 5, 6, 6, 7, 7 };
+
+    int bin_dist = cur_pos - prev_run_position - 1;
+    uint8_t *run_lut = prev_run_type == 1 ? run_top_lut : run_left_lut;
+    uint8_t ctx_inc = bin_dist <= 4 ? run_lut[bin_dist] : run_lut[4];
+
+    return GET_CABAC(RUN_COPY_FLAG + ctx_inc);
+}
+
+int ff_vvc_copy_above_palette_indices_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(COPY_ABOVE_PALETTE_INDICES_FLAG);
+}
+
+int ff_vvc_palette_idx_idc(VVCLocalContext *lc, int max_palette_index, int adjust)
+{
+    return truncated_binary_decode(lc, max_palette_index - adjust);
+}
+
+int ff_vvc_palette_escape_val(VVCLocalContext *lc)
+{
+    return kth_order_egk_decode(&lc->ep->cc, 5);
 }
 
 int ff_vvc_general_merge_flag(VVCLocalContext *lc)

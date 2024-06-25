@@ -195,6 +195,18 @@ typedef struct VVCFrameContext {
 
         uint8_t *ibc_vir_buf[VVC_MAX_SAMPLE_ARRAYS];    ///< IbcVirBuf[]
 
+        struct {
+            uint8_t size;
+            int16_t entries[VVC_MAX_NUM_PALETTE_PREDICTOR_SIZE];
+        } predictor_palette[VVC_MAX_SAMPLE_ARRAYS];
+
+        uint32_t *traverse_scan_order_data;
+        uint32_t *traverse_scan_order[2][7][7];
+
+        int16_t *palette_index_map;
+
+        uint8_t *copy_above_indices_flag;
+
         //used in arrays_init only
         struct {
             int ctu_count;

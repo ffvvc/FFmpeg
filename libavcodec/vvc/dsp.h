@@ -120,6 +120,7 @@ typedef struct VVCIntraDSPContext {
         int w, int h, ptrdiff_t stride, int c_idx, int mode, int ref_idx, int filter_flag, int need_pdpc);
     void (*pred_angular_h)(uint8_t *src, const uint8_t *_top, const uint8_t *_left, int w, int h, ptrdiff_t stride,
         int c_idx, int mode, int ref_idx, int filter_flag, int need_pdpc);
+    void (*palette_pred)(struct VVCLocalContext *lc, int start_comp, int num_comp, const int *qp);
 } VVCIntraDSPContext;
 
 typedef struct VVCItxDSPContext {
