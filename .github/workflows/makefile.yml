@@ -20,11 +20,11 @@ jobs:
           - { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
           - { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
         compiler:
-          - { name: gcc, flags: --cc=gcc }
-          - { name: clang, flags: --cc=clang }
-          - { name: msvc, flags: --toolchain=msvc }
-          - { name: clang-usan, flags: '--toolchain=clang-usan' }
-          - { name: clang-asan, flags: '--toolchain=clang-asan' }
+          - { name: gcc, flags: '--cc=gcc --extra-cflags=-Wpedantic' }
+          - { name: clang, flags: '--cc=clang --extra-cflags=-Wpedantic' }
+          - { name: msvc, flags: '--toolchain=msvc' }
+          - { name: clang-usan, flags: '--toolchain=clang-usan --extra-cflags=-Wpedantic' }
+          - { name: clang-asan, flags: '--toolchain=clang-asan --extra-cflags=-Wpedantic' }
         assembler:
           - { name: no asm, flags: --disable-asm }
           - { name: yasm, flags: --as=yasm }
@@ -38,19 +38,19 @@ jobs:
           - os: { name: linux, runner: ubuntu-latest, shell: bash, runner_threads: 4 }
             assembler: { name: nasm, flags: --as=nasm }
           # Address sanitizer cannot be run with handwritten assembly.
-          - compiler: { name: clang-asan, flags: '--toolchain=clang-asan' }
+          - compiler: { name: clang-asan, flags: '--toolchain=clang-asan --extra-cflags=-Wpedantic' }
             assembler: { name: nasm, flags: --as=nasm }
-          - compiler: { name: clang-asan, flags: '--toolchain=clang-asan' }
+          - compiler: { name: clang-asan, flags: '--toolchain=clang-asan --extra-cflags=-Wpedantic' }
             assembler: { name: yasm, flags: --as=yasm }
           # Windows only supports MSVC.
           - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
-            compiler: { name: gcc, flags: --cc=gcc }
+            compiler: { name: gcc, flags: '--cc=gcc --extra-cflags=-Wpedantic' }
           - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
-            compiler: { name: clang, flags: --cc=clang }
+            compiler: { name: clang, flags: '--cc=clang --extra-cflags=-Wpedantic' }
           - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
-            compiler: { name: clang-usan, flags: '--toolchain=clang-usan' }
+            compiler: { name: clang-usan, flags: '--toolchain=clang-usan --extra-cflags=-Wpedantic' }
           - os: { name: windows, runner: windows-latest, shell: 'msys2 {0}', runner_threads: 1 }
-            compiler: { name: clang-asan, flags: '--toolchain=clang-asan' }
+            compiler: { name: clang-asan, flags: '--toolchain=clang-asan --extra-cflags=-Wpedantic' }
 
     runs-on: ${{ matrix.os.runner }}
     defaults:
