@@ -1,0 +1,23 @@
+diff --git a/libavcodec/vvc/Makefile b/libavcodec/vvc/Makefile
+index 6a28d32bc2..dc631897d4 100644
+--- a/libavcodec/vvc/Makefile
++++ b/libavcodec/vvc/Makefile
+@@ -15,3 +15,18 @@ OBJS-$(CONFIG_VVC_DECODER)          +=  vvc/dec.o           \
+                                         vvc/ps.o            \
+                                         vvc/refs.o          \
+                                         vvc/thread.o        \
++
++$(SUBDIR)vvc/dec.o: CFLAGS += -Werror
++$(SUBDIR)vvc/dsp.o: CFLAGS += -Werror
++$(SUBDIR)vvc/cabac.o: CFLAGS += -Werror
++$(SUBDIR)vvc/ctu.o: CFLAGS += -Werror
++$(SUBDIR)vvc/data.o: CFLAGS += -Werror
++$(SUBDIR)vvc/filter.o: CFLAGS += -Werror
++$(SUBDIR)vvc/inter.o: CFLAGS += -Werror
++$(SUBDIR)vvc/intra.o: CFLAGS += -Werror
++$(SUBDIR)vvc/intra_utils.o: CFLAGS += -Werror
++$(SUBDIR)vvc/itx_1d.o: CFLAGS += -Werror
++$(SUBDIR)vvc/mvs.o: CFLAGS += -Werror
++$(SUBDIR)vvc/ps.o: CFLAGS += -Werror
++$(SUBDIR)vvc/refs.o: CFLAGS += -Werror
++$(SUBDIR)vvc/thread.o: CFLAGS += -Werror

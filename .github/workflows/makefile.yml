@@ -85,6 +85,10 @@ jobs:
       with:
         path: FFmpeg
 
+    - name: Patch source
+      if: ${{ matrix.compiler.name != 'msvc' }}
+      run: cd FFmpeg && git apply ./.github/workflows/patches/*
+
     - name: Configure
       run: cd FFmpeg && ./configure ${{ matrix.compiler.flags }} ${{ matrix.assembler.flags }} ${{ env.configure_flags }} || (tail ffbuild/config.log; false)
 
