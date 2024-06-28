@@ -1,0 +1,10 @@
+diff --git a/libavcodec/vvc/Makefile b/libavcodec/vvc/Makefile
+index 6a28d32bc2..5e7bea567c 100644
+--- a/libavcodec/vvc/Makefile
++++ b/libavcodec/vvc/Makefile
+@@ -15,3 +15,5 @@ OBJS-$(CONFIG_VVC_DECODER)          +=  vvc/dec.o           \
+                                         vvc/ps.o            \
+                                         vvc/refs.o          \
+                                         vvc/thread.o        \
++
++$(SUBDIR)vvc/%.o: CFLAGS += -Werror
