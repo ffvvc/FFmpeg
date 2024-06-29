@@ -71,14 +71,14 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 #define Q3 buf[3 * xstride]
 
 static void check_deblock_chroma_horizontal()
-{
-    int32_t tc[4] = {(rnd() & 393) + 3, (rnd() & 393) + 3, (rnd() & 393) + 3, (rnd() & 393) + 3};
+{   
+    int32_t tc[4] = {(rnd() & 393) + 3, 600, (rnd() & 393) + 3, (rnd() & 393) + 3};
 
     uint8_t no_p[4] = {0, 0, 0, 0};
     uint8_t no_q[4] = {0, 0, 0, 0};
     uint8_t max_len_p[4] = {1, 1, 1, 1};
-    uint8_t max_len_q[4] = {3, 3, 3, 3};
-    int shift = 1;
+    uint8_t max_len_q[4] = {1, 3, 3, 1};
+    int shift = 0;
     int beta[4] = {(rnd() & 81) + 8, (rnd() & 81) + 8, (rnd() & 81) + 8, (rnd() & 81) + 8 };
 
     LOCAL_ALIGNED_32(uint8_t, buf0, [BUF_SIZE]);

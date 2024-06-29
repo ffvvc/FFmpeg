@@ -320,6 +320,11 @@ int ff_vvc_sad_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, in
 
 
 #endif
+void ff_vvc_h_loop_filter_chroma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
+        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
+
+void ff_vvc_v_loop_filter_chroma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
+        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
 
 void ff_vvc_h_loop_filter_chroma_10_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
         const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
@@ -335,12 +340,16 @@ void ff_vvc_v_loop_filter_chroma_12_avx(uint8_t *pix, ptrdiff_t stride, const in
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
 #if ARCH_X86_64
+
     const int cpu_flags = av_get_cpu_flags();
 
     switch (bd) {
     case 8:
         if (EXTERNAL_SSE4(cpu_flags)) {
             MC_LINK_SSE4(8);
+        }
+        if(EXTERNAL_AVX(cpu_flags)) {
+            c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_8_avx;
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(8);
@@ -354,8 +363,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             MC_LINK_SSE4(10);
         }
         if(EXTERNAL_AVX(cpu_flags)) {
-            c->lf.filter_chroma_asm[0] = ff_vvc_h_loop_filter_chroma_10_avx;
-            c->lf.filter_chroma_asm[1] = ff_vvc_v_loop_filter_chroma_10_avx;
+            c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_10_avx;
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(10);
@@ -364,7 +372,6 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             MC_LINKS_16BPC_AVX2(10);
             SAD_INIT();
 
-
         }
         break;
     case 12:
@@ -372,8 +379,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             MC_LINK_SSE4(12);
         }
         if(EXTERNAL_AVX(cpu_flags)) {
-            c->lf.filter_chroma_asm[0] = ff_vvc_h_loop_filter_chroma_10_avx;
-            c->lf.filter_chroma_asm[1] = ff_vvc_v_loop_filter_chroma_10_avx;
+            c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_12_avx;
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(12);
