@@ -30,14 +30,14 @@
 static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 
 #define SIZEOF_PIXEL ((bit_depth + 7) / 8)
-#define BUF_SIZE 8 * 8
+#define BUF_SIZE 16 * 16
 
 #define randomize_buffers(buf0, buf1, size)               \
     do                                                    \
     {                                                     \
         uint32_t mask = pixel_mask[(bit_depth - 8) >> 1]; \
         int k;                                            \
-        for (k = 0; k < size; k += 2)                     \
+        for (k = 0; k < size; k += 4 / sizeof(*buf0))     \
         {                                                 \
             uint32_t r = rnd() & mask;                    \
             AV_WN32A(buf0 + k, r);                        \
@@ -81,8 +81,8 @@ static void check_deblock_chroma_horizontal()
     int shift = 1;
     int beta[4] = {(rnd() & 81) + 8, (rnd() & 81) + 8, (rnd() & 81) + 8, (rnd() & 81) + 8 };
 
-    LOCAL_ALIGNED_32(uint8_t, buf0, [BUF_SIZE * 2]);
-    LOCAL_ALIGNED_32(uint8_t, buf1, [BUF_SIZE * 2]);
+    LOCAL_ALIGNED_32(uint8_t, buf0, [BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, buf1, [BUF_SIZE]);
 
     VVCDSPContext context;
     int bit_depth;
@@ -97,13 +97,13 @@ static void check_deblock_chroma_horizontal()
     {
         int xstride = SIZEOF_PIXEL * 8; // bytes
         int ystride = 2;                // bytes
-        uint8_t *buf = buf0 + xstride * 5;
 
         ff_vvc_dsp_init(&context, bit_depth);
         if (check_func(context.lf.filter_chroma[0], "vvc_h_loop_filter_chroma_%d", bit_depth))
         {
             int i, j, b3, tc25, tc25diff, b3diff;
             randomize_buffers(buf0, buf1, BUF_SIZE);
+            uint8_t *buf = buf0 + xstride * 5;
 
             for (j = 0; j < size; j++)
             {
@@ -140,12 +140,12 @@ static void check_deblock_chroma_horizontal()
                     buf += ystride;
                 }
             }
-            memcpy(buf1, buf0, BUF_SIZE * 2);
+            memcpy(buf0, buf1, BUF_SIZE);
 
-            call_ref(buf1 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
-            call_new(buf0 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+            call_ref(buf0 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+            call_new(buf1 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
 
-            if (memcmp(buf0, buf1, BUF_SIZE * 2))
+            if (memcmp(buf0, buf1, BUF_SIZE))
                 fail();
 
             bench_new(buf0 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
