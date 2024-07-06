@@ -75,20 +75,20 @@ static void randomize_params(int32_t beta[4], int32_t tc[4], const int size)
 static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
    uint8_t *buf, ptrdiff_t xstride, ptrdiff_t ystride, const int shift, const int bit_depth)
 {
-    int i, j, b3, tc25, tc25diff, b3diff;
     const int size = shift ? 4 : 2;
     const int end = 8 / size;
 
     randomize_params(beta, tc, size);
-    for (j = 0; j < size; j++)
+    for (int j = 0; j < size; j++)
     {
-        tc25 = TC25(j) << (bit_depth - 10);
+        const int tc25 = TC25(j) << (bit_depth - 10);
 
-        tc25diff = FFMAX(tc25 - 1, 0);
+        const int tc25diff = FFMAX(tc25 - 1, 0);
         // 2 or 4 lines per tc
-        for (i = 0; i < end; i++)
+        for (int i = 0; i < end; i++)
         {
-            b3 = (beta[j] << (bit_depth - 8)) >> 3;
+            int b3diff;
+            int b3 = (beta[j] << (bit_depth - 8)) >> 3;
 
             SET(P0, rnd() % (1 << bit_depth));
             SET(Q0, RANDCLIP(P0, tc25diff));
