@@ -63,6 +63,15 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 } while (0)
 #define RANDCLIP(x, diff) av_clip(GET(x) - (diff), 0, \
     (1 << (bit_depth)) - 1) + rnd() % FFMAX(2 * (diff), 1)
+
+static void randomize_params(int32_t beta[4], int32_t tc[4], const int size)
+{
+    for (int i = 0; i < size; i++) {
+        beta[i] = rand() % 89;
+        tc[i] = rand() % 396;
+    }
+}
+
 static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
    uint8_t *buf, ptrdiff_t xstride, ptrdiff_t ystride, const int shift, const int bit_depth)
 {
@@ -70,6 +79,7 @@ static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
     const int size = shift ? 4 : 2;
     const int end = 8 / size;
 
+    randomize_params(beta, tc, size);
     for (j = 0; j < size; j++)
     {
         tc25 = TC25(j) << (bit_depth - 10);
@@ -109,14 +119,12 @@ static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
 
 static void check_deblock_chroma(const VVCDSPContext *h, int bit_depth)
 {
-    int32_t tc[4] = {(rnd() & 393) + 3, 600, (rnd() & 393) + 3, (rnd() & 393) + 3};
-
+    int32_t beta[4], tc[4];
     uint8_t no_p[4] = {0, 0, 0, 0};
     uint8_t no_q[4] = {0, 0, 0, 0};
     uint8_t max_len_p[4] = {1, 1, 1, 1};
     uint8_t max_len_q[4] = {1, 3, 3, 1};
     int shift = 0;
-    int beta[4] = {(rnd() & 81) + 8, (rnd() & 81) + 8, (rnd() & 81) + 8, (rnd() & 81) + 8 };
     int xstride = SIZEOF_PIXEL * 8; // bytes
     int ystride = 2;                // bytes
 
