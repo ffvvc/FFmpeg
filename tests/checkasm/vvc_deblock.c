@@ -23,6 +23,7 @@
 #include "libavutil/common.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/mem_internal.h"
+#include "libavutil/macros.h"
 
 #include "checkasm.h"
 
@@ -51,7 +52,8 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 #define Q2 buf[2 * xstride]
 #define Q3 buf[3 * xstride]
 
-#define TC25(x) ((tc[x] * 5 + 1) >> 1)
+#define TC_SHIFT(j) ((bit_depth < 10) ? ((tc[j] + (1 << (9 - bit_depth))) >> (10 - bit_depth)) : (tc[j] << (bit_depth - 10)))
+#define TC25(x) ((TC_SHIFT(j) * 5 + 1) >> 1)
 #define MASK(x) (uint16_t)(x & ((1 << (bit_depth)) - 1))
 #define GET(x) ((SIZEOF_PIXEL == 1) ? *(uint8_t*)(&x) : *(uint16_t*)(&x))
 #define SET(x, y) do { \
@@ -64,11 +66,13 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 #define RANDCLIP(x, diff) av_clip(GET(x) - (diff), 0, \
     (1 << (bit_depth)) - 1) + rnd() % FFMAX(2 * (diff), 1)
 
-static void randomize_params(int32_t beta[4], int32_t tc[4], const int size)
+static void randomize_params(int32_t beta[4], int32_t tc[4], const int is_luma, const int bit_depth, const int size)
 {
+    const int tc_min   = 1 << FFMAX(0, 9 - bit_depth);
+    const int beta_min = is_luma;                     // for luma, beta == 0 will disable the deblock, for chroma beta == 0 is a valid value
     for (int i = 0; i < size; i++) {
-        beta[i] = rand() % 89;
-        tc[i] = rand() % 396;
+        beta[i] = FFMAX(rnd() % 89, beta_min); // minimum useful value is beta_min, full range [0, 89]
+        tc[i] = FFMAX(rand() % 396, tc_min);   // minimum useful value is tc_min, full range [0, 395]
     }
 }
 
@@ -78,10 +82,10 @@ static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
     const int size = shift ? 4 : 2;
     const int end = 8 / size;
 
-    randomize_params(beta, tc, size);
+    randomize_params(beta, tc, 0, bit_depth, size);
     for (int j = 0; j < size; j++)
     {
-        const int tc25 = TC25(j) << (bit_depth - 10);
+        const int tc25 = TC25(j);
 
         const int tc25diff = FFMAX(tc25 - 1, 0);
         // 2 or 4 lines per tc
