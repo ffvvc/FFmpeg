@@ -577,6 +577,120 @@ ALIGN 16
     MASKED_COPY   m6, m14 ; m5
 %endmacro
 
+; CHROMA_DEBLOCK_BODY(bit_depth)
+%macro CHROMA_DEBLOCK_BODY 1
+
+    SPATIAL_ACTIVITY %1
+
+    movu             m0, [pix0q]                    ; p3
+    movu             m1, [pix0q + strideq]          ; p3
+
+    sub rsp, 16
+    movu [rsp], m11
+
+    movmskps         r13, m11
+    cmp              r13, 0
+    je              .chroma_weak
+
+    pxor            m10, m10
+    movd            m11, [max_len_pq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, [pd_3]
+
+
+    cmp           shiftd, 1
+    je           .strong_chroma
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    movu             m11, m13
+
+
+.strong_chroma:
+    pand             m11, [rsp]
+    movmskps         r13, m11
+    cmp              r13, 0
+    je              .one_side_chroma
+    STRONG_CHROMA
+
+    ; store strong changes ... will need to adapt to no_p
+    pxor           m12, m12
+    CLIPW           m1, m12, [pw_pixel_max_%1] ; p0
+    CLIPW           m2, m12, [pw_pixel_max_%1] ; p0
+    MASKED_COPY   [pix0q +     strideq], m1
+    MASKED_COPY   [pix0q +   2*strideq], m2
+
+.one_side_chroma:
+    ; invert mask & all strong mask, to get only one-sided mask
+    pcmpeqd  m12, m12, m12
+    pxor     m11, m11, m12
+    pand     m11, [rsp]
+
+    movmskps         r13, m11
+    cmp              r13, 0
+    je              .chroma_weak
+
+    ONE_SIDE_CHROMA
+
+.chroma_weak:
+    movu     m11, [rsp]
+    pcmpeqd  m12, m12, m12
+    pxor     m11, m11, m12
+
+    WEAK_CHROMA     %1
+    pxor           m12, m12
+    CLIPW           m3, m12, [pw_pixel_max_%1] ; p0
+    CLIPW           m4, m12, [pw_pixel_max_%1] ; q0
+    CLIPW           m5, m12, [pw_pixel_max_%1] ; p0
+    CLIPW           m6, m12, [pw_pixel_max_%1] ; p0
+
+; no_p
+    pxor            m10, m10
+    movd            m11, [no_pq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, m10;
+
+    cmp           shiftd, 1
+    je           .no_p_shift
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    jmp      .store_p
+.no_p_shift:
+    pshufhw          m13, m11, q2301
+    pshuflw          m13, m13, q2301
+.store_p:
+    movu             m11, m13
+
+
+    MASKED_COPY   [pix0q + src3strideq], m3
+
+; no_q
+    pxor            m10, m10
+    movd            m11, [no_qq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, m10;
+
+    cmp           shiftd, 1
+    je           .no_q_shift
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    jmp      .store_q
+.no_q_shift:
+    pshufhw          m13, m11, q2301
+    pshuflw          m13, m13, q2301
+.store_q:
+    movu             m11, m13
+
+%endmacro
+
 %macro LOOP_FILTER_CHROMA 0
 cglobal vvc_v_loop_filter_chroma_8, 4, 6, 7, pix, stride, beta, tc, pix0, r3stride
     sub            pixq, 2
