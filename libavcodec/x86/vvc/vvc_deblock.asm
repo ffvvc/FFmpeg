@@ -258,7 +258,7 @@ INIT_XMM sse2
 
 
 ALIGN 16
-%macro CHROMA_DEBLOCK_BODY 1
+%macro WEAK_CHROMA 1
     psubw            m12, m4, m3 ; q0 - p0
     psubw            m13, m2, m5 ; p1 - q1
     psllw            m12, 2      ; << 2
@@ -584,7 +584,7 @@ cglobal vvc_v_loop_filter_chroma_8, 4, 6, 7, pix, stride, beta, tc, pix0, r3stri
     mov           pix0q, pixq
     add            pixq, r3strideq
     TRANSPOSE4x8B_LOAD  PASS8ROWS(pix0q, pixq, strideq, r3strideq)
-    CHROMA_DEBLOCK_BODY 8
+    WEAK_CHROMA 8
     TRANSPOSE8x4B_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq)
     RET
 
@@ -594,7 +594,7 @@ cglobal vvc_v_loop_filter_chroma_10, 4, 6, 7, pix, stride, beta, tc, pix0, r3str
     mov           pix0q, pixq
     add            pixq, r3strideq
     TRANSPOSE4x8W_LOAD  PASS8ROWS(pix0q, pixq, strideq, r3strideq)
-    CHROMA_DEBLOCK_BODY 10
+    WEAK_CHROMA 10
     TRANSPOSE8x4W_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq), [pw_pixel_max_10]
     RET
 
@@ -604,7 +604,7 @@ cglobal vvc_v_loop_filter_chroma_12, 4, 6, 7, pix, stride, beta, tc, pix0, r3str
     mov           pix0q, pixq
     add            pixq, r3strideq
     TRANSPOSE4x8W_LOAD  PASS8ROWS(pix0q, pixq, strideq, r3strideq)
-    CHROMA_DEBLOCK_BODY 12
+    WEAK_CHROMA 12
     TRANSPOSE8x4W_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq), [pw_pixel_max_12]
     RET
 
@@ -692,7 +692,7 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 13, 16, pix, stride, beta, tc, no_p, no_q
     pxor     m11, m11, m12
 
     ; chroma weak
-    CHROMA_DEBLOCK_BODY 10
+    WEAK_CHROMA 10
 
     movq             m12, [pix0q + src3strideq] ;  p0
     movq             m0,  [pixq]                ;  q0
@@ -837,7 +837,7 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 14, 16, 16, pix, stride, beta, tc, no_p,
     pcmpeqd  m12, m12, m12
     pxor     m11, m11, m12
 
-    CHROMA_DEBLOCK_BODY 10
+    WEAK_CHROMA 10
     pxor           m12, m12
     CLIPW           m3, m12, [pw_pixel_max_10] ; p0
     CLIPW           m4, m12, [pw_pixel_max_10] ; q0
@@ -954,7 +954,7 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 13, 16, 16, pix, stride, beta, tc, no_p,
     pxor     m11, m11, m12
 
     ; chroma weak
-    CHROMA_DEBLOCK_BODY 10
+    WEAK_CHROMA 10
     pxor           m12, m12
     CLIPW           m3, m12, [pw_pixel_max_12] ; p0
     CLIPW           m4, m12, [pw_pixel_max_12] ; q0
