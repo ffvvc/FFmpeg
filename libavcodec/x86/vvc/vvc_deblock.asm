@@ -431,8 +431,8 @@ ALIGN 16
     cmp           shiftd, 1
     je  .tc25_mask
 
-    pshufhw         m12, m12, q2222
-    pshuflw         m12, m12, q0000
+    pshufhw         m12, m12, q3300
+    pshuflw         m12, m12, q3300
     ; intentional fall through
 
 .tc25_mask:
