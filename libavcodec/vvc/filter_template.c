@@ -608,7 +608,7 @@ static void FUNC(vvc_loop_filter_luma)(uint8_t* _pix, ptrdiff_t _xstride, ptrdif
                 }
             }
 
-// this is roughly the part 
+// this is roughly the part
 
             if (d0 + d3 < beta) {
                 const int beta_3  = beta >> 3;
@@ -856,8 +856,8 @@ static void FUNC(ff_vvc_lf_dsp_init)(VVCLFDSPContext *const lf)
     lf->filter_chroma[0]   = FUNC(vvc_h_loop_filter_chroma);
     lf->filter_chroma[1]   = FUNC(vvc_v_loop_filter_chroma);
 
-    lf->filter_chroma_asm[0]   = FUNC(vvc_h_loop_filter_chroma);
-    lf->filter_chroma_asm[1]   = FUNC(vvc_v_loop_filter_chroma);
+    lf->filter_chroma_c[0]   = FUNC(vvc_h_loop_filter_chroma);
+    lf->filter_chroma_c[1]   = FUNC(vvc_v_loop_filter_chroma);
 }
 
 static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)
