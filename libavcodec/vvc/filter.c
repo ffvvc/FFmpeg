@@ -835,10 +835,20 @@ static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs,
 
                 if (!all_zero_bs) {
                     uint8_t *src = vertical ? POS(c_idx, x, y) : POS(c_idx, y, x);
-                    if (!c_idx)
+                    if (!c_idx) {
                         fc->vvcdsp.lf.filter_luma[vertical](src, src_stride, beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
-                    else
-                        fc->vvcdsp.lf.filter_chroma[vertical](src, src_stride, beta, tc, no_p, no_q, max_len_p, max_len_q, vs);
+                    } else {
+                        int use_c = 0;      //always use c code only, since asm code is not ready
+                        for (int i = 0; i < DEBLOCK_STEP >> (2 - vs); i++) {
+                            if (!max_len_p[i] || !max_len_q[i])
+                                use_c = 1;
+                        }
+                        if (use_c) {
+                            fc->vvcdsp.lf.filter_chroma_c[vertical](src, src_stride, beta, tc, no_p, no_q, max_len_p, max_len_q, vs);
+                        } else {
+                            fc->vvcdsp.lf.filter_chroma[vertical](src, src_stride, beta, tc, no_p, no_q, max_len_p, max_len_q, vs);
+                        }
+                    }
                 }
             }
         }
