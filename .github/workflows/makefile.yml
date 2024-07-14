@@ -2,9 +2,9 @@ name: test
 run-name: ${{ github.workflow }} - ${{ github.sha }}
 on:
   push:
-    branches: [ main, up ]
+    branches: [ main, up, deblock_asm ]
   pull_request:
-    branches: [ main, up ]
+    branches: [ main, up, deblock_asm ]
   workflow_dispatch:
 
 
