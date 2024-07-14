@@ -315,27 +315,25 @@ ALF_FUNCS(16, 12, avx2)
 int ff_vvc_sad_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
 #define SAD_INIT() c->inter.sad = ff_vvc_sad_avx2
 
-// void ff_hevc_h_loop_filter_chroma(uint8_t *_pix, ptrdiff_t _stride, int32_t *tc,
-//                                   uint8_t *_no_p, uint8_t *_no_q);
+#if HAVE_AVX_EXTERNAL
 
+#define DEBLOCK_CHROMA_FUNCS(dir)                                                                                     \
+void ff_vvc_##dir##_loop_filter_chroma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,  \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);         \
+void ff_vvc_##dir##_loop_filter_chroma_10_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc, \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);         \
+void ff_vvc_##dir##_loop_filter_chroma_12_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc, \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);         \
+
+DEBLOCK_CHROMA_FUNCS(h)
+DEBLOCK_CHROMA_FUNCS(v)
+
+#define DEBLOCK_INIT(bd) do {                                        \
+    c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_##bd##_avx; \
+} while (0)
+#endif //HAVE_AVX_EXTERNAL
 
 #endif
-void ff_vvc_h_loop_filter_chroma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
-        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
-
-void ff_vvc_v_loop_filter_chroma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
-        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
-
-void ff_vvc_h_loop_filter_chroma_10_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
-        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
-
-void ff_vvc_h_loop_filter_chroma_12_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
-        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
-void ff_vvc_v_loop_filter_chroma_10_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
-        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
-
-void ff_vvc_v_loop_filter_chroma_12_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
-        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
 
 void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
 {
@@ -349,7 +347,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             MC_LINK_SSE4(8);
         }
         if(EXTERNAL_AVX(cpu_flags)) {
-            c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_8_avx;
+            DEBLOCK_INIT(8);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(8);
@@ -363,7 +361,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             MC_LINK_SSE4(10);
         }
         if(EXTERNAL_AVX(cpu_flags)) {
-            c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_10_avx;
+            DEBLOCK_INIT(10);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(10);
@@ -379,7 +377,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
             MC_LINK_SSE4(12);
         }
         if(EXTERNAL_AVX(cpu_flags)) {
-            c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_12_avx;
+            DEBLOCK_INIT(12);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(12);
