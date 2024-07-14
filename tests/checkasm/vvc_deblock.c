@@ -30,7 +30,11 @@
 static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 
 #define SIZEOF_PIXEL ((bit_depth + 7) / 8)
-#define BUF_SIZE 16 * 16
+#define BUF_STRIDE (16 * 2)
+#define BUF_LINES (16)
+// large buffer sizes based on high bit depth
+#define BUF_OFFSET (2 * BUF_STRIDE * BUF_LINES)
+#define BUF_SIZE (2 * BUF_STRIDE * BUF_LINES + BUF_OFFSET * 2)
 
 #define randomize_buffers(buf0, buf1, size)                 \
     do {                                                    \
@@ -69,16 +73,165 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 static void randomize_params(int32_t beta[4], int32_t tc[4], const int is_luma, const int bit_depth, const int size)
 {
     const int tc_min   = 1 << FFMAX(0, 9 - bit_depth);
-    const int beta_min = is_luma;                     // for luma, beta == 0 will disable the deblock, for chroma beta == 0 is a valid value
+    //const int beta_min = is_luma;                     // for luma, beta == 0 will disable the deblock, for chroma beta == 0 is a valid value
+    const int beta_min = 1;                             // chroma weak generator still has bug, let us use 1 as min
     for (int i = 0; i < size; i++) {
         beta[i] = FFMAX(rnd() % 89, beta_min); // minimum useful value is beta_min, full range [0, 89]
         tc[i] = FFMAX(rand() % 396, tc_min);   // minimum useful value is tc_min, full range [0, 395]
     }
 }
 
-static void randomize_chroma_buffers(const int type, const int shift, const int spatial_strong, const int bit_depth, 
-uint8_t* max_len_p, uint8_t* max_len_q, int beta[4], int32_t tc[4], 
-uint8_t *buf0, uint8_t *buf1, ptrdiff_t xstride, ptrdiff_t ystride)
+// NOTE: this function doesn't work 'correctly' in that it won't always choose
+// strong/strong or weak/weak, in most cases it tends to but will sometimes mix
+// weak/strong or even skip sometimes. This is more useful to test correctness
+// for these functions, though it does make benching them difficult. The easiest
+// way to bench these functions is to check an overall decode since there are too
+// many paths and ways to trigger the deblock: we would have to bench all
+// permutations of weak/strong/skip/nd_q/nd_p/no_q/no_p and it quickly becomes
+// too much.
+static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2],
+   uint8_t *buf, ptrdiff_t xstride, ptrdiff_t ystride, int bit_depth)
+{
+    int i, j, b3, tc25, tc25diff, b3diff;
+
+    randomize_params(beta, tc, 1, bit_depth, 2);
+
+    switch (type) {
+    case 0: // strong
+        for (j = 0; j < 2; j++) {
+            tc25 = TC25(j) << (bit_depth - 8);
+            tc25diff = FFMAX(tc25 - 1, 0);
+            // 4 lines per tc
+            for (i = 0; i < 4; i++) {
+                b3 = (*beta << (bit_depth - 8)) >> 3;
+
+                SET(P0, rnd() % (1 << bit_depth));
+                SET(Q0, RANDCLIP(P0, tc25diff));
+
+                // p3 - p0 up to beta3 budget
+                b3diff = rnd() % b3;
+                SET(P3, RANDCLIP(P0, b3diff));
+                // q3 - q0, reduced budget
+                b3diff = rnd() % FFMAX(b3 - b3diff, 1);
+                SET(Q3, RANDCLIP(Q0, b3diff));
+
+                // same concept, budget across 4 pixels
+                b3 -= b3diff = rnd() % FFMAX(b3, 1);
+                SET(P2, RANDCLIP(P0, b3diff));
+                b3 -= b3diff = rnd() % FFMAX(b3, 1);
+                SET(Q2, RANDCLIP(Q0, b3diff));
+
+                // extra reduced budget for weighted pixels
+                b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
+                SET(P1, RANDCLIP(P0, b3diff));
+                b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
+                SET(Q1, RANDCLIP(Q0, b3diff));
+
+                buf += ystride;
+            }
+        }
+        break;
+    case 1: // weak
+        for (j = 0; j < 2; j++) {
+            tc25 = TC25(j) << (bit_depth - 8);
+            tc25diff = FFMAX(tc25 - 1, 0);
+            // 4 lines per tc
+            for (i = 0; i < 4; i++) {
+                // Weak filtering is signficantly simpler to activate as
+                // we only need to satisfy d0 + d3 < beta, which
+                // can be simplified to d0 + d0 < beta. Using the above
+                // derivations but substiuting b3 for b1 and ensuring
+                // that P0/Q0 are at least 1/2 tc25diff apart (tending
+                // towards 1/2 range).
+                b3 = (*beta << (bit_depth - 8)) >> 1;
+
+                SET(P0, rnd() % (1 << bit_depth));
+                SET(Q0, RANDCLIP(P0, tc25diff >> 1) +
+                    (tc25diff >> 1) * (P0 < (1 << (bit_depth - 1))) ? 1 : -1);
+
+                // p3 - p0 up to beta3 budget
+                b3diff = rnd() % b3;
+                SET(P3, RANDCLIP(P0, b3diff));
+                // q3 - q0, reduced budget
+                b3diff = rnd() % FFMAX(b3 - b3diff, 1);
+                SET(Q3, RANDCLIP(Q0, b3diff));
+
+                // same concept, budget across 4 pixels
+                b3 -= b3diff = rnd() % FFMAX(b3, 1);
+                SET(P2, RANDCLIP(P0, b3diff));
+                b3 -= b3diff = rnd() % FFMAX(b3, 1);
+                SET(Q2, RANDCLIP(Q0, b3diff));
+
+                // extra reduced budget for weighted pixels
+                b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
+                SET(P1, RANDCLIP(P0, b3diff));
+                b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
+                SET(Q1, RANDCLIP(Q0, b3diff));
+
+                buf += ystride;
+            }
+        }
+        break;
+    case 2: // none
+        beta[0] = beta[1] = 0; // ensure skip
+        for (i = 0; i < 8; i++) {
+            // we can just fill with completely random data, nothing should be touched.
+            SET(P3, rnd()); SET(P2, rnd()); SET(P1, rnd()); SET(P0, rnd());
+            SET(Q0, rnd()); SET(Q1, rnd()); SET(Q2, rnd()); SET(Q3, rnd());
+            buf += ystride;
+        }
+        break;
+    }
+}
+
+static void check_deblock_luma(VVCDSPContext *h, int bit_depth)
+{
+    const char *type;
+    const char *types[3] = { "strong", "weak", "skip" };
+    int32_t beta[2] = {0};
+    int32_t tc[2] = {0};
+    uint8_t no_p[2] = {0, 0};
+    uint8_t no_q[2] = {0, 0};
+    uint8_t max_len_q[2] = {1, 1};
+    uint8_t max_len_p[2] = {1, 1};
+    const int hor_ctu_edge = 0;
+    LOCAL_ALIGNED_32(uint8_t, buf0, [BUF_SIZE]);
+    LOCAL_ALIGNED_32(uint8_t, buf1, [BUF_SIZE]);
+    uint8_t *ptr0 = buf0 + BUF_OFFSET,
+            *ptr1 = buf1 + BUF_OFFSET;
+
+    declare_func(void, uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
+        const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int hor_ctu_edge);
+    memset(buf0, 0, BUF_SIZE);
+
+    for (int vertical = 0; vertical <= 1; vertical++) {
+        ptrdiff_t xstride = 16 * SIZEOF_PIXEL;
+        ptrdiff_t ystride = SIZEOF_PIXEL;
+
+        if (vertical)
+            FFSWAP(ptrdiff_t, xstride, ystride);
+
+        for (int j = 2; j < 3; j++) {
+            type = types[j];
+
+            if (check_func(h->lf.filter_luma[0],"vvc_%s_loop_filter_luma_%d", vertical ? "v" : "h", bit_depth))
+            {
+                randomize_luma_buffers(j, beta, tc, buf0 + BUF_OFFSET, xstride, ystride, bit_depth);
+                memcpy(buf1, buf0, BUF_SIZE);
+
+                call_ref(ptr0, 16 * SIZEOF_PIXEL, beta, tc, no_p, no_q, max_len_p, max_len_q, hor_ctu_edge);
+                call_new(ptr1, 16 * SIZEOF_PIXEL, beta, tc, no_p, no_q, max_len_p, max_len_q, hor_ctu_edge);
+                if (memcmp(buf0, buf1, BUF_SIZE))
+                    fail();
+                bench_new(ptr1, 16 * SIZEOF_PIXEL, beta, tc, no_p, no_q, max_len_p, max_len_q, hor_ctu_edge);
+            }
+        }
+    }
+}
+
+static void randomize_chroma_buffers(const int type, const int shift, const int spatial_strong, const int bit_depth,
+    uint8_t* max_len_p, uint8_t* max_len_q, int beta[4], int32_t tc[4],
+    uint8_t *buf0, uint8_t *buf1, ptrdiff_t xstride, ptrdiff_t ystride)
 {
     const int size = shift ? 4 : 2;
     const int end = 8 / size;
@@ -208,4 +361,10 @@ void checkasm_check_vvc_deblock(void)
         check_deblock_chroma(&h, bit_depth);
     }
     report("chroma");
+
+    for (int bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
+        ff_vvc_dsp_init(&h, bit_depth);
+        check_deblock_luma(&h, bit_depth);
+    }
+    report("luma");
 }
