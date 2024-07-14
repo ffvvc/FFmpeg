@@ -707,6 +707,7 @@ ALIGN 16
 %if %1 > 8
     shl             betaq, %1 - 8
 %endif
+    xor             betaq, betaq
     movd            m13, betad
     SPLATW          m13, m13, 0
     ;end beta calculations
