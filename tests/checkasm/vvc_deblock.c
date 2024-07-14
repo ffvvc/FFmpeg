@@ -76,61 +76,104 @@ static void randomize_params(int32_t beta[4], int32_t tc[4], const int is_luma, 
     }
 }
 
-static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
-   uint8_t *buf, ptrdiff_t xstride, ptrdiff_t ystride, const int shift, const int bit_depth)
+static void randomize_chroma_buffers(const int type, const int shift, const int spatial_strong, const int bit_depth, 
+uint8_t* max_len_p, uint8_t* max_len_q, int beta[4], int32_t tc[4], 
+uint8_t *buf0, uint8_t *buf1, ptrdiff_t xstride, ptrdiff_t ystride)
 {
     const int size = shift ? 4 : 2;
     const int end = 8 / size;
 
     randomize_params(beta, tc, 0, bit_depth, size);
-    for (int j = 0; j < size; j++)
-    {
-        const int tc25 = TC25(j);
-
-        const int tc25diff = FFMAX(tc25 - 1, 0);
-        // 2 or 4 lines per tc
-        for (int i = 0; i < end; i++)
-        {
-            int b3diff;
-            int b3 = (beta[j] << (bit_depth - 8)) >> 3;
-
-            SET(P0, rnd() % (1 << bit_depth));
-            SET(Q0, RANDCLIP(P0, tc25diff));
-
-            // p3 - p0 up to beta3 budget
-            b3diff = rnd() % FFMAX(b3, 1);
-            SET(P3, RANDCLIP(P0, b3diff));
-            // q3 - q0, reduced budget
-            b3diff = rnd() % FFMAX(b3 - b3diff, 1);
-            SET(Q3, RANDCLIP(Q0, b3diff));
-
-            // same concept, budget across 4 pixels
-            b3 -= b3diff = rnd() % FFMAX(b3, 1);
-            SET(P2, RANDCLIP(P0, b3diff));
-            b3 -= b3diff = rnd() % FFMAX(b3, 1);
-            SET(Q2, RANDCLIP(Q0, b3diff));
-
-            // extra reduced budget for weighted pixels
-            b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
-            SET(P1, RANDCLIP(P0, b3diff));
-            b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
-            SET(Q1, RANDCLIP(Q0, b3diff));
-
-            buf += ystride;
+    for(int i = 0; i < size; ++i) {
+        switch (type) {
+            case 0: // strong
+                max_len_p[i] = 3;
+                max_len_q[i] = 3;
+                break;
+            case 1: // strong one-side
+                max_len_p[i] = 1;
+                max_len_q[i] = 3;
+                break;
+            case 2: // weak
+                max_len_p[i] = 1;
+                max_len_q[i] = 1;
+                break;
+            case 3: // mix
+                max_len_p[i] = 1 + (rnd() % 2) * 2;
+                max_len_q[i] = 1 + (rnd() % 2) * 2;
+                max_len_p[i] = FFMIN(max_len_p[i], max_len_q[i]);
+                break;
         }
+    }
+
+    randomize_buffers(buf0, buf1, BUF_SIZE);
+
+    uint8_t* buf = buf0 + xstride * 4;
+
+    // NOTE: this function doesn't work 'correctly' in that it won't always generate
+    // strong spatial activity. See hevc_deblock.c for details.
+    if (spatial_strong) {
+        for (int j = 0; j < size; j++) {
+            const int tc25 = TC25(j);
+
+            const int tc25diff = FFMAX(tc25 - 1, 0);
+            // 2 or 4 lines per tc
+            for (int i = 0; i < end; i++)
+            {
+                int b3diff;
+                beta[j] = FFMAX(beta[j], 8); // for bit_depth = 8, minimum useful value is 8
+                int b3 = (beta[j] << (bit_depth - 8)) >> 3;
+
+                SET(P0, rnd() % (1 << bit_depth));
+                SET(Q0, RANDCLIP(P0, tc25diff));
+
+                // p3 - p0 up to beta3 budget
+                b3diff = rnd() % FFMAX(b3, 1);
+                if(max_len_p[j] == 1) {
+                    SET(P1, RANDCLIP(P0, b3diff));
+                } else {
+                    SET(P3, RANDCLIP(P0, b3diff));
+                }
+
+                // q3 - q0, reduced budget
+                b3diff = rnd() % FFMAX(b3 - b3diff, 1);
+                SET(Q3, RANDCLIP(Q0, b3diff));
+
+                // same concept, budget across 4 pixels
+                b3 -= b3diff = rnd() % FFMAX(b3, 1);
+                if(max_len_p[j] == 1) {
+                    SET(P1, RANDCLIP(P0, b3diff));
+                } else {
+                    SET(P2, RANDCLIP(P0, b3diff));
+                }
+                b3 -= b3diff = rnd() % FFMAX(b3, 1);
+                SET(Q2, RANDCLIP(Q0, b3diff));
+
+                // extra reduced budget for weighted pixels
+                b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
+                SET(P1, RANDCLIP(P0, b3diff));
+                b3 -= b3diff = rnd() % FFMAX(b3 - (1 << (bit_depth - 8)), 1);
+                SET(Q1, RANDCLIP(Q0, b3diff));
+
+                buf += ystride;
+            }
+        }
+        memcpy(buf1, buf0, BUF_SIZE);
     }
 }
 
 static void check_deblock_chroma(const VVCDSPContext *h, int bit_depth)
 {
+    const char *types[] = { "strong", "one-side", "weak", "mix" };
+    const char *shifts[] = { "no-shift", "shift" };
+
     int32_t beta[4], tc[4];
     uint8_t no_p[4] = {0, 0, 0, 0};
     uint8_t no_q[4] = {0, 0, 0, 0};
-    uint8_t max_len_p[4] = {1, 1, 1, 1};
-    uint8_t max_len_q[4] = {1, 3, 3, 1};
-    int shift = 0;
-    int xstride = SIZEOF_PIXEL * 8; // bytes
-    int ystride = 2;                // bytes
+    uint8_t max_len_p[4];
+    uint8_t max_len_q[4];
+    int xstride = 16;            // bytes
+    int ystride = SIZEOF_PIXEL;  // bytes
 
     LOCAL_ALIGNED_32(uint8_t, buf0, [BUF_SIZE]);
     LOCAL_ALIGNED_32(uint8_t, buf1, [BUF_SIZE]);
@@ -138,22 +181,21 @@ static void check_deblock_chroma(const VVCDSPContext *h, int bit_depth)
     declare_func(void, uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,
                  const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);
 
-    if (check_func(h->lf.filter_chroma[0], "vvc_h_loop_filter_chroma_%d", bit_depth))
-    {
+    for(int type = 0; type < sizeof(types)/sizeof(char*); ++type) {
+        for(int shift = 0; shift < 2; ++shift) {
+            if (check_func(h->lf.filter_chroma[0], "vvc_h_loop_filter_chroma_%d_%s_%s", bit_depth, types[type], shifts[shift])) {
+                for(int spatial_strong = 0; spatial_strong < 1; ++spatial_strong) {
+                    randomize_chroma_buffers(type, shift, spatial_strong, bit_depth, max_len_p, max_len_q, beta, tc, buf0, buf1, xstride, ystride);
+                    call_ref(buf0 + xstride * 4, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+                    call_new(buf1 + xstride * 4, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
 
-        uint8_t *buf = buf0 + xstride * 5;
-
-        randomize_buffers(buf0, buf1, BUF_SIZE);
-        randomize_chroma_buffers(0, beta, tc, buf, xstride, ystride, shift, bit_depth);
-        memcpy(buf0, buf1, BUF_SIZE);
-
-        call_ref(buf0 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
-        call_new(buf1 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
-
-        if (memcmp(buf0, buf1, BUF_SIZE))
-            fail();
-
-        bench_new(buf0 + xstride * 5, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+                    if (memcmp(buf0, buf1, BUF_SIZE))
+                        fail();
+                }
+                randomize_chroma_buffers(bit_depth, type, shift, 1, max_len_p, max_len_q, beta, tc, buf0, buf1, xstride, ystride);
+                bench_new(buf0 + xstride * 4, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+            }
+        }
     }
 }
 
