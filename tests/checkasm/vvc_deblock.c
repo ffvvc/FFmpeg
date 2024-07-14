@@ -98,7 +98,7 @@ static void randomize_chroma_buffers(int type, int beta[4], int32_t tc[4],
             SET(Q0, RANDCLIP(P0, tc25diff));
 
             // p3 - p0 up to beta3 budget
-            b3diff = rnd() % b3;
+            b3diff = rnd() % FFMAX(b3, 1);
             SET(P3, RANDCLIP(P0, b3diff));
             // q3 - q0, reduced budget
             b3diff = rnd() % FFMAX(b3 - b3diff, 1);
