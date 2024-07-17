@@ -214,7 +214,7 @@ static void check_deblock_luma(VVCDSPContext *h, int bit_depth)
         for (int j = 2; j < 3; j++) {
             type = types[j];
 
-            if (check_func(h->lf.filter_luma[0],"vvc_%s_loop_filter_luma_%d", vertical ? "v" : "h", bit_depth))
+            if (check_func(h->lf.filter_luma[0],"vvc_%s_loop_filter_luma_%d_%s", vertical ? "v" : "h", bit_depth, type))
             {
                 randomize_luma_buffers(j, beta, tc, buf0 + BUF_OFFSET, xstride, ystride, bit_depth);
                 memcpy(buf1, buf0, BUF_SIZE);
@@ -235,6 +235,7 @@ static void randomize_chroma_buffers(const int type, const int shift, const int 
 {
     const int size = shift ? 4 : 2;
     const int end = 8 / size;
+    uint8_t* buf = buf0 + xstride * 4;
 
     randomize_params(beta, tc, 0, bit_depth, size);
     for(int i = 0; i < size; ++i) {
@@ -261,8 +262,6 @@ static void randomize_chroma_buffers(const int type, const int shift, const int 
 
     randomize_buffers(buf0, buf1, BUF_SIZE);
 
-    uint8_t* buf = buf0 + xstride * 4;
-
     // NOTE: this function doesn't work 'correctly' in that it won't always generate
     // strong spatial activity. See hevc_deblock.c for details.
     if (spatial_strong) {
@@ -273,9 +272,9 @@ static void randomize_chroma_buffers(const int type, const int shift, const int 
             // 2 or 4 lines per tc
             for (int i = 0; i < end; i++)
             {
-                int b3diff;
+                int b3diff, b3;
                 beta[j] = FFMAX(beta[j], 8); // for bit_depth = 8, minimum useful value is 8
-                int b3 = (beta[j] << (bit_depth - 8)) >> 3;
+                b3 = (beta[j] << (bit_depth - 8)) >> 3;
 
                 SET(P0, rnd() % (1 << bit_depth));
                 SET(Q0, RANDCLIP(P0, tc25diff));
