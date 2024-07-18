@@ -259,6 +259,7 @@ INIT_XMM sse2
 
 ALIGN 16
 %macro WEAK_CHROMA 1
+    ; jmp       .end
     psubw            m12, m4, m3 ; q0 - p0
     psubw            m13, m2, m5 ; p1 - q1
     psllw            m12, 2      ; << 2
@@ -272,6 +273,7 @@ ALIGN 16
     psubw            m15, m4, m13 ; q0 - delta0
     MASKED_COPY       m3, m14
     MASKED_COPY       m4, m15
+    .end:
 %endmacro
 
 %macro CLIP_RESTORE 4  ; toclip, value, -tc, +tc
@@ -285,6 +287,8 @@ ALIGN 16
 
 %macro STRONG_CHROMA 0
     ; --------  strong calcs -------
+    cmp         no_pq, 0
+    je    .end_p_calcs
     ; p0
     paddw         m12, m0, m1
     paddw         m12, m2
@@ -311,9 +315,12 @@ ALIGN 16
     paddw         m14, m1    ; + p2
     psraw         m14, 3
     CLIP_RESTORE  m14, m1, m8, m9
+.end_p_calcs:
 
     ; q0
     ; clobber m0 / P3 - not used anymore
+    cmp         no_qq, 0
+    je    .end_p_calcs
     paddw         m0, m3, m4    ; p0 + q0
     paddw         m0, m5        ; + q1
     paddw         m0, m6        ; + q2
@@ -348,6 +355,7 @@ ALIGN 16
     MASKED_COPY m3, m12 ; p0
     MASKED_COPY m2, m13 ; p1
     MASKED_COPY m1, m14 ; p2
+
 %endmacro
 
 ; m11 strong mask, m8/m9 -tc, tc
@@ -608,6 +616,56 @@ ALIGN 16
     mov spatial_maskq, rsp
     sub rsp, 16
     mov tcptrq, rsp
+    sub rsp, 16  ; rsp + 16 = no_p
+    sub rsp, 16  ; rsp = no_q
+
+    ; no_p
+    pxor            m10, m10
+    movd            m11, [no_pq]  ; 1 means skip
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, m10      ; calculate p mask
+    movmskps      no_pq, m11     ; 
+
+    cmp           shiftd, 1
+    je           .no_p_shift
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    jmp      .store_p
+.no_p_shift:
+    pshufhw          m13, m11, q2301
+    pshuflw          m13, m13, q2301
+.store_p:
+    movu      [rsp + 16], m13
+
+
+    
+    ; end p
+    ; no_q
+    pxor            m10, m10
+    movd            m11, [no_qq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, m10;
+    movmskps      no_qq, m11;
+
+    cmp           shiftd, 1
+    je           .no_q_shift
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    jmp      .store_q
+.no_q_shift:
+    pshufhw          m13, m11, q2301
+    pshuflw          m13, m13, q2301
+.store_q:
+    movu           [rsp], m13
+
+    
+; end q
 
     SPATIAL_ACTIVITY %1
 
@@ -672,48 +730,12 @@ ALIGN 16
     CLIPW           m5, m12, [pw_pixel_max_%1] ; p0
     CLIPW           m6, m12, [pw_pixel_max_%1] ; p0
 
-; no_p
-    pxor            m10, m10
-    movd            m11, [no_pq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
 
-    pcmpeqd         m11, m10;
-
-    cmp           shiftd, 1
-    je           .no_p_shift
-    punpcklqdq       m11, m11, m11
-    pshufhw          m13, m11, q2222
-    pshuflw          m13, m13, q0000
-    jmp      .store_p
-.no_p_shift:
-    pshufhw          m13, m11, q2301
-    pshuflw          m13, m13, q2301
-.store_p:
-    movu             m11, m13
-
+    movu             m11,  [rsp + 16]
 
     MASKED_COPY   [pix0q + src3strideq], m3
 
-; no_q
-    pxor            m10, m10
-    movd            m11, [no_qq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
-
-    pcmpeqd         m11, m10;
-
-    cmp           shiftd, 1
-    je           .no_q_shift
-    punpcklqdq       m11, m11, m11
-    pshufhw          m13, m11, q2222
-    pshuflw          m13, m13, q0000
-    jmp      .store_q
-.no_q_shift:
-    pshufhw          m13, m11, q2301
-    pshuflw          m13, m13, q2301
-.store_q:
-    movu             m11, m13
+    movu             m11, [rsp]
 
 %endmacro
 
@@ -1250,7 +1272,7 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 32, pix, stride, beta, tc, no_p, 
     add rsp, 32
 RET
 
-cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 32, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
+cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 64, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
     lea    src3strideq, [3 * strideq]
     mov           pix0q, pixq
     sub           pix0q, src3strideq
@@ -1271,10 +1293,10 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 32, pix, stride, beta, tc, no_p,
     MASKED_COPY    [pixq +     strideq], m5 ;
     MASKED_COPY    [pixq + 2 * strideq], m6 ;
 
-    add rsp, 32
+    add rsp, 64
 RET
 
-cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 32, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
+cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 64, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
     lea    src3strideq, [3 * strideq]
     mov           pix0q, pixq
     sub           pix0q, src3strideq
@@ -1295,7 +1317,7 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 32, pix, stride, beta, tc, no_p,
     MASKED_COPY    [pixq +     strideq], m5 ;
     MASKED_COPY    [pixq + 2 * strideq], m6 ;
 
-    add rsp, 32
+    add rsp, 64
 RET
 %endmacro
 
