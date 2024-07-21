@@ -640,6 +640,31 @@ ALIGN 16
 .store_p:
     movu      [rsp + 16], m13
 
+;     ; load p
+    pxor            m10, m10
+    movd            m11, [max_len_pq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, m10 ; which are 0
+    pcmpeqd  m12, m12, m12
+    pxor     m11, m11, m12
+
+    cmp           shiftd, 1
+    je           .max_len_pq_zero
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    jmp        .max_len_p_store
+.max_len_pq_zero:
+   pshufhw          m13, m11, q2301
+   pshuflw          m13, m13, q2301
+
+.max_len_p_store:
+    pand             m13, [rsp + 16]
+    movu             [rsp + 16], m13
+    movmskps         no_pq, m13
+
     ; end p
     ; no_q
     pxor            m10, m10
@@ -662,6 +687,35 @@ ALIGN 16
 .store_q:
     movu           [rsp], m13
 
+    ;;
+    
+    pxor            m10, m10
+    movd            m11, [max_len_qq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+   pcmpeqd         m11, m10 ; which are 0
+    pcmpeqd  m12, m12, m12
+    pcmpeqd         m11, m10
+
+    cmp           shiftd, 1
+    je           .max_len_qq_zero
+    punpcklqdq       m11, m11, m11
+    pshufhw          m13, m11, q2222
+    pshuflw          m13, m13, q0000
+    jmp      .max_len_q_store
+
+.max_len_qq_zero:
+   pshufhw          m13, m11, q2301
+   pshuflw          m13, m13, q2301
+
+.max_len_q_store:
+
+    pand            m13, [rsp]
+    movu             [rsp], m13
+    movmskps         no_qq, m13
+
+    
     
 ; end q
 
@@ -690,9 +744,11 @@ ALIGN 16
 
 .strong_chroma:
     pand             m11, [spatial_maskq]
+    pand             m11, [rsp + 16]
     movmskps         r14, m11
     cmp              r14, 0
     je              .one_side_chroma
+
     STRONG_CHROMA
 
 %if %1 == 8
@@ -702,6 +758,7 @@ ALIGN 16
     pxor             m12, m12
     punpcklbw        m14, m12
     punpcklbw        m15, m12
+
 
     MASKED_COPY      m14, m1
     MASKED_COPY      m15, m2
@@ -1172,6 +1229,7 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 64, pix, stride, beta, tc, no_p, 
     movh      [pixq +     strideq], m14 ; m4
     movhps    [pixq + 2 * strideq], m14 ; m5
 
+    .end_func:
     add rsp, 64
 RET
 
@@ -1208,6 +1266,7 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 64, pix, stride, beta, tc, no_p,
     MASKED_COPY    [pixq +     strideq], m5 ;
     MASKED_COPY    [pixq + 2 * strideq], m6 ;
 
+    .end_func:
     add rsp, 64
 RET
 
@@ -1245,6 +1304,7 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 64, pix, stride, beta, tc, no_p,
     MASKED_COPY    [pixq +     strideq], m5 ;
     MASKED_COPY    [pixq + 2 * strideq], m6 ;
 
+    .end_func:
     add rsp, 64
 RET
 %endmacro
