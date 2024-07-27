@@ -322,6 +322,7 @@ ALIGN 16
     cmp         no_qq, 0
     je    .end_p_calcs
     paddw         m0, m3, m4    ; p0 + q0
+    MASKED_COPY   m3, m12 ; p0
     paddw         m0, m5        ; + q1
     paddw         m0, m6        ; + q2
     paddw         m0, m7        ; + q3
@@ -352,7 +353,6 @@ ALIGN 16
     MASKED_COPY m4, m0  ; q0
     MASKED_COPY m5, m1  ; q1
     MASKED_COPY m6, m15 ; q2
-    MASKED_COPY m3, m12 ; p0
     MASKED_COPY m2, m13 ; p1
     MASKED_COPY m1, m14 ; p2
 
