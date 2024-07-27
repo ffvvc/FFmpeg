@@ -256,6 +256,22 @@ INIT_XMM sse2
     movu             %1, %2
 %endmacro
 
+%macro SHUFFLE_ON_SHIFT 3 ; dst, src
+    cmp shiftd, 1
+    je        %%no_shift
+    punpcklqdq       %2, %2, %2
+    pshufhw          %1, %2, q2222
+    pshuflw          %1, %1, q0000
+    jmp             %%end
+%if %3 == 1
+%%no_shift:
+    pshufhw          %1, %2, q2301
+    pshuflw          %1, %1, q2301
+%endif
+
+%%end:
+%endmacro
+
 
 ALIGN 16
 %macro WEAK_CHROMA 1
@@ -396,6 +412,7 @@ ALIGN 16
     punpcklqdq       m11, m11, m11
     pshufhw          m13, m11, q2222
     pshuflw          m13, m13, q0000
+
     movu             m11, m13
     ; intentional fallthrough
 
@@ -651,16 +668,19 @@ ALIGN 16
     pcmpeqd         m11, m10      ; calculate p mask
     movmskps      no_pq, m11     ;
 
-    cmp           shiftd, 1
-    je           .no_p_shift
-    punpcklqdq       m11, m11, m11
-    pshufhw          m13, m11, q2222
-    pshuflw          m13, m13, q0000
-    jmp      .store_p
-.no_p_shift:
-    pshufhw          m13, m11, q2301
-    pshuflw          m13, m13, q2301
-.store_p:
+
+    SHUFFLE_ON_SHIFT m13, m11, 1
+
+;     cmp           shiftd, 1
+;     je           .no_p_shift
+;     punpcklqdq       m11, m11, m11
+;     pshufhw          m13, m11, q2222
+;     pshuflw          m13, m13, q0000
+;     jmp      .store_p
+; .no_p_shift:
+;     pshufhw          m13, m11, q2301
+;     pshuflw          m13, m13, q2301
+; .store_p:
     movu      [rsp + 16], m13
 
 ;     ; load p
@@ -673,17 +693,18 @@ ALIGN 16
     pcmpeqd         m12, m12, m12
     pxor            m11, m11, m12
 
-    cmp           shiftd, 1
-    je           .max_len_pq_zero
-    punpcklqdq       m11, m11, m11
-    pshufhw          m13, m11, q2222
-    pshuflw          m13, m13, q0000
-    jmp        .max_len_p_store
-.max_len_pq_zero:
-   pshufhw          m13, m11, q2301
-   pshuflw          m13, m13, q2301
+    SHUFFLE_ON_SHIFT m13, m11, 1
+;     cmp           shiftd, 1
+;     je           .max_len_pq_zero
+;     punpcklqdq       m11, m11, m11
+;     pshufhw          m13, m11, q2222
+;     pshuflw          m13, m13, q0000
+;     jmp        .max_len_p_store
+; .max_len_pq_zero:
+;    pshufhw          m13, m11, q2301
+;    pshuflw          m13, m13, q2301
+; .max_len_p_store:
 
-.max_len_p_store:
     pand             m13, [rsp + 16]
     movu             [rsp + 16], m13
     movmskps         no_pq, m13
@@ -698,16 +719,18 @@ ALIGN 16
     pcmpeqd         m11, m10;
     movmskps      no_qq, m11;
 
-    cmp           shiftd, 1
-    je           .no_q_shift
-    punpcklqdq       m11, m11, m11
-    pshufhw          m13, m11, q2222
-    pshuflw          m13, m13, q0000
-    jmp      .store_q
-.no_q_shift:
-    pshufhw          m13, m11, q2301
-    pshuflw          m13, m13, q2301
-.store_q:
+    SHUFFLE_ON_SHIFT m13, m11, 1
+
+;     cmp           shiftd, 1
+;     je           .no_q_shift
+;     punpcklqdq       m11, m11, m11
+;     pshufhw          m13, m11, q2222
+;     pshuflw          m13, m13, q0000
+;     jmp      .store_q
+; .no_q_shift:
+;     pshufhw          m13, m11, q2301
+;     pshuflw          m13, m13, q2301
+; .store_q:
     movu           [rsp], m13
 
     pxor            m10, m10
@@ -719,18 +742,20 @@ ALIGN 16
     pcmpeqd         m12, m12, m12
     pcmpeqd         m11, m10
 
-    cmp           shiftd, 1
-    je           .max_len_qq_zero
-    punpcklqdq       m11, m11, m11
-    pshufhw          m13, m11, q2222
-    pshuflw          m13, m13, q0000
-    jmp      .max_len_q_store
+    SHUFFLE_ON_SHIFT m13, m11, 1
 
-.max_len_qq_zero:
-   pshufhw          m13, m11, q2301
-   pshuflw          m13, m13, q2301
+;     cmp           shiftd, 1
+;     je           .max_len_qq_zero
+;     punpcklqdq       m11, m11, m11
+;     pshufhw          m13, m11, q2222
+;     pshuflw          m13, m13, q0000
+;     jmp      .max_len_q_store
 
-.max_len_q_store:
+; .max_len_qq_zero:
+;    pshufhw          m13, m11, q2301
+;    pshuflw          m13, m13, q2301
+
+; .max_len_q_store:
     pand               m13, [rsp]
     movu             [rsp], m13
     movmskps         no_qq, m13
