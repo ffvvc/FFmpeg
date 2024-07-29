@@ -544,7 +544,7 @@ ALIGN 16
 
 .prep_clipping_masks:
     movu [spatial_maskq], m11
-    movu             m9, [tcptrq] 
+    movu             m9, [tcptrq]
     psignw           m8, m9, [pw_m1];
 
 %if %1 != 8
@@ -626,7 +626,7 @@ ALIGN 16
     punpcklwd       m11, m11, m10
 
     pcmpeqd         m11, m10      ; calculate p mask
-    movmskps      no_pq, m11     ; 
+    movmskps      no_pq, m11     ;
 
     cmp           shiftd, 1
     je           .no_p_shift
@@ -688,7 +688,7 @@ ALIGN 16
     movu           [rsp], m13
 
     ;;
-    
+
     pxor            m10, m10
     movd            m11, [max_len_qq]
     punpcklbw       m11, m11, m10
@@ -715,8 +715,8 @@ ALIGN 16
     movu             [rsp], m13
     movmskps         no_qq, m13
 
-    
-    
+
+
 ; end q
 
     SPATIAL_ACTIVITY %1
@@ -1199,7 +1199,7 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 64, pix, stride, beta, tc, no_p, 
     punpcklbw        m7, m12
 
     CHROMA_DEBLOCK_BODY 8
- 
+
     movq             m12, [pix0q + src3strideq] ;  p0
     movq             m0,  [pixq]                ;  q0
     movq             m14, [pixq +     strideq]  ;  q1
