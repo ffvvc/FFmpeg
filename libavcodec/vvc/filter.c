@@ -837,8 +837,8 @@ static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs,
                     uint8_t *src = vertical ? POS(c_idx, x, y) : POS(c_idx, y, x);
                     if (!c_idx) {
                         int use_c = 0;
-                        for (int i = 0; i < DEBLOCK_STEP >> (2 - vs); i++) {
-                            if (beta[i])
+                        for (int i = 0; i < 2; i++) {
+                            if ((max_len_p[i] && max_len_p[i] != 2) || (max_len_q[i] && max_len_q[i] != 2))
                                 use_c = 1;
                         }
                         if (use_c) {
