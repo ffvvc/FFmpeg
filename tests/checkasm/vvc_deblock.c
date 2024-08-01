@@ -70,7 +70,7 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
 #define RANDCLIP(x, diff) av_clip(GET(x) - (diff), 0, \
     (1 << (bit_depth)) - 1) + rnd() % FFMAX(2 * (diff), 1)
 
-static void randomize_params(int32_t beta[4], int32_t tc[4], const int is_luma, const int bit_depth, const int size)
+static void randomize_params(int32_t *beta, int32_t *tc, const int is_luma, const int bit_depth, const int size)
 {
     const int tc_min   = 1 << FFMAX(0, 9 - bit_depth);
     //const int beta_min = is_luma;                     // for luma, beta == 0 will disable the deblock, for chroma beta == 0 is a valid value
