@@ -815,12 +815,12 @@ ALIGN 16
     ABS1            m11, m13 ; 0dq0, 0dq3 , 1dq0, 1dq3
 
     ;beta calculations
+    movq            m13, [betaq];
+    punpcklwd       m13, m13
+    vpermilps       m13, m13, q2200
 %if %1 > 8
-    shl             betaq, %1 - 8
+    psllw          m13, %1 - 8
 %endif
-    xor             betaq, betaq
-    movd            m13, betad
-    SPLATW          m13, m13, 0
     ;end beta calculations
 
     paddw            m9, m10, m11;   0d0, 0d3  ,  1d0, 1d3
@@ -877,13 +877,19 @@ ALIGN 16
     ;decide between strong and weak filtering
     ;tc25 calculations
     mov            r11d, [tcq];
-%if %1 > 8
-    shl             r11, %1 - 8
+%if %1 > 10
+    shl             r11, %1 - 10
+%elif %1 < 10
+    add             r11, 1 << (9 - %1)
+    shr             r11, 10 - %1
 %endif
     movd             m8, r11d; tc0
     mov             r3d, [tcq+4];
-%if %1 > 8
-    shl              r3, %1 - 8
+%if %1 >= 10
+    shl              r3, %1 - 10
+%elif %1 < 10
+    add              r3, 1 << (9 - %1)
+    shr              r3, 10 - %1
 %endif
     add            r11d, r3d; tc0 + tc1
     jz             .bypassluma
@@ -939,6 +945,10 @@ ALIGN 16
     and             r11, 1
     movd            m10, r11d; store to xmm for mask generation
     or              r6, r11; final strong mask, bits 1 and 0
+
+    ;fix me for strong
+    xor             r6,r6
+
     jz      .weakfilter
 
     shufps          m10, m12, 0
@@ -1036,11 +1046,6 @@ ALIGN 16
     shufps          m11, m12, 0
     pcmpeqd         m11, [pd_1]; filtering mask
 
-    mov             r13, betaq
-    shr             r13, 1;
-    add             betaq, r13
-    shr             betaq, 3; ((beta + (beta >> 1)) >> 3))
-
     psubw           m12, m4, m3 ; q0 - p0
     paddw           m10, m12, m12
     paddw           m12, m10 ; 3 * (q0 - p0)
@@ -1104,8 +1109,15 @@ ALIGN 16
     paddw           m15, m2; p1'
 
     ;beta calculations
-    movd            m10, betad
-    SPLATW          m10, m10, 0
+    movq            m10, [betaq]
+    punpcklwd       m10, m10
+    vpermilps       m10, m10, q2200
+%if %1 > 8
+    psllw           m10, %1 - 8
+%endif
+    psrlw           m13, m10, 1
+    paddw           m10, m13
+    psrlw           m10, m10, 3
 
     movd            m13, r7d; 1dp0 + 1dp3
     movd             m8, r8d; 0dp0 + 0dp3
