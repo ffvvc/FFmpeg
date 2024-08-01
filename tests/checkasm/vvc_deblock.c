@@ -89,18 +89,18 @@ static void randomize_params(int32_t *beta, int32_t *tc, const int is_luma, cons
 // many paths and ways to trigger the deblock: we would have to bench all
 // permutations of weak/strong/skip/nd_q/nd_p/no_q/no_p and it quickly becomes
 // too much.
-static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2],
+static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2], uint8_t max_len_p[2], uint8_t max_len_q[2],
    uint8_t *buf, ptrdiff_t xstride, ptrdiff_t ystride, int bit_depth)
 {
-    int i, j, b3, tc25, tc25diff, b3diff;
+    int i, j, b3, b3diff;
 
     randomize_params(beta, tc, 1, bit_depth, 2);
 
     switch (type) {
     case 0: // strong
         for (j = 0; j < 2; j++) {
-            tc25 = TC25(j) << (bit_depth - 8);
-            tc25diff = FFMAX(tc25 - 1, 0);
+            const int tc25     = TC25(j);
+            const int tc25diff = FFMAX(tc25 - 1, 0);
             // 4 lines per tc
             for (i = 0; i < 4; i++) {
                 b3 = (*beta << (bit_depth - 8)) >> 3;
@@ -133,8 +133,9 @@ static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2],
         break;
     case 1: // weak
         for (j = 0; j < 2; j++) {
-            tc25 = TC25(j) << (bit_depth - 8);
-            tc25diff = FFMAX(tc25 - 1, 0);
+            const int tc25     = TC25(j);
+            const int tc25diff = FFMAX(tc25 - 1, 0);
+            max_len_p[j] = max_len_q[j]= 2;
             // 4 lines per tc
             for (i = 0; i < 4; i++) {
                 // Weak filtering is signficantly simpler to activate as
@@ -143,14 +144,14 @@ static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2],
                 // derivations but substiuting b3 for b1 and ensuring
                 // that P0/Q0 are at least 1/2 tc25diff apart (tending
                 // towards 1/2 range).
-                b3 = (*beta << (bit_depth - 8)) >> 1;
+                b3 = (beta[j] << (bit_depth - 8)) >> 1;
 
                 SET(P0, rnd() % (1 << bit_depth));
                 SET(Q0, RANDCLIP(P0, tc25diff >> 1) +
                     (tc25diff >> 1) * (P0 < (1 << (bit_depth - 1))) ? 1 : -1);
 
                 // p3 - p0 up to beta3 budget
-                b3diff = rnd() % b3;
+                b3diff = rnd() % FFMAX(b3, 1);
                 SET(P3, RANDCLIP(P0, b3diff));
                 // q3 - q0, reduced budget
                 b3diff = rnd() % FFMAX(b3 - b3diff, 1);
@@ -211,12 +212,12 @@ static void check_deblock_luma(VVCDSPContext *h, int bit_depth)
         if (vertical)
             FFSWAP(ptrdiff_t, xstride, ystride);
 
-        for (int j = 2; j < 3; j++) {
+        for (int j = 1; j < 3; j++) {
             type = types[j];
 
-            if (check_func(h->lf.filter_luma[0],"vvc_%s_loop_filter_luma_%d_%s", vertical ? "v" : "h", bit_depth, type))
+            if (check_func(h->lf.filter_luma[vertical],"vvc_%s_loop_filter_luma_%d_%s", vertical ? "v" : "h", bit_depth, type))
             {
-                randomize_luma_buffers(j, beta, tc, buf0 + BUF_OFFSET, xstride, ystride, bit_depth);
+                randomize_luma_buffers(j, beta, tc, max_len_p, max_len_q, buf0 + BUF_OFFSET, xstride, ystride, bit_depth);
                 memcpy(buf1, buf0, BUF_SIZE);
 
                 call_ref(ptr0, 16 * SIZEOF_PIXEL, beta, tc, no_p, no_q, max_len_p, max_len_q, hor_ctu_edge);
