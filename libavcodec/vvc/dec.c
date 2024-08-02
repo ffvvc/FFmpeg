@@ -731,6 +731,14 @@ static int frame_context_setup(VVCFrameContext *fc, VVCContext *s)
     return 0;
 }
 
+static int set_side_data(VVCContext *s, VVCFrameContext *fc)
+{
+    AVFrame *out = fc->ref->frame;
+
+    return ff_h2645_sei_to_frame(out, &fc->sei.common, AV_CODEC_ID_VVC, s->avctx,
+        NULL, fc->ps.sps->bit_depth, fc->ps.sps->bit_depth, fc->ref->poc);
+}
+
 static int frame_start(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 {
     const VVCPH *ph                 = &fc->ps.ph;
@@ -742,6 +750,10 @@ static int frame_start(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
         s->poc_tid0 = ph->poc;
 
     if ((ret = ff_vvc_set_new_ref(s, fc, &fc->frame)) < 0)
+        goto fail;
+
+    ret = set_side_data(s, fc);
+    if (ret < 0)
         goto fail;
 
     if (!IS_IDR(s))
