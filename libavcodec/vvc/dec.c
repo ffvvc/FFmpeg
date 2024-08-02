@@ -583,6 +583,35 @@ static int slice_init_entry_points(SliceContext *sc,
     return 0;
 }
 
+static void sei_free(VVCContext *s)
+{
+    for (int i = 0; i < s->nb_sei; i++)
+        av_refstruct_unref(&s->sei[i]);
+
+    s->nb_sei           = 0;
+    s->nb_sei_allocated = 0;
+
+    av_freep(&s->sei);
+}
+
+static int sei_realloc(VVCContext *s)
+{
+    H266RawSEI **sei;
+    const int size = s->nb_sei_allocated * 2 + 1;
+
+    if (s->nb_sei < s->nb_sei_allocated)
+        return 0;
+
+    sei = av_realloc_array(s->sei, size, sizeof(H266RawSEI *));
+    if (!sei)
+        return AVERROR(ENOMEM);
+
+    s->sei              = sei;
+    s->nb_sei_allocated = size;
+
+    return 0;
+}
+
 static VVCFrameContext* get_frame_context(const VVCContext *s, const VVCFrameContext *fc, const int delta)
 {
     const int size = s->nb_fcs;
@@ -640,6 +669,7 @@ static av_cold void frame_context_free(VVCFrameContext *fc)
     pic_arrays_free(fc);
     av_frame_free(&fc->output_frame);
     ff_vvc_frame_ps_free(&fc->ps);
+    ff_vvc_reset_sei(&fc->sei);
 }
 
 static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx)
@@ -663,6 +693,8 @@ static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx
     fc->tu_pool = av_refstruct_pool_alloc(sizeof(TransformUnit), 0);
     if (!fc->tu_pool)
         return AVERROR(ENOMEM);
+
+    ff_vvc_reset_sei(&fc->sei);
 
     return 0;
 }
@@ -856,6 +888,14 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
             return ret;
     }
 
+    for (int i = s->nb_sei - 1; i >= 0; i--) {
+        ret = ff_vvc_decode_nal_sei(fc, &fc->sei, s->sei[i]);
+        if (ret < 0)
+            return ret;
+        av_refstruct_unref(&s->sei[i]);
+        s->nb_sei--;
+    }
+
     ret = slice_start(sc, s, fc, unit, is_first_slice);
     if (ret < 0)
         return ret;
@@ -884,7 +924,7 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
 
 static int decode_nal_unit(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal, const CodedBitstreamUnit *unit)
 {
-    int  ret;
+    int ret;
 
     s->temporal_id = nal->temporal_id;
 
@@ -918,6 +958,18 @@ static int decode_nal_unit(VVCContext *s, VVCFrameContext *fc, const H2645NAL *n
         if (ret < 0)
             return ret;
         break;
+    case VVC_PREFIX_SEI_NUT:
+        ret = sei_realloc(s);
+        if (ret < 0)
+            return ret;
+        s->sei[s->nb_sei++] = av_refstruct_ref(unit->content_ref);
+        break;
+
+    case VVC_SUFFIX_SEI_NUT:
+        ret = ff_vvc_decode_nal_sei(fc, &fc->sei, unit->content_ref);
+        if (ret < 0)
+            return ret;
+        break;
     }
 
     return 0;
@@ -931,6 +983,7 @@ static int decode_nal_units(VVCContext *s, VVCFrameContext *fc, AVPacket *avpkt)
     s->last_eos = s->eos;
     s->eos = 0;
 
+    ff_vvc_reset_sei(&fc->sei);
     ff_cbs_fragment_reset(frame);
     ret = ff_cbs_read_packet(s->cbc, frame, avpkt);
     if (ret < 0) {
@@ -1094,6 +1147,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
 {
     VVCContext *s = avctx->priv_data;
 
+    sei_free(s);
     ff_cbs_fragment_free(&s->current_frame);
     vvc_decode_flush(avctx);
     ff_vvc_executor_free(&s->executor);
