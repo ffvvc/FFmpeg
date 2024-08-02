@@ -29,6 +29,7 @@
 
 #include "ps.h"
 #include "dsp.h"
+#include "sei.h"
 
 #define LUMA                    0
 #define CHROMA                  1
@@ -122,6 +123,7 @@ typedef struct VVCFrameContext {
     struct AVFrame *output_frame;
 
     VVCFrameParamSets ps;
+    VVCSEI sei;
 
     SliceContext  **slices;
     int nb_slices;
@@ -244,6 +246,10 @@ typedef struct VVCContext {
 
     uint64_t nb_frames;     ///< processed frames
     int nb_delayed;         ///< delayed frames
+
+    int nb_sei;
+    int nb_sei_allocated;
+    H266RawSEI **sei;
 }  VVCContext ;
 
 #endif /* AVCODEC_VVC_DEC_H */
