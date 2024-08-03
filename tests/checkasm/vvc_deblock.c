@@ -101,6 +101,7 @@ static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2], uin
         for (j = 0; j < 2; j++) {
             const int tc25     = TC25(j);
             const int tc25diff = FFMAX(tc25 - 1, 0);
+            max_len_p[j] = max_len_q[j] = 3;
             // 4 lines per tc
             for (i = 0; i < 4; i++) {
                 b3 = (*beta << (bit_depth - 8)) >> 3;
@@ -109,7 +110,7 @@ static void randomize_luma_buffers(int type, int32_t beta[2], int32_t tc[2], uin
                 SET(Q0, RANDCLIP(P0, tc25diff));
 
                 // p3 - p0 up to beta3 budget
-                b3diff = rnd() % b3;
+                b3diff = rnd() % FFMAX(b3, 1);
                 SET(P3, RANDCLIP(P0, b3diff));
                 // q3 - q0, reduced budget
                 b3diff = rnd() % FFMAX(b3 - b3diff, 1);
@@ -212,7 +213,7 @@ static void check_deblock_luma(VVCDSPContext *h, int bit_depth)
         if (vertical)
             FFSWAP(ptrdiff_t, xstride, ystride);
 
-        for (int j = 1; j < 3; j++) {
+        for (int j = 0; j < 3; j++) {
             type = types[j];
 
             if (check_func(h->lf.filter_luma[vertical],"vvc_%s_loop_filter_luma_%d_%s", vertical ? "v" : "h", bit_depth, type))
