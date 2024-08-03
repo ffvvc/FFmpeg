@@ -930,12 +930,22 @@ ALIGN 16
     movmskps        r11, m8;
     and             r6, r11; strong mask, beta_2, beta_3 and tc25 comparisons
     ;----tc25 comparison end---
+    ;----max_len comparison end---
+    mov            r11q, r6mp
+    pinsrw          m12, [r11q], 0; max_len_p
+    mov            r11q, r7mp
+    pinsrw          m12, [r11q], 1; max_len_q
+    pxor            m13, m13
+    punpcklbw       m12, m13
+    pshuflw         m12, m12, q3120
+    punpcklwd       m12, m12
+    pcmpgtw         m12, [pw_2]; max_len comparisons
+    movmskps        r11, m12
+    and              r6, r11; strong mask, beta_2, beta_3 and tc25 and max_len_{q, p} comparisons
+    ;----max_len comparison end---
     mov             r11, r6;
     shr             r11, 1;
     and             r6, r11; strong mask, bits 2 and 0
-
-    pmullw          m14, m9, [pw_m2]; -tc * 2
-    paddw            m9, m9
 
     and             r6, 5; 0b101
     mov             r11, r6; strong mask
@@ -945,14 +955,15 @@ ALIGN 16
     and             r11, 1
     movd            m10, r11d; store to xmm for mask generation
     or              r6, r11; final strong mask, bits 1 and 0
-
-    ;fix me for strong
-    xor             r6,r6
-
     jz      .weakfilter
 
     shufps          m10, m12, 0
     pcmpeqd         m10, [pd_1]; strong mask
+
+    mova            m15, m9
+    psllw            m9, 2;          4*tc
+    psubw           m14, m15, m9;   -3*tc
+    psubw            m9, m15;        3*tc
 
     mova            m13, [pw_4]; 4 in every cell
     pand            m11, m10; combine filtering mask and strong mask
@@ -965,8 +976,11 @@ ALIGN 16
     paddw           m12, m13;  p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4
     psraw           m12, 3;  ((p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3)
     psubw           m12, m3; ((p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3) - p0
-    CLIPW           m12, m14, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m12, m14, m9; av_clip( , -3 * tc, 3 * tc)
     paddw           m12, m3; p0'
+
+    paddw           m14, m15;  -2*tc
+    psubw            m9, m15;   2*tc
 
     paddw           m15, m1, m10; p2 + p1 + p0 + q0
     psrlw           m13, 1; 2 in every cell
@@ -975,6 +989,9 @@ ALIGN 16
     psubw           m15, m2;((p2 + p1 + p0 + q0 + 2) >> 2) - p1
     CLIPW           m15, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m15, m2; p1'
+
+    psraw            m9, 1;      tc
+    psraw           m14, 1;     -tc
 
     paddw            m8, m1, m0;     p3 +   p2
     paddw            m8, m8;   2*p3 + 2*p2
@@ -988,6 +1005,11 @@ ALIGN 16
     paddw            m8, m1; p2'
     MASKED_COPY      m1, m8
 
+    mova            m10, m9
+    psllw            m9, 2;          4*tc
+    psubw           m14, m10, m9;   -3*tc
+    psubw            m9, m10;        3*tc
+
     paddw            m8, m3, m4;         p0 +   q0
     paddw            m8, m5;         p0 +   q0 +   q1
     paddw            m8, m8;       2*p0 + 2*q0 + 2*q1
@@ -996,9 +1018,12 @@ ALIGN 16
     paddw            m8, m13; p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4
     psraw            m8, 3;  (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >>3
     psubw            m8, m4;
-    CLIPW            m8, m14, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW            m8, m14, m9; av_clip( , -3 * tc, 3 * tc)
     paddw            m8, m4; q0'
     MASKED_COPY      m2, m15
+
+    paddw           m14, m10;  -2*tc
+    psubw            m9, m10;   2*tc
 
     paddw           m15, m3, m4;   p0 + q0
     paddw           m15, m5;   p0 + q0 + q1
@@ -1010,6 +1035,9 @@ ALIGN 16
     psubw           m15, m5; ((p0 + q0 + q1 + q2 + 2) >> 2) - q1
     CLIPW           m15, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m15, m5; q1'
+
+    psraw            m9, 1;      tc
+    psraw           m14, 1;     -tc
 
     paddw           m13, m7;      q3 + 2
     paddw           m13, m6;      q3 +  q2 + 2
@@ -1027,6 +1055,9 @@ ALIGN 16
     MASKED_COPY      m3, m12
 
 .weakfilter:
+    pmullw          m14, m9, [pw_m2]; -tc * 2
+    paddw            m9, m9
+
     not             r6; strong mask -> weak mask
     and             r6, r13; final weak filtering mask, bits 0 and 1
     jz             .store
