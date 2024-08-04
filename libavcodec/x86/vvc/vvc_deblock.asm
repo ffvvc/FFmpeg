@@ -238,12 +238,12 @@ INIT_XMM sse2
 ; in: %2 clobbered
 ; out: %1
 ; mask in m11
-; clobbers m10
 %macro MASKED_COPY 2
-    pand             %2, m11 ; and mask
-    pandn           m10, m11, %1; and -mask
-    por              %2, m10
-    movu             %1, %2
+%ifnum sizeof%1
+    PBLENDVB         %1, %2, m11
+%else
+    vpmaskmovd       %1, m11, %2
+%endif
 %endmacro
 
 ; in: %2 clobbered
