@@ -49,6 +49,12 @@ void ff_vvc_unref_frame(VVCFrameContext *fc, VVCFrame *frame, int flags)
     frame->flags &= ~flags;
     if (!frame->flags) {
         av_frame_unref(frame->frame);
+
+        if (frame->needs_fg) {
+            av_frame_unref(frame->frame_grain);
+            frame->needs_fg = 0;
+        }
+
         av_refstruct_unref(&frame->sps);
         av_refstruct_unref(&frame->pps);
         av_refstruct_unref(&frame->progress);
@@ -248,7 +254,10 @@ int ff_vvc_output_frame(VVCContext *s, VVCFrameContext *fc, AVFrame *out, const 
         if (nb_output) {
             VVCFrame *frame = &fc->DPB[min_idx];
 
-            ret = av_frame_ref(out, frame->frame);
+            ret = av_frame_ref(out, frame->needs_fg ? frame->frame_grain : frame->frame);
+            if (ret < 0)
+                return ret;
+
             if (frame->flags & VVC_FRAME_FLAG_BUMPING)
                 ff_vvc_unref_frame(fc, frame, VVC_FRAME_FLAG_OUTPUT | VVC_FRAME_FLAG_BUMPING);
             else
