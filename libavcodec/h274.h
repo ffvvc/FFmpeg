@@ -74,4 +74,8 @@ typedef struct H274SEIPictureHash {
     uint8_t hash_type;
 } H274SEIPictureHash;
 
+int ff_h274_verify_decoded_picture_hash(void *log_ctx, int poc,
+    const H274SEIPictureHash *s, const AVFrame *frame,
+    int coded_width, int coded_height);
+
 #endif /* AVCODEC_H274_H */
