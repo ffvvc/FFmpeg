@@ -28,10 +28,13 @@
 #include "libavutil/refstruct.h"
 #include "libavcodec/aom_film_grain.h"
 #include "libavcodec/thread.h"
+#include "libavutil/avstring.h"
 #include "libavutil/cpu.h"
+#include "libavutil/md5.h"
 #include "libavutil/mem.h"
 #include "libavutil/thread.h"
 #include "libavutil/film_grain_params.h"
+#include "libavutil/pixdesc.h"
 
 #include "dec.h"
 #include "ctu.h"
@@ -1116,7 +1119,16 @@ static int frame_end(VVCContext *s, VVCFrameContext *fc)
         }
     }
 
-    return ret;
+    if (!s->avctx->hwaccel && s->avctx->err_recognition & AV_EF_CRCCHECK) {
+        if (fc->sei.picture_hash.present) {
+            ret = ff_h274_verify_decoded_picture_hash(s->avctx, fc->ref->poc,
+                &fc->sei.picture_hash, fc->ref->frame, s->avctx->coded_width, s->avctx->coded_height);
+            if (ret < 0 && s->avctx->err_recognition & AV_EF_EXPLODE)
+                return ret;
+        }
+    }
+
+    return 0;
 }
 
 static int wait_delayed_frame(VVCContext *s, AVFrame *output, int *got_output)
@@ -1256,6 +1268,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
     }
     ff_vvc_ps_uninit(&s->ps);
     ff_cbs_close(&s->cbc);
+    av_freep(&s->md5_ctx);
 
     return 0;
 }
@@ -1303,6 +1316,10 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
         thread_count = 0;
     s->executor = ff_vvc_executor_alloc(s, thread_count);
     if (!s->executor)
+        return AVERROR(ENOMEM);
+
+    s->md5_ctx = av_md5_alloc();
+    if (!s->md5_ctx)
         return AVERROR(ENOMEM);
 
     s->eos = 1;

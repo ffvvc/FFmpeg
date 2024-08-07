@@ -27,6 +27,7 @@
 #include "libavcodec/videodsp.h"
 #include "libavcodec/vvc.h"
 #include "libavcodec/h274.h"
+#include "libavutil/md5.h"
 
 #include "ps.h"
 #include "dsp.h"
@@ -223,6 +224,7 @@ typedef struct VVCContext {
 
     VVCParamSets ps;
     H274FilmGrainDatabase h274db;
+    struct AVMD5 *md5_ctx;
 
     int temporal_id;        ///< temporal_id_plus1 - 1
     int poc_tid0;
