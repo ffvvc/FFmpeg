@@ -27,6 +27,10 @@
 
 #include "libavutil/avassert.h"
 #include "libavutil/imgutils.h"
+#include "libavutil/intreadwrite.h"
+#include "libavutil/hash.h"
+#include "libavutil/pixdesc.h"
+#include "libavutil/mem.h"
 
 #include "h274.h"
 
@@ -790,3 +794,85 @@ static const int8_t R64T[64][64] = {
          17, -16,  15, -14,  13, -12,  11, -10,   9,  -8,   7,  -6,   4,  -3,   2,  -1,
     }
 };
+
+#define CAL_CHECKSUM(pixel) (checksum + ((pixel) ^ xor_mask)) & 0xFFFFFFFF
+static int verify_plane_checksum(const uint8_t *src, const int w, const int h, const int stride, const int ps, const uint8_t *expected)
+{
+    uint32_t checksum = 0;
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int xor_mask = (x & 0xFF) ^ (y & 0xFF) ^ (x >> 8) ^ (y >> 8);
+            checksum = CAL_CHECKSUM(src[x << ps]);
+            if (ps)
+                checksum = CAL_CHECKSUM(src[(x << ps) + 1]);
+        }
+        src += stride;
+    }
+
+    if (checksum != *(uint32_t*)expected)
+        return AVERROR_INVALIDDATA;
+    return 0;
+}
+
+static const uint8_t *get_plane_hash(const H274SEIPictureHash *h, const int plane)
+{
+    if (!h->hash_type)
+        return h->md5[plane];
+    if (h->hash_type == 1)
+        return (uint8_t*)&h->crc[plane];
+    return (uint8_t*)&h->checksum[plane];
+}
+
+static int verify_plane_hash(const int hash_type,
+    const uint8_t *src, const int w, const int h, const int stride,
+    const uint8_t *expected)
+{
+    const char *name[] = { "MD5", "CRC16_CCITT"};
+    struct AVHashContext *ctx;
+    uint8_t hash[AV_HASH_MAX_SIZE];
+
+    int err = av_hash_alloc(&ctx, name[hash_type]);
+    if (err < 0)
+        return err;
+
+    av_hash_init(ctx);
+    for (int j = 0; j < h; j++) {
+        av_hash_update(ctx, src, w);
+        src += stride;
+    }
+    av_hash_final(ctx, hash);
+    if (memcmp(hash, expected, av_hash_get_size(ctx)))
+        err = AVERROR_INVALIDDATA;
+
+    av_hash_freep(&ctx);
+    return err;
+}
+
+#define CHECKSUM 2
+
+int ff_h274_verify_picture_hash(const H274SEIPictureHash *hash,
+    const AVFrame *frame, const int coded_width, const int coded_height)
+{
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+    int err = 0;
+
+    if (!desc || hash->hash_type > CHECKSUM)
+        return AVERROR(EINVAL);
+
+    for (int i = 0; i < desc->nb_components; i++) {
+        const int w             = i ? (coded_width  >> desc->log2_chroma_w) : coded_width;
+        const int h             = i ? (coded_height >> desc->log2_chroma_h) : coded_height;
+        const int ps            = desc->comp[i].step - 1;
+        const uint8_t *expected = get_plane_hash(hash, i);
+
+        if (hash->hash_type != CHECKSUM)
+            err = verify_plane_hash(hash->hash_type, frame->data[i], w << ps, h, frame->linesize[i], expected);
+        else
+            err  = verify_plane_checksum(frame->data[i], w, h, frame->linesize[i], ps, expected);
+        if (err < 0)
+            goto fail;
+    }
+
+fail:
+    return err;
+}
