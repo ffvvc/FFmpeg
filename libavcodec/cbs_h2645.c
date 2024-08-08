@@ -2193,6 +2193,12 @@ static const SEIMessageTypeDescriptor cbs_sei_common_types[] = {
         sizeof(SEIRawFilmGrainCharacteristics),
         SEI_MESSAGE_RW(sei, film_grain_characteristics),
     },
+    {
+        SEI_TYPE_DISPLAY_ORIENTATION,
+        1, 0,
+        sizeof(SEIRawDisplayOrientation),
+        SEI_MESSAGE_RW(sei, display_orientation)
+    },
     SEI_MESSAGE_TYPE_END,
 };
 
