@@ -374,6 +374,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
         }
         if(EXTERNAL_AVX(cpu_flags)) {
             DEBLOCK_INIT(10);
+            c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_10_avx;
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(10);
@@ -390,6 +391,7 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
         }
         if(EXTERNAL_AVX(cpu_flags)) {
             DEBLOCK_INIT(12);
+            c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_12_avx;
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(12);
