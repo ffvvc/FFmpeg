@@ -1139,42 +1139,9 @@ cglobal vvc_v_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
     lea     src3strideq, [3 * strideq]
     lea            pixq, [pix0q + 4 * strideq]
 
-    movq             m0, [pix0q             ] ;  p1
-    movq             m1, [pix0q +   strideq] ;  p1
-    movq             m2, [pix0q + 2 * strideq] ;  p1
-    movq             m3, [pix0q + src3strideq] ;  p0
-    movq             m4, [pixq]                ;  q0
-    movq             m5, [pixq +     strideq]  ;  q1
-    movq             m6, [pixq + 2 * strideq]  ;  q2
-    movq             m7, [pixq + src3strideq]  ;  q3
-
-    pxor            m12, m12 ; zeros reg
-    punpcklbw        m0, m12
-    punpcklbw        m1, m12
-    punpcklbw        m2, m12
-    punpcklbw        m3, m12
-    punpcklbw        m4, m12
-    punpcklbw        m5, m12
-    punpcklbw        m6, m12
-    punpcklbw        m7, m12
-
-    TRANSPOSE8x8W     0, 1, 2, 3, 4, 5, 6, 7, 8
+    TRANSPOSE8x8B_LOAD  [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
     CHROMA_DEBLOCK_BODY 8, 1
-    TRANSPOSE8x8W     0, 1, 2, 3, 4, 5, 6, 7, 8
-
-    packuswb          m0, m1
-    packuswb          m2, m3
-    packuswb          m4, m5
-    packuswb          m6, m7
-
-    movh     [pix0q             ], m0
-    movhps   [pix0q +   strideq  ], m0
-    movh     [pix0q + 2 * strideq], m2
-    movhps   [pix0q + src3strideq], m2
-    movh     [pixq]               , m4
-    movhps   [pixq +     strideq] , m4
-    movh     [pixq + 2 * strideq] , m6
-    movhps   [pixq + src3strideq] , m6
+    TRANSPOSE8x8B_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
 
     .end_func:
     add rsp, 112
