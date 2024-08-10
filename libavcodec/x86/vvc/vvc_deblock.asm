@@ -743,7 +743,12 @@ ALIGN 16
     movu             m9, [tcptrq]
     psignw           m8, m9, [pw_m1];
 
+    movmskps         r14, m11
+    cmp              r14, 0
+    je              .end_weak_chroma
+
     WEAK_CHROMA     %1
+.end_weak_chroma:
 %endmacro
 
 ; input in m0 ... m7, beta in r2 tcs in r3. Output in m1...m6
