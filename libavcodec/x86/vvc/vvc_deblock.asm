@@ -394,10 +394,9 @@ ALIGN 16
 %endmacro
 
 ; m11 strong mask, m8/m9 -tc, tc
-; p3 to q3 in m0, m7 - clobbers p3
 %macro SPATIAL_ACTIVITY 2
-; if p == 1, then p3, p2 are p1 for spatial calc
-; clobber m10, m12, m13, clobber m11
+%if %2 == 0
+    ; if p == 1, then p3, p2 are p1 for spatial calc
     pxor            m10, m10
     movd            m11, [max_len_pq]
     punpcklbw       m11, m11, m10
@@ -407,28 +406,14 @@ ALIGN 16
  
     SHUFFLE_ON_SHIFT2 m13, m11
 
-%if %2 == 0
     movu      [rsp + 48], m0
     movu      [rsp + 64], m1
-
 
     movu             m12, m2
     movu             m13, m2
     MASKED_COPY      m0, m12
     MASKED_COPY      m1, m13
 %endif
-.end_len_pq_spatial_shift:
-
-    ; if max_len_q == 3, compute spatial activity to determine final length
-    pxor            m10, m10
-    movd            m11, [max_len_qq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
-
-    pcmpeqd         m11, [pd_3];
-
-    SHUFFLE_ON_SHIFT2 m13, m11
-
 ; load tc
 .load_tc:
     movu             m8, [tcq]
@@ -450,11 +435,23 @@ ALIGN 16
     pshuflw          m8, m8,  q2200
 .end_tc_load:
     movu         [tcptrq], m8
+
+    ; if max_len_q == 3, compute spatial activity to determine final length
+    pxor            m10, m10
+    movd            m11, [max_len_qq]
+    punpcklbw       m11, m11, m10
+    punpcklwd       m11, m11, m10
+
+    pcmpeqd         m11, [pd_3];
+    SHUFFLE_ON_SHIFT2 m13, m11
+
     movu         [spatial_maskq], m11
 
+    movmskps         r14, m11
+    cmp              r14, 0
+    je              .final_mask
 
 .tc25_calculation:
-    ; movu             m9, m8
     pmullw           m8, [pw_5]
     paddw            m8, [pw_1]
     psrlw            m8, 1          ; ((tc * 5 + 1) >> 1);
@@ -467,7 +464,6 @@ ALIGN 16
 
     pshufhw         m12, m12, q3300
     pshuflw         m12, m12, q3300
-    ; intentional fall through
 
 .tc25_mask:
     pcmpgtw          m15, m8, m12
@@ -529,7 +525,6 @@ ALIGN 16
     pand          m11, m15
 
 .beta3_comparison:
-    ; beta_3
     psubw           m12, m0, m3     ; p3 - p0
     ABS1            m12, m14        ; abs(p3 - p0)
 
@@ -550,7 +545,6 @@ ALIGN 16
     pand            m11, m13
 
 .final_mask:
-    ; final shift mask
     movu          m15, m11
     cmp           shiftd, 1
     je  .final_shift_mask
@@ -564,7 +558,6 @@ ALIGN 16
     pshufhw         m15, m15, q2301
     pshuflw         m15, m15, q2301
     pand            m11, m15
-
 .final_mask_end:
 
 .prep_clipping_masks:
@@ -575,19 +568,15 @@ ALIGN 16
 %if %2 == 0
     movu             m0, [rsp + 48]
     movu             m1, [rsp + 64]
-
-    movmskps               r14, m11
-    cmp                    r14, 0
-    je             .chroma_weak
-
 %endif
+
 %endmacro
 
 %macro ONE_SIDE_CHROMA 1
     ; strong one-sided
-    pand       m11, [rsp + 16]; p
-    ; p0
+    pand       m11, [rsp + 16] ; p
 
+    ; p0
     paddw          m12, m3, m4 ;      p0 + q0
     paddw          m12, m5     ;      p0 + q0 + q1
     paddw          m12, m6     ;      p0 + q0 + q1 + q2
@@ -645,11 +634,11 @@ ALIGN 16
     mov spatial_maskq, rsp
     sub rsp, 16
     mov tcptrq, rsp
-    sub rsp, 16  ; rsp + 32 = strong
+    sub rsp, 16  ; rsp + 64 = spatial activity storage
+    sub rsp, 16  ; rsp + 48 = spatial_activity storage
+    sub rsp, 16  ; rsp + 32 = strong mask
     sub rsp, 16  ; rsp + 16 = no_p
-    sub rsp, 16  ; rsp = no_q
-    sub rsp, 16  ; rsp = no_q
-    sub rsp, 16  ; rsp = no_q
+    sub rsp, 16  ; rsp      = no_q
     
     ; no_p
     pxor            m10, m10
@@ -660,11 +649,10 @@ ALIGN 16
     pcmpeqd         m11, m10      ; calculate p mask
     movmskps      no_pq, m11     ;
 
-
     SHUFFLE_ON_SHIFT m13, m11
     movu      [rsp + 16], m13
 
-;     ; load p
+    ; load max_len_q
     pxor            m10, m10
     movd            m11, [max_len_pq]
     punpcklbw       m11, m11, m10
@@ -680,7 +668,6 @@ ALIGN 16
     movu             [rsp + 16], m13
     movmskps         no_pq, m13
 
-    ; end p
     ; no_q
     pxor            m10, m10
     movd            m11, [no_qq]
@@ -748,6 +735,7 @@ ALIGN 16
     ONE_SIDE_CHROMA %1
 .end_one_side_chroma:
 %endif
+
 .chroma_weak:
     movu     m11, [spatial_maskq]
     pcmpeqd  m12, m12, m12
