@@ -1221,34 +1221,13 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
 
     CHROMA_DEBLOCK_BODY 8, 0
 
-    movq             m12, [pix0q + src3strideq] ;  p0
-    movq             m0,  [pixq]                ;  q0
-    movq             m14, [pixq +     strideq]  ;  q1
-    movq             m15, [pixq + 2 * strideq]  ;  q2
+    packuswb         m3, m4
+    packuswb         m5, m6
 
-    pxor             m11, m11
-    punpcklbw        m12, m11
-    punpcklbw        m0, m11
-    punpcklbw        m14, m11
-    punpcklbw        m15, m11
-
-    movu             m11, [rsp + 16]
-
-    MASKED_COPY   m12, m3
-
-    movu             m11, [rsp]
-
-    MASKED_COPY   m0, m4
-    MASKED_COPY   m14, m5
-    MASKED_COPY   m15, m6
-
-    packuswb         m12, m0
-    packuswb         m14, m15
-
-    movh     [pix0q + src3strideq], m12
-    movhps                  [pixq], m12
-    movh      [pixq +     strideq], m14 ; m4
-    movhps    [pixq + 2 * strideq], m14 ; m5
+    movh     [pix0q + src3strideq], m3
+    movhps                  [pixq], m3
+    movh      [pixq +     strideq], m5 ; m4
+    movhps    [pixq + 2 * strideq], m5 ; m5
 
     .end_func:
     add rsp, 112
