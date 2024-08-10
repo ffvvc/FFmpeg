@@ -118,6 +118,15 @@ static int decode_display_orientation(H2645SEIDisplayOrientation *h, const SEIRa
     return 0;
 }
 
+static int decode_content_light_level_info(H2645SEIContentLight *h, const SEIRawContentLightLevelInfo *s)
+{
+    h->present                     = 1;
+    h->max_content_light_level     = s->max_content_light_level;
+    h->max_pic_average_light_level = s->max_pic_average_light_level;
+
+    return 0;
+}
+
 int ff_vvc_decode_nal_sei(void *logctx, VVCSEI *s, const H266RawSEI *sei)
 {
     const VVCFrameContext *fc = logctx;
@@ -145,6 +154,9 @@ int ff_vvc_decode_nal_sei(void *logctx, VVCSEI *s, const H266RawSEI *sei)
 
         case SEI_TYPE_DISPLAY_ORIENTATION:
             return decode_display_orientation(&s->common.display_orientation, payload);
+
+        case SEI_TYPE_CONTENT_LIGHT_LEVEL_INFO:
+            return decode_content_light_level_info(&s->common.content_light, payload);
 
         default:
             av_log(fc->log_ctx, AV_LOG_DEBUG, "Skipped %s SEI %d\n",
