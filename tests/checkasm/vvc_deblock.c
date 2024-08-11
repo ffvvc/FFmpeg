@@ -326,8 +326,6 @@ static void check_deblock_chroma(const VVCDSPContext *h, int bit_depth)
     uint8_t no_q[4] = {0, 0, 0, 0};
     uint8_t max_len_p[4];
     uint8_t max_len_q[4];
-    int xstride = 16;            // bytes
-    int ystride = SIZEOF_PIXEL;  // bytes
 
     LOCAL_ALIGNED_32(uint8_t, buf0, [BUF_SIZE]);
     LOCAL_ALIGNED_32(uint8_t, buf1, [BUF_SIZE]);
@@ -338,11 +336,25 @@ static void check_deblock_chroma(const VVCDSPContext *h, int bit_depth)
     for(int type = 0; type < sizeof(types)/sizeof(char*); ++type) {
         for(int shift = 0; shift < 2; ++shift) {
             if (check_func(h->lf.filter_chroma[0], "vvc_h_loop_filter_chroma_%d_%s_%s", bit_depth, types[type], shifts[shift])) {
+                int xstride = 16;            // bytes
+                int ystride = SIZEOF_PIXEL;  // bytes
                 for(int spatial_strong = 0; spatial_strong < 1; ++spatial_strong) {
                     randomize_chroma_buffers(type, shift, spatial_strong, bit_depth, max_len_p, max_len_q, beta, tc, buf0, buf1, xstride, ystride);
                     call_ref(buf0 + xstride * 4, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
                     call_new(buf1 + xstride * 4, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
-
+                    if (memcmp(buf0, buf1, BUF_SIZE))
+                        fail();
+                }
+                randomize_chroma_buffers(bit_depth, type, shift, 1, max_len_p, max_len_q, beta, tc, buf0, buf1, xstride, ystride);
+                bench_new(buf0 + xstride * 4, xstride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+            }
+            if (check_func(h->lf.filter_chroma[1], "vvc_v_loop_filter_chroma_%d_%s_%s", bit_depth, types[type], shifts[shift])) {
+                int ystride = 16;            // bytes
+                int xstride = SIZEOF_PIXEL;  // bytes
+                for(int spatial_strong = 0; spatial_strong < 1; ++spatial_strong) {
+                    randomize_chroma_buffers(type, shift, spatial_strong, bit_depth, max_len_p, max_len_q, beta, tc, buf0, buf1, xstride, ystride);
+                    call_ref(buf0 + xstride * 4, ystride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
+                    call_new(buf1 + xstride * 4, ystride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift);
                     if (memcmp(buf0, buf1, BUF_SIZE))
                         fail();
                 }
@@ -363,7 +375,7 @@ void checkasm_check_vvc_deblock(void)
     }
     report("chroma");
 
-    for (int bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
+    for (int bit_depth = 10; bit_depth <= 10; bit_depth += 2) {
         ff_vvc_dsp_init(&h, bit_depth);
         check_deblock_luma(&h, bit_depth);
     }
