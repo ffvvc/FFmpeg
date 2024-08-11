@@ -160,10 +160,10 @@ SECTION .text
 %macro SHUFFLE_ON_SHIFT2 2
     cmp           shiftd, 1
     je           %%end
-    punpcklqdq       %2, %2, %2
-    pshufhw          %1, %2, q2222
-    pshuflw          %1, %1, q0000
-    movu             %2, %1
+    punpcklqdq       %1, %1, %1
+    pshufhw          %2, %1, q2222
+    pshuflw          %2, %2, q0000
+    movu             %1, %2
 %%end:
 %endmacro
 
@@ -287,7 +287,7 @@ ALIGN 16
 
     pcmpeqd         m11, [pd_1]
  
-    SHUFFLE_ON_SHIFT2 m13, m11
+    SHUFFLE_ON_SHIFT2 m11, m13
 
     movu      [rsp + 48], m0
     movu      [rsp + 64], m1
@@ -326,7 +326,7 @@ ALIGN 16
     punpcklwd       m11, m11, m10
 
     pcmpeqd         m11, [pd_3];
-    SHUFFLE_ON_SHIFT2 m13, m11
+    SHUFFLE_ON_SHIFT2 m11, m13
 
     movu         [spatial_maskq], m11
 
@@ -591,7 +591,7 @@ ALIGN 16
 
     pcmpeqd         m11, [pd_3]
 
-    SHUFFLE_ON_SHIFT2 m13, m11
+    SHUFFLE_ON_SHIFT2 m11, m13
 
     pand             m11, [spatial_maskq] ; p = 3 & spatial mask
     movmskps         r14, m11
