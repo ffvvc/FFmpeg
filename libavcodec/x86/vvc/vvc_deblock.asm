@@ -169,9 +169,6 @@ SECTION .text
 
 ALIGN 16
 %macro WEAK_CHROMA 1
-    movu             m15, m11
-    pand             m11, [rsp + 16]
-    
     psubw            m12, m4, m3 ; q0 - p0
     psubw            m13, m2, m5 ; p1 - q1
     psllw            m12, 2      ; << 2
