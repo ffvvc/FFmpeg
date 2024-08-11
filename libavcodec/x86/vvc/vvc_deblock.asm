@@ -19,8 +19,6 @@ cextern pw_8
 cextern pw_m1
 
 SECTION .text
-INIT_XMM sse2
-
 
 ; in: 8 rows of 8 bytes in %1..%8
 ; out: 8 rows of 8 words in m0..m7
@@ -171,7 +169,6 @@ INIT_XMM sse2
 
 ALIGN 16
 %macro WEAK_CHROMA 1
-    ; jmp       .end
     movu             m15, m11
     pand             m11, [rsp + 16]
     
@@ -194,7 +191,6 @@ ALIGN 16
     movu             m11, m12
     pand             m11, [rsp]
     MASKED_COPY       m4, m15
-    .end:
 %endmacro
 
 %macro CLIP_RESTORE 4  ; toclip, value, -tc, +tc
