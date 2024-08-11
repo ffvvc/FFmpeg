@@ -14,122 +14,13 @@ pw_5 :           times 8 dw  5
 pd_3 :           times 4 dd  3
 pd_1 :           times 4 dd 1
 
-
 cextern pw_4
 cextern pw_8
 cextern pw_m1
 
 SECTION .text
 INIT_XMM sse2
-; INIT_YMM avx2
 
-
-; in: 8 rows of 4 bytes in %4..%11
-; out: 4 rows of 8 words in m0..m3
-%macro TRANSPOSE4x8B_LOAD 8
-    movd             m0, %1
-    movd             m2, %2
-    movd             m1, %3
-    movd             m3, %4
-
-    punpcklbw        m0, m2
-    punpcklbw        m1, m3
-    punpcklwd        m0, m1
-
-    movd             m4, %5
-    movd             m6, %6
-    movd             m5, %7
-    movd             m3, %8
-
-    punpcklbw        m4, m6
-    punpcklbw        m5, m3
-    punpcklwd        m4, m5
-
-    punpckhdq        m2, m0, m4
-    punpckldq        m0, m4
-
-    pxor             m5, m5
-    punpckhbw        m1, m0, m5
-    punpcklbw        m0, m5
-    punpckhbw        m3, m2, m5
-    punpcklbw        m2, m5
-%endmacro
-
-; in: 4 rows of 8 words in m0..m3
-; out: 8 rows of 4 bytes in %1..%8
-%macro TRANSPOSE8x4B_STORE 8
-    packuswb         m0, m2
-    packuswb         m1, m3
-    SBUTTERFLY bw, 0, 1, 2
-    SBUTTERFLY wd, 0, 1, 2
-
-    movd             %1, m0
-    pshufd           m0, m0, 0x39
-    movd             %2, m0
-    pshufd           m0, m0, 0x39
-    movd             %3, m0
-    pshufd           m0, m0, 0x39
-    movd             %4, m0
-
-    movd             %5, m1
-    pshufd           m1, m1, 0x39
-    movd             %6, m1
-    pshufd           m1, m1, 0x39
-    movd             %7, m1
-    pshufd           m1, m1, 0x39
-    movd             %8, m1
-%endmacro
-
-; in: 8 rows of 4 words in %4..%11
-; out: 4 rows of 8 words in m0..m3
-%macro TRANSPOSE4x8W_LOAD 8
-    movq             m0, %1
-    movq             m2, %2
-    movq             m1, %3
-    movq             m3, %4
-
-    punpcklwd        m0, m2
-    punpcklwd        m1, m3
-    punpckhdq        m2, m0, m1
-    punpckldq        m0, m1
-
-    movq             m4, %5
-    movq             m6, %6
-    movq             m5, %7
-    movq             m3, %8
-
-    punpcklwd        m4, m6
-    punpcklwd        m5, m3
-    punpckhdq        m6, m4, m5
-    punpckldq        m4, m5
-
-    punpckhqdq       m1, m0, m4
-    punpcklqdq       m0, m4
-    punpckhqdq       m3, m2, m6
-    punpcklqdq       m2, m6
-
-%endmacro
-
-; in: 4 rows of 8 words in m0..m3
-; out: 8 rows of 4 words in %1..%8
-%macro TRANSPOSE8x4W_STORE 9
-    TRANSPOSE4x4W     0, 1, 2, 3, 4
-
-    pxor             m5, m5; zeros reg
-    CLIPW            m0, m5, %9
-    CLIPW            m1, m5, %9
-    CLIPW            m2, m5, %9
-    CLIPW            m3, m5, %9
-
-    movq             %1, m0
-    movhps           %2, m0
-    movq             %3, m1
-    movhps           %4, m1
-    movq             %5, m2
-    movhps           %6, m2
-    movq             %7, m3
-    movhps           %8, m3
-%endmacro
 
 ; in: 8 rows of 8 bytes in %1..%8
 ; out: 8 rows of 8 words in m0..m7
@@ -175,8 +66,7 @@ INIT_XMM sse2
     punpckhbw        m7, m13; 7
 %endmacro
 
-
-; in: 8 rows of 8 words in m0..m8
+; in: 8 rows of 8 words in m0..m7
 ; out: 8 rows of 8 bytes in %1..%8
 %macro TRANSPOSE8x8B_STORE 8
     packuswb         m0, m4
