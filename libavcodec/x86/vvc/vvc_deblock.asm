@@ -43,25 +43,25 @@ SECTION .text
     punpcklwd        m9, m4, m5
     punpckhwd        m4, m5
 
-    punpckldq        m1, m3, m9;  0, 1
-    punpckhdq        m3, m9;  2, 3
+    punpckldq        m1, m3, m9 ;  0, 1
+    punpckhdq        m3, m9     ;  2, 3
 
-    punpckldq        m5, m7, m4;  4, 5
-    punpckhdq        m7, m4;  6, 7
+    punpckldq        m5, m7, m4 ;  4, 5
+    punpckhdq        m7, m4     ;  6, 7
 
     pxor            m13, m13
 
-    punpcklbw        m0, m1, m13; 0 in 16 bit
-    punpckhbw        m1, m13; 1 in 16 bit
+    punpcklbw        m0, m1, m13 ; 0 in 16 bit
+    punpckhbw        m1, m13     ; 1 in 16 bit
 
-    punpcklbw        m2, m3, m13; 2
-    punpckhbw        m3, m13; 3
+    punpcklbw        m2, m3, m13 ; 2
+    punpckhbw        m3, m13     ; 3
 
-    punpcklbw        m4, m5, m13; 4
-    punpckhbw        m5, m13; 5
+    punpcklbw        m4, m5, m13 ; 4
+    punpckhbw        m5, m13     ; 5
 
-    punpcklbw        m6, m7, m13; 6
-    punpckhbw        m7, m13; 7
+    punpcklbw        m6, m7, m13 ; 6
+    punpckhbw        m7, m13     ; 7
 %endmacro
 
 ; in: 8 rows of 8 words in m0..m7
@@ -86,18 +86,18 @@ SECTION .text
 ; in: 8 rows of 8 words in %1..%8
 ; out: 8 rows of 8 words in m0..m7
 %macro TRANSPOSE8x8W_LOAD 8
-    movu           m0, %1
-    movu           m1, %2
-    movu           m2, %3
-    movu           m3, %4
-    movu           m4, %5
-    movu           m5, %6
-    movu           m6, %7
-    movu           m7, %8
+    movu             m0, %1
+    movu             m1, %2
+    movu             m2, %3
+    movu             m3, %4
+    movu             m4, %5
+    movu             m5, %6
+    movu             m6, %7
+    movu             m7, %8
     TRANSPOSE8x8W     0, 1, 2, 3, 4, 5, 6, 7, 8
 %endmacro
 
-; in: 8 rows of 8 words in m0..m8
+; in: 8 rows of 8 words in m0..m7
 ; out: 8 rows of 8 words in %1..%8
 %macro TRANSPOSE8x8W_STORE 9
     TRANSPOSE8x8W     0, 1, 2, 3, 4, 5, 6, 7, 8
@@ -112,14 +112,14 @@ SECTION .text
     CLIPW            m6, m8, %9
     CLIPW            m7, m8, %9
 
-    movu           %1, m0
-    movu           %2, m1
-    movu           %3, m2
-    movu           %4, m3
-    movu           %5, m4
-    movu           %6, m5
-    movu           %7, m6
-    movu           %8, m7
+    movu             %1, m0
+    movu             %2, m1
+    movu             %3, m2
+    movu             %4, m3
+    movu             %5, m4
+    movu             %6, m5
+    movu             %7, m6
+    movu             %8, m7
 %endmacro
 
 
@@ -139,7 +139,7 @@ SECTION .text
 ; mask in %3, will be clobbered
 %macro MASKED_COPY2 3
     pand             %2, %3 ; and mask
-    pandn            %3, %1; and -mask
+    pandn            %3, %1 ; and -mask
     por              %2, %3
     movu             %1, %2
 %endmacro
@@ -158,8 +158,8 @@ SECTION .text
 %endmacro
 
 %macro SHUFFLE_ON_SHIFT2 2
-    cmp           shiftd, 1
-    je           %%end
+    cmp          shiftd, 1
+    je            %%end
     punpcklqdq       %1, %1, %1
     pshufhw          %2, %1, q2222
     pshuflw          %2, %2, q0000
@@ -191,89 +191,89 @@ ALIGN 16
 %endmacro
 
 %macro CLIP_RESTORE 4  ; toclip, value, -tc, +tc
-    paddw           %3, %2
-    paddw           %4, %2
-    CLIPW           %1, %3, %4
-    psubw           %3, %2
-    psubw           %4, %2
+    paddw             %3, %2
+    paddw             %4, %2
+    CLIPW             %1, %3, %4
+    psubw             %3, %2
+    psubw             %4, %2
 %endmacro
 
 %macro STRONG_CHROMA 1
-    cmp         no_pq, 0
-    je    .end_p_calcs
-    pand          m11, [rsp + 16] ; which p
+    cmp            no_pq, 0
+    je      .end_p_calcs
+    pand             m11, [rsp + 16] ; which p
 
     ; p0
-    paddw         m12, m0, m1
-    paddw         m12, m2
-    paddw         m12, m3
-    paddw         m12, m4
-    paddw         m12, [pw_4]
-    movu          m15, m12      ; p3 +  p2 + p1 +  p0 + q0 + 4
-    paddw         m12, m3
-    paddw         m12, m5       ; q1
-    paddw         m12, m6       ; q2
-    psraw         m12, 3
+    paddw            m12, m0, m1
+    paddw            m12, m2
+    paddw            m12, m3
+    paddw            m12, m4
+    paddw            m12, [pw_4]
+    movu             m15, m12      ; p3 +  p2 + p1 +  p0 + q0 + 4
+    paddw            m12, m3
+    paddw            m12, m5       ; q1
+    paddw            m12, m6       ; q2
+    psraw            m12, 3
 
     ; p1
-    paddw         m13, m15, m0 ; + p3
-    paddw         m13, m2      ; + p1
-    paddw         m13, m5      ; + q1
-    psraw         m13, 3
-    CLIP_RESTORE  m13, m2, m8, m9
+    paddw            m13, m15, m0     ; + p3
+    paddw            m13, m2          ; + p1
+    paddw            m13, m5          ; + q1
+    psraw            m13, 3
+    CLIP_RESTORE     m13, m2, m8, m9
 
     ; p2
-    psllw         m14, m0, 1 ; 2*p3
-    paddw         m14, m15
-    paddw         m14, m1    ; + p2
-    psraw         m14, 3
+    psllw            m14, m0, 1       ; 2*p3
+    paddw            m14, m15
+    paddw            m14, m1          ; + p2
+    psraw            m14, 3
 .end_p_calcs:
 
     ; q0
-    cmp         no_qq, 0
-    je    .end_q_calcs
-    movu          m11, [rsp + 32]; strong 
-    pand          m11, [rsp ]    ; strong & q
+    cmp            no_qq, 0
+    je      .end_q_calcs
+    movu             m11, [rsp + 32]; strong
+    pand             m11, [rsp ]    ; strong & q
 
-    paddw         m15, m3, m4    ; p0 + q0
+    paddw            m15, m3, m4    ; p0 + q0
+
+    CLIP_RESTORE     m12, m3, m8, m9
+    MASKED_COPY       m3, m12        ; p0
+
+    paddw            m15, m5        ; + q1
+    paddw            m15, m6        ; + q2
+    paddw            m15, m7        ; + q3
+    paddw            m15, [pw_4]
+    movu             m12, m15       ; p0 + q0 + q1 + q2 + q3 + 4
+    paddw            m12, m1        ; + p2  -- p2 is unused after this point
+
+    CLIP_RESTORE     m14, m1, m8, m9
+    MASKED_COPY       m1, m14       ; p2
     
-    CLIP_RESTORE  m12, m3, m8, m9
-    MASKED_COPY   m3, m12        ; p0
-
-    paddw         m15, m5        ; + q1
-    paddw         m15, m6        ; + q2
-    paddw         m15, m7        ; + q3
-    paddw         m15, [pw_4]
-    movu          m12, m15       ; p0 + q0 + q1 + q2 + q3 + 4
-    paddw         m12, m1        ; + p2  -- p2 is unused after this point
-
-    CLIP_RESTORE  m14, m1, m8, m9
-    MASKED_COPY   m1, m14 ; p2
-    
-    paddw         m12, m2        ; + p1
-    paddw         m12, m4        ; + q0
-    psraw         m12, 3
-    CLIP_RESTORE  m12, m4, m8, m9
+    paddw            m12, m2        ; + p1
+    paddw            m12, m4        ; + q0
+    psraw            m12, 3
+    CLIP_RESTORE     m12, m4, m8, m9
 
     ; q1
-    paddw         m14, m2, m15; p0 + ...   + p1
-    paddw         m14, m5     ; + q1
-    paddw         m14, m7     ; + q3
-    psraw         m14, 3
-    CLIP_RESTORE  m14, m5, m8, m9
+    paddw            m14, m2, m15; p0 + ...   + p1
+    paddw            m14, m5     ; + q1
+    paddw            m14, m7     ; + q3
+    psraw            m14, 3
+    CLIP_RESTORE     m14, m5, m8, m9
 
     ; q2
     ; clobber m15 - sum is fully used
-    paddw         m15, m7  ; + q3
-    paddw         m15, m7  ; + q3
-    paddw         m15, m6  ; + q2
-    psraw         m15, 3
-    CLIP_RESTORE  m15, m6, m8, m9
+    paddw            m15, m7  ; + q3
+    paddw            m15, m7  ; + q3
+    paddw            m15, m6  ; + q2
+    psraw            m15, 3
+    CLIP_RESTORE     m15, m6, m8, m9
 
-    MASKED_COPY    m2, m13  ; p1
-    MASKED_COPY    m4, m12  ; q0
-    MASKED_COPY    m5, m14  ; q1
-    MASKED_COPY    m6, m15  ; q2
+    MASKED_COPY       m2, m13  ; p1
+    MASKED_COPY       m4, m12  ; q0
+    MASKED_COPY       m5, m14  ; q1
+    MASKED_COPY       m6, m15  ; q2
 .end_q_calcs:
 %endmacro
 
@@ -281,167 +281,167 @@ ALIGN 16
 %macro SPATIAL_ACTIVITY 2
 %if %2 == 0
     ; if p == 1, then p3, p2 are p1 for spatial calc
-    pxor            m10, m10
-    movd            m11, [max_len_pq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
+    pxor              m10, m10
+    movd              m11, [max_len_pq]
+    punpcklbw         m11, m11, m10
+    punpcklwd         m11, m11, m10
 
-    pcmpeqd         m11, [pd_1]
- 
+    pcmpeqd           m11, [pd_1]
+
     SHUFFLE_ON_SHIFT2 m11, m13
 
-    movu      [rsp + 48], m0
-    movu      [rsp + 64], m1
+    movu       [rsp + 48], m0
+    movu       [rsp + 64], m1
 
-    movu             m12, m2
-    movu             m13, m2
-    MASKED_COPY      m0, m12
-    MASKED_COPY      m1, m13
+    movu              m12, m2
+    movu              m13, m2
+    MASKED_COPY        m0, m12
+    MASKED_COPY        m1, m13
 %endif
 ; load tc
 .load_tc:
-    movu             m8, [tcq]
+    movu               m8, [tcq]
 %if %1 == 8
-    paddw            m8, [pw_2]
-    psrlw            m8, 2
+    paddw              m8, [pw_2]
+    psrlw              m8, 2
 %elif %1 == 12
-    psllw            m8, %1 - 10;
+    psllw              m8, %1 - 10;
 %endif
-    cmp           shiftd, 1
-    je   .tc_load_shift
+    cmp             shiftd, 1
+    je      .tc_load_shift
 
-    punpcklqdq       m8, m8, m8
-    pshufhw          m8, m8, q2222
-    pshuflw          m8, m8, q0000
-    jmp     .end_tc_load
+    punpcklqdq          m8, m8, m8
+    pshufhw             m8, m8, q2222
+    pshuflw             m8, m8, q0000
+    jmp       .end_tc_load
 .tc_load_shift:
-    pshufhw          m8, m8,  q2200
-    pshuflw          m8, m8,  q2200
+    pshufhw             m8, m8,  q2200
+    pshuflw             m8, m8,  q2200
 .end_tc_load:
-    movu         [tcptrq], m8
+    movu          [tcptrq], m8
 
     ; if max_len_q == 3, compute spatial activity to determine final length
-    pxor            m10, m10
-    movd            m11, [max_len_qq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
+    pxor               m10, m10
+    movd               m11, [max_len_qq]
+    punpcklbw          m11, m11, m10
+    punpcklwd          m11, m11, m10
 
-    pcmpeqd         m11, [pd_3];
-    SHUFFLE_ON_SHIFT2 m11, m13
+    pcmpeqd            m11, [pd_3];
+    SHUFFLE_ON_SHIFT2  m11, m13
 
-    movu         [spatial_maskq], m11
+    movu   [spatial_maskq], m11
 
-    movmskps         r14, m11
-    cmp              r14, 0
-    je              .final_mask
+    movmskps           r14, m11
+    cmp                r14, 0
+    je         .final_mask
 
 .tc25_calculation:
-    pmullw           m8, [pw_5]
-    paddw            m8, [pw_1]
-    psrlw            m8, 1          ; ((tc * 5 + 1) >> 1);
+    pmullw              m8, [pw_5]
+    paddw               m8, [pw_1]
+    psrlw               m8, 1          ; ((tc * 5 + 1) >> 1);
 
-    psubw           m12, m3, m4     ;      p0 - q0
-    ABS1            m12, m14        ; abs(p0 - q0)
+    psubw              m12, m3, m4     ;      p0 - q0
+    ABS1               m12, m14        ; abs(p0 - q0)
 
-    cmp           shiftd, 1
+    cmp             shiftd, 1
     je  .tc25_mask
 
-    pshufhw         m12, m12, q3300
-    pshuflw         m12, m12, q3300
+    pshufhw            m12, m12, q3300
+    pshuflw            m12, m12, q3300
 
 .tc25_mask:
-    pcmpgtw          m15, m8, m12
-    pand             m11, m15
+    pcmpgtw            m15, m8, m12
+    pand               m11, m15
 
 ; dsam
-    psllw            m9, m2, 1
-    psubw           m10, m1, m9
-    paddw           m10, m3
-    ABS1            m10, m12
+    psllw               m9, m2, 1
+    psubw              m10, m1, m9
+    paddw              m10, m3
+    ABS1               m10, m12
 
-    psllw            m9, m5, 1
-    psubw           m12, m6, m9
-    paddw           m12, m4
-    ABS1            m12, m13
+    psllw               m9, m5, 1
+    psubw              m12, m6, m9
+    paddw              m12, m4
+    ABS1               m12, m13
 
-    paddw           m9, m10, m12  ; m9 spatial activity sum for all lines
+    paddw               m9, m10, m12  ; m9 spatial activity sum for all lines
 ; end dsam
 
 ; Load beta
-    movu             m12, [betaq]
+    movu               m12, [betaq]
 %if %1 > 8
-    psllw            m12, %1 - 8   ; replace with bit_depth
+    psllw              m12, %1 - 8   ; replace with bit_depth
 %endif
 
-    cmp           shiftd, 1
-    je           .beta_load_shift
+    cmp             shiftd, 1
+    je    .beta_load_shift
 
-    punpcklqdq      m12,  m12, m12
-    pshufhw         m13,  m12, q2222
-    pshuflw         m13, m13, q0000
+    punpcklqdq         m12,  m12, m12
+    pshufhw            m13,  m12, q2222
+    pshuflw            m13, m13, q0000
 
 ; dsam calcs
-    pshufhw         m14,  m9, q0033
-    pshuflw         m14, m14, q0033
-    pshufhw          m9,  m9, q3300
-    pshuflw          m9,  m9, q3300
+    pshufhw            m14,  m9, q0033
+    pshuflw            m14, m14, q0033
+    pshufhw             m9,  m9, q3300
+    pshuflw             m9,  m9, q3300
 
     jmp  .spatial_activity
 
 .beta_load_shift:
-    pshufhw         m13, m12,  q2200
-    pshuflw         m13, m13,  q2200
+    pshufhw            m13, m12,  q2200
+    pshuflw            m13, m13,  q2200
 
-    movu            m14, m9
-    pshufhw          m9,  m9, q2301
-    pshuflw          m9,  m9, q2301
+    movu               m14, m9
+    pshufhw             m9,  m9, q2301
+    pshuflw             m9,  m9, q2301
 
 .spatial_activity:
-    paddw            m14, m9          ; d0 + d3, d0 + d3, d0 + d3, .....
-    pcmpgtw          m15, m13, m14    ; beta > d0 + d3, d0 + d3 (next block)
-    pand             m11, m15         ; save filtering and or at the end
+    paddw               m14, m9          ; d0 + d3, d0 + d3, d0 + d3, ...
+    pcmpgtw             m15, m13, m14    ; beta > d0 + d3, d0 + d3 (next block)
+    pand                m11, m15         ; save filtering and or at the end
 
     ; beta_2
-    psraw          m15, m13, 2   ; beta >> 2
-    psllw           m8, m9, 1    ;  d0, d1, d2, d3, ...
+    psraw               m15, m13, 2   ; beta >> 2
+    psllw                m8, m9, 1    ;  d0, d1, d2, d3, ...
 
-    pcmpgtw       m15, m8        ; d0 ..  < beta_2, d0... < beta_2, d3... <
-    pand          m11, m15
+    pcmpgtw             m15, m8       ; d0 ..  < beta_2, d0... < beta_2, d3... <
+    pand                m11, m15
 
 .beta3_comparison:
-    psubw           m12, m0, m3     ; p3 - p0
-    ABS1            m12, m14        ; abs(p3 - p0)
+    psubw               m12, m0, m3  ; p3 - p0
+    ABS1                m12, m14     ; abs(p3 - p0)
 
-    psubw           m15, m7, m4     ; q3 - q0
-    ABS1            m15, m14        ; abs(q3 - q0)
+    psubw               m15, m7, m4  ; q3 - q0
+    ABS1                m15, m14     ; abs(q3 - q0)
 
-    paddw           m12, m15        ; abs(p3 - p0) + abs(q3 - q0)
+    paddw               m12, m15     ; abs(p3 - p0) + abs(q3 - q0)
 
-    psraw           m13, 3          ; beta >> 3
+    psraw               m13, 3       ; beta >> 3
 
-    cmp           shiftd, 1
+    cmp              shiftd, 1
     je    .beta3_no_first_shuffle
 
-    pshufhw         m12, m12, q3300
-    pshuflw         m12, m12, q3300
+    pshufhw             m12, m12, q3300
+    pshuflw             m12, m12, q3300
 .beta3_no_first_shuffle:
-    pcmpgtw         m13, m12
-    pand            m11, m13
+    pcmpgtw             m13, m12
+    pand                m11, m13
 
 .final_mask:
-    movu          m15, m11
-    cmp           shiftd, 1
-    je  .final_shift_mask
+    movu                m15, m11
+    cmp              shiftd, 1
+    je    .final_shift_mask
 
-    pshufhw         m15, m15, q0033
-    pshuflw         m15, m15, q0033
-    pand            m11, m15
-    jmp   .final_mask_end
+    pshufhw             m15, m15, q0033
+    pshuflw             m15, m15, q0033
+    pand                m11, m15
+    jmp     .final_mask_end
 
 .final_shift_mask:
-    pshufhw         m15, m15, q2301
-    pshuflw         m15, m15, q2301
-    pand            m11, m15
+    pshufhw             m15, m15, q2301
+    pshuflw             m15, m15, q2301
+    pand                m11, m15
 .final_mask_end:
 
 .prep_clipping_masks:
