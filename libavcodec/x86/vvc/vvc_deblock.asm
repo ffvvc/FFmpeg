@@ -86,14 +86,14 @@ SECTION .text
 ; in: 8 rows of 8 words in %1..%8
 ; out: 8 rows of 8 words in m0..m7
 %macro TRANSPOSE8x8W_LOAD 8
-    movdqu           m0, %1
-    movdqu           m1, %2
-    movdqu           m2, %3
-    movdqu           m3, %4
-    movdqu           m4, %5
-    movdqu           m5, %6
-    movdqu           m6, %7
-    movdqu           m7, %8
+    movu           m0, %1
+    movu           m1, %2
+    movu           m2, %3
+    movu           m3, %4
+    movu           m4, %5
+    movu           m5, %6
+    movu           m6, %7
+    movu           m7, %8
     TRANSPOSE8x8W     0, 1, 2, 3, 4, 5, 6, 7, 8
 %endmacro
 
@@ -112,14 +112,14 @@ SECTION .text
     CLIPW            m6, m8, %9
     CLIPW            m7, m8, %9
 
-    movdqu           %1, m0
-    movdqu           %2, m1
-    movdqu           %3, m2
-    movdqu           %4, m3
-    movdqu           %5, m4
-    movdqu           %6, m5
-    movdqu           %7, m6
-    movdqu           %8, m7
+    movu           %1, m0
+    movu           %2, m1
+    movu           %3, m2
+    movu           %4, m3
+    movu           %5, m4
+    movu           %6, m5
+    movu           %7, m6
+    movu           %8, m7
 %endmacro
 
 
@@ -1156,7 +1156,6 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     movu    [pixq + 2 * strideq], m6 ;
     movu    [pixq + src3strideq], m7  ;  q3
 RET
-
 %endmacro
 
 INIT_XMM avx
