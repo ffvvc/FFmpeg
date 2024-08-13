@@ -231,7 +231,7 @@ ALIGN 16
 
     ; q0
     cmp         no_qq, 0
-    je    .end_p_calcs
+    je    .end_q_calcs
     movu          m11, [rsp + 32]; strong 
     pand          m11, [rsp ]    ; strong & q
 
@@ -274,6 +274,7 @@ ALIGN 16
     MASKED_COPY    m4, m12  ; q0
     MASKED_COPY    m5, m14  ; q1
     MASKED_COPY    m6, m15  ; q2
+.end_q_calcs:
 %endmacro
 
 ; m11 strong mask, m8/m9 -tc, tc
@@ -456,8 +457,7 @@ ALIGN 16
 %endmacro
 
 %macro ONE_SIDE_CHROMA 1
-    ; strong one-sided
-    pand       m11, [rsp + 16] ; p
+    pand       m11, [rsp + 16] ; no_p
 
     ; p0
     paddw          m12, m3, m4 ;      p0 + q0
@@ -475,13 +475,12 @@ ALIGN 16
     MASKED_COPY    m3, m12  ; m2
 
     ; q0
-    movu         m11, [rsp + 32]
-    pand         m11, [rsp]
+    movu         m11, [rsp + 32] ; strong mask
+    pand         m11, [rsp]      ; no_q
     
     paddw          m12, m2, m15 ; + p1
     paddw          m12, m4      ;  q0
     paddw          m12, m7      ; q3
-
     psrlw          m12, 3
 
     CLIP_RESTORE   m12, m4, m8, m9
@@ -490,7 +489,6 @@ ALIGN 16
     psllw          m13, m7, 1 ; 2*q3
     paddw          m13, m15
     paddw          m13, m5   ; q1
-
     psrlw          m13, 3
 
     CLIP_RESTORE   m13, m5, m8, m9
@@ -501,7 +499,6 @@ ALIGN 16
     paddw          m14, m15    ;
     paddw          m14, m6  ; q2
     psubw          m14, m2  ; sub p1
-
     psrlw          m14, 3
 
     CLIP_RESTORE   m14, m6, m8, m9
@@ -530,7 +527,7 @@ ALIGN 16
     punpcklwd       m11, m11, m10
 
     pcmpeqd         m11, m10      ; calculate p mask
-    movmskps      no_pq, m11     ;
+    movmskps      no_pq, m11     
 
     SHUFFLE_ON_SHIFT m13, m11
     movu      [rsp + 16], m13
@@ -632,6 +629,7 @@ ALIGN 16
 
     WEAK_CHROMA     %1
 .end_weak_chroma:
+    add rsp, 112
 %endmacro
 
 ; input in m0 ... m7, beta in r2 tcs in r3. Output in m1...m6
@@ -1019,8 +1017,6 @@ cglobal vvc_v_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
     CHROMA_DEBLOCK_BODY 8, 1
     TRANSPOSE8x8B_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
 
-    .end_func:
-    add rsp, 112
     RET
 
 cglobal vvc_v_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
@@ -1033,8 +1029,6 @@ cglobal vvc_v_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     CHROMA_DEBLOCK_BODY 10, 1
     TRANSPOSE8x8W_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq], [pw_pixel_max_10]
 
-    .end_func:
-    add rsp, 112
     RET
 
 cglobal vvc_v_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
@@ -1045,8 +1039,6 @@ cglobal vvc_v_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     TRANSPOSE8x8W_LOAD  [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
     CHROMA_DEBLOCK_BODY 12, 1
     TRANSPOSE8x8W_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq], [pw_pixel_max_12]
-
-    add rsp, 112
 
     RET
 
@@ -1091,8 +1083,6 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
     movh     [pixq + 2 * strideq] , m6
     movhps   [pixq + src3strideq] , m6
 
-    .end_func:
-    add rsp, 112
 RET
 
 cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
@@ -1130,8 +1120,6 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     movu    [pixq + 2 * strideq], m6 ;
     movu    [pixq + src3strideq], m7  ;  q3
 
-    .end_func:
-    add rsp, 112
 RET
 
 cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
@@ -1167,10 +1155,8 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     movu    [pixq +     strideq], m5 ;
     movu    [pixq + 2 * strideq], m6 ;
     movu    [pixq + src3strideq], m7  ;  q3
-
-    .end_func:
-    add rsp, 112
 RET
+
 %endmacro
 
 INIT_XMM avx
