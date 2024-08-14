@@ -33,19 +33,10 @@
 #include "libavcodec/vvc.h"
 #include "libavcodec/h274.h"
 
-typedef struct VVCSEIPictureHash {
-    int present;
-    union {
-        uint8_t  md5[3][16];
-        uint16_t crc[3];
-        uint32_t checksum[3];
-    };
-    uint8_t hash_type;
-} VVCSEIPictureHash;
-
 typedef struct VVCSEI {
     H2645SEI common;
     H274SEIPictureHash picture_hash;
+    H274SEIFrameFieldInfo frame_field_info;
 } VVCSEI;
 
 int ff_vvc_decode_nal_sei(void *logctx, VVCSEI *s, const H266RawSEI *sei);
