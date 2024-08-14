@@ -36,6 +36,7 @@
 typedef struct VVCSEI {
     H2645SEI common;
     H274SEIPictureHash picture_hash;
+    H274SEIFrameFieldInfo frame_field_info;
 } VVCSEI;
 
 int ff_vvc_decode_nal_sei(void *logctx, VVCSEI *s, const H266RawSEI *sei);
