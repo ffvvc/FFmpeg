@@ -1007,39 +1007,34 @@ ALIGN 16
 %endmacro
 
 %macro LOOP_FILTER_CHROMA 0
-cglobal vvc_v_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
-    mov          pix0q, pixq
-    sub           pix0q, 4
-    lea     src3strideq, [3 * strideq]
-    lea            pixq, [pix0q + 4 * strideq]
-
-    TRANSPOSE8x8B_LOAD  [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
+cglobal vvc_v_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, r3stride, spatial_mask, tcptr
+    sub            pixq, 4
+    lea       r3strideq, [3*strideq]
+    mov           pix0q, pixq
+    add            pixq, r3strideq
+    TRANSPOSE8x8B_LOAD  PASS8ROWS(pix0q, pixq, strideq, r3strideq)
     CHROMA_DEBLOCK_BODY 8, 1
-    TRANSPOSE8x8B_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
-
+    TRANSPOSE8x8B_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq)
     RET
 
-cglobal vvc_v_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
-    mov          pix0q, pixq
-    sub           pix0q, 8
-    lea     src3strideq, [3 * strideq]
-    lea            pixq, [pix0q + 4 * strideq]
-
-    TRANSPOSE8x8W_LOAD  [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
+cglobal vvc_v_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, r3stride, spatial_mask, tcptr
+    sub            pixq, 8
+    lea       r3strideq, [3*strideq]
+    mov           pix0q, pixq
+    add            pixq, r3strideq
+    TRANSPOSE8x8W_LOAD  PASS8ROWS(pix0q, pixq, strideq, r3strideq)
     CHROMA_DEBLOCK_BODY 10, 1
-    TRANSPOSE8x8W_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq], [pw_pixel_max_10]
-
+    TRANSPOSE8x8W_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq), [pw_pixel_max_10]
     RET
 
-cglobal vvc_v_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
-    mov          pix0q, pixq
-    sub           pix0q, 8
-    lea     src3strideq, [3 * strideq]
-    lea            pixq, [pix0q + 4 * strideq]
-    TRANSPOSE8x8W_LOAD  [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq]
+cglobal vvc_v_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, r3stride, spatial_mask, tcptr
+    sub            pixq, 8
+    lea       r3strideq, [3*strideq]
+    mov           pix0q, pixq
+    add            pixq, r3strideq
+    TRANSPOSE8x8W_LOAD  PASS8ROWS(pix0q, pixq, strideq, r3strideq)
     CHROMA_DEBLOCK_BODY 12, 1
-    TRANSPOSE8x8W_STORE [pix0q], [pix0q + strideq], [pix0q + 2 * strideq], [pix0q + src3strideq], [pixq], [pixq + strideq], [pixq + 2 * strideq], [pixq + src3strideq], [pw_pixel_max_12]
-
+    TRANSPOSE8x8W_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq), [pw_pixel_max_12]
     RET
 
 cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
