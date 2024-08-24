@@ -122,26 +122,22 @@ SECTION .text
     movu             %8, m7
 %endmacro
 
-
 ; in: %2 clobbered
 ; out: %1
-; mask in m11
-%macro MASKED_COPY 2
+; mask in %3, will be clobbered
+%macro MASKED_COPY2 3
 %ifnum sizeof%1
-    PBLENDVB         %1, %2, m11
+    PBLENDVB         %1, %2, %3
 %else
-    vpmaskmovd       %1, m11, %2
+    vpmaskmovd       %1, %3, %2
 %endif
 %endmacro
 
 ; in: %2 clobbered
 ; out: %1
-; mask in %3, will be clobbered
-%macro MASKED_COPY2 3
-    pand             %2, %3 ; and mask
-    pandn            %3, %1 ; and -mask
-    por              %2, %3
-    movu             %1, %2
+; mask in m11
+%macro MASKED_COPY 2
+    MASKED_COPY2 %1, %2, m11
 %endmacro
 
 %macro SHUFFLE_ON_SHIFT 2 ; dst, src
