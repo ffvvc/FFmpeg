@@ -180,7 +180,7 @@ ALIGN 16
     CLIPW            m13, m8, m9
     paddw            m14, m3, m13 ; p0 + delta0
     psubw            m15, m4, m13 ; q0 - delta0
-    
+
     movu             m12, m11
     pand             m11, [rsp + 16]
     MASKED_COPY       m3, m14
@@ -249,7 +249,7 @@ ALIGN 16
 
     CLIP_RESTORE     m14, m1, m8, m9
     MASKED_COPY       m1, m14       ; p2
-    
+
     paddw            m12, m2        ; + p1
     paddw            m12, m4        ; + q0
     psraw            m12, 3
@@ -446,7 +446,7 @@ ALIGN 16
 
 .prep_clipping_masks:
     movu         [spatial_maskq], m11
-    movu                      m9, [tcptrq] 
+    movu                      m9, [tcptrq]
     psignw                    m8, m9, [pw_m1];
 
 %if %2 == 0
@@ -477,7 +477,7 @@ ALIGN 16
     ; q0
     movu         m11, [rsp + 32] ; strong mask
     pand         m11, [rsp]      ; no_q
-    
+
     paddw          m12, m2, m15 ; + p1
     paddw          m12, m4      ;  q0
     paddw          m12, m7      ; q3
@@ -519,7 +519,7 @@ ALIGN 16
     sub rsp, 16  ; rsp + 32 = strong mask
     sub rsp, 16  ; rsp + 16 = no_p
     sub rsp, 16  ; rsp      = no_q
-    
+
     ; no_p
     pxor            m10, m10
     movd            m11, [no_pq]  ; 1 means skip
@@ -527,7 +527,7 @@ ALIGN 16
     punpcklwd       m11, m11, m10
 
     pcmpeqd         m11, m10      ; calculate p mask
-    movmskps      no_pq, m11     
+    movmskps      no_pq, m11
 
     SHUFFLE_ON_SHIFT m13, m11
     movu      [rsp + 16], m13
@@ -597,7 +597,7 @@ ALIGN 16
 
     movu       [rsp + 32], m11
     STRONG_CHROMA %1
-    
+
 .end_strong_chroma:
 
 %if %2 == 0
