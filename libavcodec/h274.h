@@ -77,4 +77,12 @@ typedef struct H274SEIPictureHash {
 int ff_h274_verify_picture_hash(const H274SEIPictureHash *hash,
     const AVFrame *frame, int coded_width, int coded_height);
 
+typedef struct H274SEIFrameFieldInfo {
+    int present;
+    int picture_struct;
+    uint8_t display_elemental_periods;
+    uint8_t source_scan_type;
+    uint8_t duplicate_flag;
+} H274SEIFrameFieldInfo;
+
 #endif /* AVCODEC_H274_H */
