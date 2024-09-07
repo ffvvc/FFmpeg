@@ -2325,6 +2325,12 @@ static const SEIMessageTypeDescriptor cbs_sei_h265_types[] = {
 };
 
 static const SEIMessageTypeDescriptor cbs_sei_h266_types[] = {
+    {
+        SEI_TYPE_BUFFERING_PERIOD,
+        1, 0,
+        sizeof(H266RawSEIBufferingPeriod),
+        SEI_MESSAGE_RW(h266, sei_buffering_period),
+    },
     SEI_MESSAGE_TYPE_END
 };
 

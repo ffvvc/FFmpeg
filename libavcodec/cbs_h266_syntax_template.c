@@ -3480,6 +3480,113 @@ static int FUNC(slice_header) (CodedBitstreamContext *ctx, RWContext *rw,
     return 0;
 }
 
+SEI_FUNC(sei_buffering_period, (CodedBitstreamContext *ctx, RWContext *rw,
+                                H266RawSEIBufferingPeriod *current,
+                                SEIMessageState *sei))
+{
+    int err, i, j;
+    uint32_t bp_cpb_initial_removal_delay_length;
+
+    HEADER("Buffering Period");
+
+    flag(bp_nal_hrd_params_present_flag);
+    flag(bp_vcl_hrd_params_present_flag);
+
+    if (!current->bp_nal_hrd_params_present_flag && !current->bp_vcl_hrd_params_present_flag) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "bp_vcl_hrd_params_present_flag and bp_nal_hrd_params_present_flag "
+            "in a BP SEI message shall not both be equal to 0.\n");
+    }
+
+    ub(5, bp_cpb_initial_removal_delay_length_minus1);
+    ub(5, bp_cpb_removal_delay_length_minus1);
+    ub(5, bp_dpb_output_delay_length_minus1);
+
+    flag(bp_du_hrd_params_present_flag);
+    if (current->bp_du_hrd_params_present_flag) {
+        ub(5, bp_du_cpb_removal_delay_increment_length_minus1);
+        ub(5, bp_dpb_output_delay_du_length_minus1);
+        flag(bp_du_cpb_params_in_pic_timing_sei_flag);
+        flag(bp_du_dpb_params_in_pic_timing_sei_flag);
+    } else {
+        infer(bp_du_cpb_removal_delay_increment_length_minus1, 23);
+        infer(bp_dpb_output_delay_du_length_minus1, 23);
+        infer(bp_du_cpb_params_in_pic_timing_sei_flag, 0);
+        infer(bp_du_dpb_params_in_pic_timing_sei_flag, 0);
+    }
+
+    flag(bp_concatenation_flag);
+    flag(bp_additional_concatenation_info_present_flag);
+
+    bp_cpb_initial_removal_delay_length = current->bp_cpb_initial_removal_delay_length_minus1 + 1;
+    if (current->bp_additional_concatenation_info_present_flag)
+        ub(bp_cpb_initial_removal_delay_length, bp_max_initial_removal_delay_for_concatenation);
+
+    ub(current->bp_cpb_removal_delay_length_minus1 + 1, bp_cpb_removal_delay_delta_minus1);
+    ub(3, bp_max_sublayers_minus1);
+
+    if (current->bp_max_sublayers_minus1 > 0) {
+        flag(bp_cpb_removal_delay_deltas_present_flag);
+        if (current->bp_cpb_removal_delay_deltas_present_flag) {
+            ue(bp_num_cpb_removal_delay_deltas_minus1, 0, 15);
+            for (i = 0; i <= current->bp_num_cpb_removal_delay_deltas_minus1; i++)
+                ubs(current->bp_cpb_removal_delay_length_minus1 + 1, bp_cpb_removal_delay_delta_val[i], 1, i);
+        }
+    }
+
+    ue(bp_cpb_cnt_minus1, 0, VVC_MAX_CPB_CNT - 1);
+    if (current->bp_max_sublayers_minus1 > 0)
+        flag(bp_sublayer_initial_cpb_removal_delay_present_flag);
+    else
+        infer(bp_sublayer_initial_cpb_removal_delay_present_flag, 0);
+
+    for (i = (current->bp_sublayer_initial_cpb_removal_delay_present_flag ? 0 :
+            current->bp_max_sublayers_minus1); i <= current->bp_max_sublayers_minus1; i++) {
+        if (current->bp_nal_hrd_params_present_flag) {
+            for (j = 0; j <= current->bp_cpb_cnt_minus1; j++) {
+                ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_cpb_removal_delay[i][j],  2, i, j);
+                ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_cpb_removal_offset[i][j], 2, i, j);
+                if (current->bp_du_hrd_params_present_flag) {
+                    ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_alt_cpb_removal_delay[i][j],  2, i, j);
+                    ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_alt_cpb_removal_offset[i][j], 2, i, j);
+                }
+            }
+        }
+        if (current->bp_vcl_hrd_params_present_flag) {
+            for (j = 0; j <= current->bp_cpb_cnt_minus1; j++) {
+                ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_cpb_removal_delay[i][j],  2, i, j);
+                ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_cpb_removal_offset[i][j], 2, i, j);
+                if (current->bp_du_hrd_params_present_flag) {
+                    ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_alt_cpb_removal_delay[i][j],  2, i, j);
+                    ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_alt_cpb_removal_offset[i][j], 2, i, j);
+                }
+            }
+        }
+    }
+
+    if (current->bp_max_sublayers_minus1 > 0)
+        flag(bp_sublayer_dpb_output_offsets_present_flag);
+    else
+        infer(bp_sublayer_dpb_output_offsets_present_flag, 0);
+
+    if (current->bp_sublayer_dpb_output_offsets_present_flag) {
+        for (i = 0; i < current->bp_max_sublayers_minus1; i++)
+            ues(bp_dpb_output_tid_offset[i], 0, 0xffffffff, 1, i);
+    }
+
+    flag(bp_alt_cpb_params_present_flag);
+    if (current->bp_alt_cpb_params_present_flag)
+        flag(bp_use_alt_cpb_params_flag);
+
+    if (current->bp_alt_cpb_params_present_flag && current->bp_du_hrd_params_present_flag) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "When bp_alt_cpb_params_present_flag is equal to 1, "
+            "the value of bp_du_hrd_params_present_flag shall be equal to 0\n");
+    }
+
+    return 0;
+}
+
 static int FUNC(sei) (CodedBitstreamContext *ctx, RWContext *rw,
                       H266RawSEI *current, int prefix)
 {

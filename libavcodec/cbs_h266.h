@@ -850,6 +850,41 @@ typedef struct H266RawSlice {
     int          data_bit_start;
 } H266RawSlice;
 
+typedef struct H266RawSEIBufferingPeriod {
+    uint8_t      bp_nal_hrd_params_present_flag;
+    uint8_t      bp_vcl_hrd_params_present_flag;
+    uint8_t      bp_cpb_initial_removal_delay_length_minus1;
+    uint8_t      bp_cpb_removal_delay_length_minus1;
+    uint8_t      bp_dpb_output_delay_length_minus1;
+    uint8_t      bp_du_hrd_params_present_flag;
+    uint8_t      bp_du_cpb_removal_delay_increment_length_minus1;
+    uint8_t      bp_dpb_output_delay_du_length_minus1;
+    uint8_t      bp_du_cpb_params_in_pic_timing_sei_flag;
+    uint8_t      bp_du_dpb_params_in_pic_timing_sei_flag;
+    uint8_t      bp_concatenation_flag;
+    uint8_t      bp_additional_concatenation_info_present_flag;
+    uint32_t     bp_max_initial_removal_delay_for_concatenation;
+    uint32_t     bp_cpb_removal_delay_delta_minus1;
+    uint8_t      bp_max_sublayers_minus1;
+    uint8_t      bp_cpb_removal_delay_deltas_present_flag;
+    uint8_t      bp_num_cpb_removal_delay_deltas_minus1;
+    uint32_t     bp_cpb_removal_delay_delta_val[16];
+    uint8_t      bp_cpb_cnt_minus1;
+    uint8_t      bp_sublayer_initial_cpb_removal_delay_present_flag;
+    uint32_t     bp_nal_initial_cpb_removal_delay[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_nal_initial_cpb_removal_offset[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_vcl_initial_cpb_removal_delay[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_vcl_initial_cpb_removal_offset[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_nal_initial_alt_cpb_removal_delay[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_nal_initial_alt_cpb_removal_offset[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_vcl_initial_alt_cpb_removal_delay[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint32_t     bp_vcl_initial_alt_cpb_removal_offset[VVC_MAX_SUBLAYERS][VVC_MAX_CPB_CNT];
+    uint8_t      bp_sublayer_dpb_output_offsets_present_flag;
+    uint32_t     bp_dpb_output_tid_offset[VVC_MAX_SUBLAYERS];
+    uint8_t      bp_alt_cpb_params_present_flag;
+    uint8_t      bp_use_alt_cpb_params_flag;
+} H266RawSEIBufferingPeriod;
+
 typedef struct H266RawSEI {
     H266RawNALUnitHeader nal_unit_header;
     SEIRawMessageList    message_list;
