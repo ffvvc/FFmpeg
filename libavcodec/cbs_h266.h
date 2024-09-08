@@ -901,6 +901,9 @@ typedef struct CodedBitstreamH266Context {
     H266RawPPS  *pps[VVC_MAX_PPS_COUNT]; ///< RefStruct references
     H266RawPictureHeader *ph;
     void *ph_ref; ///< RefStruct reference backing ph above
+
+    H266RawSEIBufferingPeriod *bp;
+    void *bp_ref; ///< RefStruct reference backing bp above
 } CodedBitstreamH266Context;
 
 #endif /* AVCODEC_CBS_H266_H */
