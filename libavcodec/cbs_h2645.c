@@ -2340,6 +2340,12 @@ static const SEIMessageTypeDescriptor cbs_sei_h266_types[] = {
         sizeof(H266RawSEIPictureTiming),
         SEI_MESSAGE_RW(h266, sei_picture_timing),
     },
+    {
+        SEI_TYPE_DECODING_UNIT_INFO,
+        1, 0,
+        sizeof(H266RawSEIDecodingUnitInfo),
+        SEI_MESSAGE_RW(h266, sei_decoding_unit_info),
+    },
     SEI_MESSAGE_TYPE_END
 };
 
