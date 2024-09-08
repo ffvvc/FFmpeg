@@ -364,7 +364,7 @@ static int cbs_h2645_read_more_rbsp_data(GetBitContext *gbc)
                                         AV_INPUT_BUFFER_PADDING_SIZE); \
         if (!name ## _ref) \
             return AVERROR(ENOMEM); \
-        name = name ## _ref->data; \
+        name = (void *)name ## _ref->data; \
     } while (0)
 
 #define FUNC(name) FUNC_H264(name)
