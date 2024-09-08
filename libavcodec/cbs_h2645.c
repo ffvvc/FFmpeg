@@ -1234,8 +1234,11 @@ static int cbs_h266_read_nal_unit(CodedBitstreamContext *ctx,
         {
             err = cbs_h266_read_sei(ctx, &gbc, unit->content,
                                     unit->type == VVC_PREFIX_SEI_NUT);
-
             if (err < 0 && err != AVERROR_INVALIDDATA)
+                return err;
+
+            err = cbs_h266_replace_sei_messages(ctx, unit);
+            if (err < 0)
                 return err;
         }
         break;
@@ -2330,6 +2333,12 @@ static const SEIMessageTypeDescriptor cbs_sei_h266_types[] = {
         1, 0,
         sizeof(H266RawSEIBufferingPeriod),
         SEI_MESSAGE_RW(h266, sei_buffering_period),
+    },
+    {
+        SEI_TYPE_PIC_TIMING,
+        1, 0,
+        sizeof(H266RawSEIPictureTiming),
+        SEI_MESSAGE_RW(h266, sei_picture_timing),
     },
     SEI_MESSAGE_TYPE_END
 };

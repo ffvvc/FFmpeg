@@ -3448,6 +3448,7 @@ SEI_FUNC(sei_buffering_period, (CodedBitstreamContext *ctx, RWContext *rw,
 {
     int err, i, j;
     uint32_t bp_cpb_initial_removal_delay_length;
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
 
     HEADER("Buffering Period");
 
@@ -3549,10 +3550,127 @@ SEI_FUNC(sei_buffering_period, (CodedBitstreamContext *ctx, RWContext *rw,
     return 0;
 }
 
+SEI_FUNC(sei_picture_timing, (CodedBitstreamContext *ctx, RWContext *rw,
+                              H266RawSEIPictureTiming *current,
+                              SEIMessageState *sei))
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    H266RawSEIBufferingPeriod *bp   = h266->bp;
+
+    int temporal_id = h266->temporal_id;
+    int err, i, j;
+
+    uint32_t cpb_initial_removal_delay_length;
+    uint32_t cpb_removal_delay_length;
+    uint32_t dpb_output_delay_length;
+
+    HEADER("Picture Timing");
+
+    if (!bp) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "Skipped picture timing SEI message for no available buffer period.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    cpb_removal_delay_length = bp->bp_cpb_removal_delay_length_minus1 + 1;
+    ubs(cpb_removal_delay_length, pt_cpb_removal_delay_minus1[bp->bp_max_sublayers_minus1], 1, bp->bp_max_sublayers_minus1);
+
+    for (i = temporal_id; i < bp->bp_max_sublayers_minus1; i++) {
+        flags(pt_sublayer_delays_present_flag[i], 1, i);
+        if (current->pt_sublayer_delays_present_flag[i]) {
+            if (bp->bp_cpb_removal_delay_deltas_present_flag)
+                flags(pt_cpb_removal_delay_delta_enabled_flag[i], 1, i);
+            else
+                infer(pt_cpb_removal_delay_delta_enabled_flag[i], 0);
+
+            if (current->pt_cpb_removal_delay_delta_enabled_flag[i])
+                if (bp->bp_num_cpb_removal_delay_deltas_minus1 > 0)
+                    ubs(av_ceil_log2(bp->bp_num_cpb_removal_delay_deltas_minus1 + 1), pt_cpb_removal_delay_delta_idx[i], 1, i);
+                else
+                    infer(pt_cpb_removal_delay_delta_idx[i], 0);
+            else
+                ubs(cpb_removal_delay_length, pt_cpb_removal_delay_minus1[i], 1, i);
+        }
+    }
+
+    cpb_initial_removal_delay_length = bp->bp_cpb_initial_removal_delay_length_minus1 + 1;
+    dpb_output_delay_length = bp->bp_dpb_output_delay_length_minus1 + 1;
+    ub(dpb_output_delay_length, pt_dpb_output_delay);
+
+    if (bp->bp_alt_cpb_params_present_flag) {
+        flag(pt_cpb_alt_timing_info_present_flag);
+        if (current->pt_cpb_alt_timing_info_present_flag) {
+            if (bp->bp_nal_hrd_params_present_flag) {
+                for (i = (bp->bp_sublayer_initial_cpb_removal_delay_present_flag ? 0 :
+                     bp->bp_max_sublayers_minus1); i <= bp->bp_max_sublayers_minus1; i++) {
+                    for (j = 0; j < bp->bp_cpb_cnt_minus1 + 1; j++) {
+                        ubs(cpb_initial_removal_delay_length, pt_nal_cpb_alt_initial_removal_delay_delta[i][j],  2, i, j);
+                        ubs(cpb_initial_removal_delay_length, pt_nal_cpb_alt_initial_removal_offset_delta[i][j], 2, i, j);
+                    }
+                    ubs(cpb_removal_delay_length, pt_nal_cpb_delay_offset[i][j], 2, i, j);
+                    ubs(cpb_removal_delay_length, pt_nal_dpb_delay_offset[i][j], 2, i, j);
+                }
+            }
+            if (bp->bp_vcl_hrd_params_present_flag) {
+                for (i = (bp->bp_sublayer_initial_cpb_removal_delay_present_flag ? 0 :
+                     bp->bp_max_sublayers_minus1); i <= bp->bp_max_sublayers_minus1; i++) {
+                    for (j = 0; j < bp->bp_cpb_cnt_minus1 + 1; j++) {
+                        ubs(cpb_initial_removal_delay_length, pt_vcl_cpb_alt_initial_removal_delay_delta[i][j],  2, i, j);
+                        ubs(cpb_initial_removal_delay_length, pt_vcl_cpb_alt_initial_removal_offset_delta[i][j], 2, i, j);
+                    }
+                    ubs(cpb_removal_delay_length, pt_vcl_cpb_delay_offset[i][j], 2, i, j);
+                    ubs(cpb_removal_delay_length, pt_vcl_dpb_delay_offset[i][j], 2, i, j);
+                }
+            }
+        }
+    } else {
+        infer(pt_cpb_alt_timing_info_present_flag, 0);
+    }
+
+    if (bp->bp_du_hrd_params_present_flag && bp->bp_du_dpb_params_in_pic_timing_sei_flag)
+        ub(bp->bp_dpb_output_delay_du_length_minus1 + 1, pt_dpb_output_du_delay);
+
+    if (bp->bp_du_hrd_params_present_flag && bp->bp_du_cpb_params_in_pic_timing_sei_flag) {
+        ue(pt_num_decoding_units_minus1, 0, 0xffffffff);
+
+        if (current->pt_num_decoding_units_minus1 > 0) {
+            allocate(current->pt_num_nalus_in_du_minus1, current->pt_num_decoding_units_minus1 + 1 * sizeof(*current->pt_num_nalus_in_du_minus1));
+
+            flag(pt_du_common_cpb_removal_delay_flag);
+            if (current->pt_du_common_cpb_removal_delay_flag) {
+                for (i = temporal_id; i <= bp->bp_max_sublayers_minus1; i++) {
+                    if (current->pt_sublayer_delays_present_flag[i])
+                        ubs(bp->bp_du_cpb_removal_delay_increment_length_minus1 + 1, pt_du_common_cpb_removal_delay_increment_minus1[i], 1, i);
+                }
+            }
+
+            for (i = 0; i <= current->pt_num_decoding_units_minus1; i++) {
+                ues(pt_num_nalus_in_du_minus1[i], 0, 0xffffffff, 1, i);
+                if (!current->pt_du_common_cpb_removal_delay_flag && i < current->pt_num_decoding_units_minus1) {
+                    for (j = temporal_id; j <= bp->bp_max_sublayers_minus1; j++) {
+                        if (current->pt_sublayer_delays_present_flag[i])
+                            ubs(bp->bp_du_cpb_removal_delay_increment_length_minus1 + 1, pt_du_cpb_removal_delay_increment_minus1[i][j], 2, i, j);
+                    }
+                }
+            }
+        } else {
+            infer(pt_du_common_cpb_removal_delay_flag, 0);
+        }
+    }
+
+    if (bp->bp_additional_concatenation_info_present_flag)
+        flag(pt_delay_for_concatenation_ensured_flag);
+
+    ub(8, pt_display_elemental_periods_minus1);
+
+    return 0;
+}
+
 static int FUNC(sei) (CodedBitstreamContext *ctx, RWContext *rw,
                       H266RawSEI *current, int prefix)
 {
     int err;
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
 
     if (prefix)
         HEADER("Prefix Supplemental Enhancement Information");
@@ -3562,6 +3680,7 @@ static int FUNC(sei) (CodedBitstreamContext *ctx, RWContext *rw,
     CHECK(FUNC(nal_unit_header) (ctx, rw, &current->nal_unit_header,
                                  prefix ? VVC_PREFIX_SEI_NUT
                                  : VVC_SUFFIX_SEI_NUT));
+    h266->temporal_id = current->nal_unit_header.nuh_temporal_id_plus1 - 1;
 
     CHECK(FUNC_SEI(message_list) (ctx, rw, &current->message_list, prefix));
 
