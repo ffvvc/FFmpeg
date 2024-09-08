@@ -3726,6 +3726,76 @@ SEI_FUNC(sei_picture_timing, (CodedBitstreamContext *ctx, RWContext *rw,
     return 0;
 }
 
+SEI_FUNC(sei_decoding_unit_info, (CodedBitstreamContext *ctx, RWContext *rw,
+                                  H266RawSEIDecodingUnitInfo *current,
+                                  SEIMessageState *sei))
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    H266RawSEIBufferingPeriod *bp   = h266->bp;
+
+    H266RawPPS *pps;
+    H266RawSPS *sps;
+
+    int temporal_id = h266->temporal_id;
+    int err, i;
+    int ctb_width, ctb_height, pic_size_in_ctb_y;
+
+    HEADER("DU information");
+
+    if (!h266->ph || h266->ph->ph_pic_parameter_set_id >= VVC_MAX_PPS_COUNT ||
+        !(pps = h266->pps[h266->ph->ph_pic_parameter_set_id])) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "No active PPS for DU information SEI message.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (pps->pps_seq_parameter_set_id >= VVC_MAX_SPS_COUNT ||
+        !(sps = h266->sps[pps->pps_seq_parameter_set_id])) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "No active SPS for DU information SEI message.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (!bp) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "Skipped DU information SEI message for no available buffer period.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    ctb_width  = AV_CEIL_RSHIFT(pps->pps_pic_width_in_luma_samples, sps->sps_log2_ctu_size_minus5 + 5);
+    ctb_height = AV_CEIL_RSHIFT(pps->pps_pic_height_in_luma_samples, sps->sps_log2_ctu_size_minus5 + 5);
+    pic_size_in_ctb_y  = ctb_width * ctb_height;
+
+    ue(dui_decoding_unit_idx, 0, pic_size_in_ctb_y - 1);
+
+    if (!bp->bp_du_cpb_params_in_pic_timing_sei_flag) {
+        for (i = temporal_id; i <= bp->bp_max_sublayers_minus1; i++) {
+            if (i < bp->bp_max_sublayers_minus1)
+                flags(dui_sublayer_delays_present_flag[i], 1, i);
+            else
+                infer(dui_sublayer_delays_present_flag[i], 1);
+
+            if (current->dui_sublayer_delays_present_flag[i])
+                ubs(bp->bp_du_cpb_removal_delay_increment_length_minus1 + 1, dui_du_cpb_removal_delay_increment[i], 1, i);
+            else
+                infer(dui_du_cpb_removal_delay_increment[i], 0);
+        }
+    } else {
+        for (i = temporal_id; i < bp->bp_max_sublayers_minus1; i++)
+            infer(dui_du_cpb_removal_delay_increment[i], 0);
+    }
+
+    if (!bp->bp_du_dpb_params_in_pic_timing_sei_flag)
+        flag(dui_dpb_output_du_delay_present_flag);
+    else
+        infer(dui_dpb_output_du_delay_present_flag, 0);
+
+    if (current->dui_dpb_output_du_delay_present_flag)
+        ub(bp->bp_dpb_output_delay_du_length_minus1 + 1, dui_dpb_output_du_delay);
+
+    return 0;
+}
+
 static int FUNC(sei) (CodedBitstreamContext *ctx, RWContext *rw,
                       H266RawSEI *current, int prefix)
 {

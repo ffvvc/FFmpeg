@@ -911,6 +911,14 @@ typedef struct H266RawSEIPictureTiming {
     uint32_t     pt_display_elemental_periods_minus1;
 } H266RawSEIPictureTiming;
 
+typedef struct H266RawSEIDecodingUnitInfo {
+    uint32_t     dui_decoding_unit_idx;
+    uint8_t      dui_sublayer_delays_present_flag[VVC_MAX_SUBLAYERS];
+    uint32_t     dui_du_cpb_removal_delay_increment[VVC_MAX_SUBLAYERS];
+    uint8_t      dui_dpb_output_du_delay_present_flag;
+    uint32_t     dui_dpb_output_du_delay;
+} H266RawSEIDecodingUnitInfo;
+
 typedef struct H266RawSEI {
     H266RawNALUnitHeader nal_unit_header;
     SEIRawMessageList    message_list;
