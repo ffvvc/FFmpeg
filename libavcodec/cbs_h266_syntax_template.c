@@ -3484,11 +3484,28 @@ SEI_FUNC(sei_buffering_period, (CodedBitstreamContext *ctx, RWContext *rw,
                                 H266RawSEIBufferingPeriod *current,
                                 SEIMessageState *sei))
 {
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    H266RawPPS *pps;
+    H266RawSPS *sps;
+
     int err, i, j;
     uint32_t bp_cpb_initial_removal_delay_length;
-    CodedBitstreamH266Context *h266 = ctx->priv_data;
 
     HEADER("Buffering Period");
+
+    if (!h266->ph || h266->ph->ph_pic_parameter_set_id >= VVC_MAX_PPS_COUNT ||
+        !(pps = h266->pps[h266->ph->ph_pic_parameter_set_id])) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "No active PPS for Buffering Period SEI message.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (pps->pps_seq_parameter_set_id >= VVC_MAX_SPS_COUNT ||
+        !(sps = h266->sps[pps->pps_seq_parameter_set_id])) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "No active SPS for Buffering Period SEI message.\n");
+        return AVERROR_INVALIDDATA;
+    }
 
     flag(bp_nal_hrd_params_present_flag);
     flag(bp_vcl_hrd_params_present_flag);
@@ -3504,6 +3521,17 @@ SEI_FUNC(sei_buffering_period, (CodedBitstreamContext *ctx, RWContext *rw,
     ub(5, bp_dpb_output_delay_length_minus1);
 
     flag(bp_du_hrd_params_present_flag);
+    if (sps->sps_timing_hrd_params_present_flag) {
+        if (current->bp_du_hrd_params_present_flag !=
+            sps->sps_general_timing_hrd_parameters.general_du_hrd_params_present_flag) {
+            av_log(ctx->log_ctx, AV_LOG_WARNING,
+                "The value of bp_du_hrd_params_present_flag(%d) shall be equal "
+                "to general_du_hrd_params_present_flag(%d)", current->bp_du_hrd_params_present_flag,
+                sps->sps_general_timing_hrd_parameters.general_du_hrd_params_present_flag
+            );
+        }
+    }
+
     if (current->bp_du_hrd_params_present_flag) {
         ub(5, bp_du_cpb_removal_delay_increment_length_minus1);
         ub(5, bp_dpb_output_delay_du_length_minus1);
