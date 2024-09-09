@@ -936,6 +936,8 @@ typedef struct CodedBitstreamH266Context {
     H266RawPictureHeader *ph;
     void *ph_ref; ///< RefStruct reference backing ph above
 
+    CodedBitstreamFragment sei_fragment;
+
     H266RawSEIBufferingPeriod *bp;
     void *bp_ref; ///< RefStruct reference backing bp above
 
