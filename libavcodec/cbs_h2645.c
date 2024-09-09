@@ -1227,7 +1227,7 @@ static int cbs_h266_read_nal_unit(CodedBitstreamContext *ctx,
             err = cbs_h266_read_sei(ctx, &gbc, unit->content,
                                     unit->type == VVC_PREFIX_SEI_NUT);
 
-            if (err < 0)
+            if (err < 0 && err != AVERROR_INVALIDDATA)
                 return err;
         }
         break;
