@@ -3442,10 +3442,311 @@ static int FUNC(slice_header) (CodedBitstreamContext *ctx, RWContext *rw,
     return 0;
 }
 
+SEI_FUNC(sei_buffering_period, (CodedBitstreamContext *ctx, RWContext *rw,
+                                H266RawSEIBufferingPeriod *current,
+                                SEIMessageState *sei))
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    H266RawPPS *pps;
+    H266RawSPS *sps;
+
+    int err, i, j;
+    uint32_t bp_cpb_initial_removal_delay_length;
+
+    HEADER("Buffering Period");
+
+    if (!h266->ph || h266->ph->ph_pic_parameter_set_id >= VVC_MAX_PPS_COUNT ||
+        !(pps = h266->pps[h266->ph->ph_pic_parameter_set_id])) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "No active PPS for Buffering Period SEI message.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (pps->pps_seq_parameter_set_id >= VVC_MAX_SPS_COUNT ||
+        !(sps = h266->sps[pps->pps_seq_parameter_set_id])) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "No active SPS for Buffering Period SEI message.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    flag(bp_nal_hrd_params_present_flag);
+    flag(bp_vcl_hrd_params_present_flag);
+
+    if (!current->bp_nal_hrd_params_present_flag && !current->bp_vcl_hrd_params_present_flag) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "bp_vcl_hrd_params_present_flag and bp_nal_hrd_params_present_flag "
+            "in a BP SEI message shall not both be equal to 0.\n");
+    }
+
+    ub(5, bp_cpb_initial_removal_delay_length_minus1);
+    ub(5, bp_cpb_removal_delay_length_minus1);
+    ub(5, bp_dpb_output_delay_length_minus1);
+
+    flag(bp_du_hrd_params_present_flag);
+    if (sps->sps_timing_hrd_params_present_flag) {
+        if (current->bp_du_hrd_params_present_flag !=
+            sps->sps_general_timing_hrd_parameters.general_du_hrd_params_present_flag) {
+            av_log(ctx->log_ctx, AV_LOG_WARNING,
+                "The value of bp_du_hrd_params_present_flag(%d) shall be equal "
+                "to general_du_hrd_params_present_flag(%d)", current->bp_du_hrd_params_present_flag,
+                sps->sps_general_timing_hrd_parameters.general_du_hrd_params_present_flag
+            );
+        }
+    }
+
+    if (current->bp_du_hrd_params_present_flag) {
+        ub(5, bp_du_cpb_removal_delay_increment_length_minus1);
+        ub(5, bp_dpb_output_delay_du_length_minus1);
+        flag(bp_du_cpb_params_in_pic_timing_sei_flag);
+        flag(bp_du_dpb_params_in_pic_timing_sei_flag);
+    } else {
+        infer(bp_du_cpb_removal_delay_increment_length_minus1, 23);
+        infer(bp_dpb_output_delay_du_length_minus1, 23);
+        infer(bp_du_cpb_params_in_pic_timing_sei_flag, 0);
+        infer(bp_du_dpb_params_in_pic_timing_sei_flag, 0);
+    }
+
+    flag(bp_concatenation_flag);
+    flag(bp_additional_concatenation_info_present_flag);
+
+    bp_cpb_initial_removal_delay_length = current->bp_cpb_initial_removal_delay_length_minus1 + 1;
+    if (current->bp_additional_concatenation_info_present_flag)
+        ub(bp_cpb_initial_removal_delay_length, bp_max_initial_removal_delay_for_concatenation);
+
+    ub(current->bp_cpb_removal_delay_length_minus1 + 1, bp_cpb_removal_delay_delta_minus1);
+    ub(3, bp_max_sublayers_minus1);
+
+    if (current->bp_max_sublayers_minus1 > 0) {
+        flag(bp_cpb_removal_delay_deltas_present_flag);
+        if (current->bp_cpb_removal_delay_deltas_present_flag) {
+            ue(bp_num_cpb_removal_delay_deltas_minus1, 0, 15);
+            for (i = 0; i <= current->bp_num_cpb_removal_delay_deltas_minus1; i++)
+                ubs(current->bp_cpb_removal_delay_length_minus1 + 1, bp_cpb_removal_delay_delta_val[i], 1, i);
+        }
+    }
+
+    ue(bp_cpb_cnt_minus1, 0, VVC_MAX_CPB_CNT - 1);
+    if (current->bp_max_sublayers_minus1 > 0)
+        flag(bp_sublayer_initial_cpb_removal_delay_present_flag);
+    else
+        infer(bp_sublayer_initial_cpb_removal_delay_present_flag, 0);
+
+    for (i = (current->bp_sublayer_initial_cpb_removal_delay_present_flag ? 0 :
+            current->bp_max_sublayers_minus1); i <= current->bp_max_sublayers_minus1; i++) {
+        if (current->bp_nal_hrd_params_present_flag) {
+            for (j = 0; j <= current->bp_cpb_cnt_minus1; j++) {
+                ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_cpb_removal_delay[i][j],  2, i, j);
+                ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_cpb_removal_offset[i][j], 2, i, j);
+                if (current->bp_du_hrd_params_present_flag) {
+                    ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_alt_cpb_removal_delay[i][j],  2, i, j);
+                    ubs(bp_cpb_initial_removal_delay_length, bp_nal_initial_alt_cpb_removal_offset[i][j], 2, i, j);
+                }
+            }
+        }
+        if (current->bp_vcl_hrd_params_present_flag) {
+            for (j = 0; j <= current->bp_cpb_cnt_minus1; j++) {
+                ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_cpb_removal_delay[i][j],  2, i, j);
+                ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_cpb_removal_offset[i][j], 2, i, j);
+                if (current->bp_du_hrd_params_present_flag) {
+                    ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_alt_cpb_removal_delay[i][j],  2, i, j);
+                    ubs(bp_cpb_initial_removal_delay_length, bp_vcl_initial_alt_cpb_removal_offset[i][j], 2, i, j);
+                }
+            }
+        }
+    }
+
+    if (current->bp_max_sublayers_minus1 > 0)
+        flag(bp_sublayer_dpb_output_offsets_present_flag);
+    else
+        infer(bp_sublayer_dpb_output_offsets_present_flag, 0);
+
+    if (current->bp_sublayer_dpb_output_offsets_present_flag) {
+        for (i = 0; i < current->bp_max_sublayers_minus1; i++)
+            ues(bp_dpb_output_tid_offset[i], 0, 0xffffffff, 1, i);
+    }
+
+    flag(bp_alt_cpb_params_present_flag);
+    if (current->bp_alt_cpb_params_present_flag)
+        flag(bp_use_alt_cpb_params_flag);
+
+    if (current->bp_alt_cpb_params_present_flag && current->bp_du_hrd_params_present_flag) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "When bp_alt_cpb_params_present_flag is equal to 1, "
+            "the value of bp_du_hrd_params_present_flag shall be equal to 0\n");
+    }
+
+    return 0;
+}
+
+SEI_FUNC(sei_picture_timing, (CodedBitstreamContext *ctx, RWContext *rw,
+                              H266RawSEIPictureTiming *current,
+                              SEIMessageState *sei))
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    H266RawSEIBufferingPeriod *bp   = h266->bp;
+
+    int temporal_id = h266->temporal_id;
+    int err, i, j;
+
+    uint32_t cpb_initial_removal_delay_length;
+    uint32_t cpb_removal_delay_length;
+    uint32_t dpb_output_delay_length;
+
+    HEADER("Picture Timing");
+
+    if (!bp) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "Skipped picture timing SEI message for no available buffer period.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    cpb_removal_delay_length = bp->bp_cpb_removal_delay_length_minus1 + 1;
+    ubs(cpb_removal_delay_length, pt_cpb_removal_delay_minus1[bp->bp_max_sublayers_minus1], 1, bp->bp_max_sublayers_minus1);
+
+    for (i = temporal_id; i < bp->bp_max_sublayers_minus1; i++) {
+        flags(pt_sublayer_delays_present_flag[i], 1, i);
+        if (current->pt_sublayer_delays_present_flag[i]) {
+            if (bp->bp_cpb_removal_delay_deltas_present_flag)
+                flags(pt_cpb_removal_delay_delta_enabled_flag[i], 1, i);
+            else
+                infer(pt_cpb_removal_delay_delta_enabled_flag[i], 0);
+
+            if (current->pt_cpb_removal_delay_delta_enabled_flag[i])
+                if (bp->bp_num_cpb_removal_delay_deltas_minus1 > 0)
+                    ubs(av_ceil_log2(bp->bp_num_cpb_removal_delay_deltas_minus1 + 1), pt_cpb_removal_delay_delta_idx[i], 1, i);
+                else
+                    infer(pt_cpb_removal_delay_delta_idx[i], 0);
+            else
+                ubs(cpb_removal_delay_length, pt_cpb_removal_delay_minus1[i], 1, i);
+        }
+    }
+
+    cpb_initial_removal_delay_length = bp->bp_cpb_initial_removal_delay_length_minus1 + 1;
+    dpb_output_delay_length = bp->bp_dpb_output_delay_length_minus1 + 1;
+    ub(dpb_output_delay_length, pt_dpb_output_delay);
+
+    if (bp->bp_alt_cpb_params_present_flag) {
+        flag(pt_cpb_alt_timing_info_present_flag);
+        if (current->pt_cpb_alt_timing_info_present_flag) {
+            if (bp->bp_nal_hrd_params_present_flag) {
+                for (i = (bp->bp_sublayer_initial_cpb_removal_delay_present_flag ? 0 :
+                     bp->bp_max_sublayers_minus1); i <= bp->bp_max_sublayers_minus1; i++) {
+                    for (j = 0; j < bp->bp_cpb_cnt_minus1 + 1; j++) {
+                        ubs(cpb_initial_removal_delay_length, pt_nal_cpb_alt_initial_removal_delay_delta[i][j],  2, i, j);
+                        ubs(cpb_initial_removal_delay_length, pt_nal_cpb_alt_initial_removal_offset_delta[i][j], 2, i, j);
+                    }
+                    ubs(cpb_removal_delay_length, pt_nal_cpb_delay_offset[i][j], 2, i, j);
+                    ubs(cpb_removal_delay_length, pt_nal_dpb_delay_offset[i][j], 2, i, j);
+                }
+            }
+            if (bp->bp_vcl_hrd_params_present_flag) {
+                for (i = (bp->bp_sublayer_initial_cpb_removal_delay_present_flag ? 0 :
+                     bp->bp_max_sublayers_minus1); i <= bp->bp_max_sublayers_minus1; i++) {
+                    for (j = 0; j < bp->bp_cpb_cnt_minus1 + 1; j++) {
+                        ubs(cpb_initial_removal_delay_length, pt_vcl_cpb_alt_initial_removal_delay_delta[i][j],  2, i, j);
+                        ubs(cpb_initial_removal_delay_length, pt_vcl_cpb_alt_initial_removal_offset_delta[i][j], 2, i, j);
+                    }
+                    ubs(cpb_removal_delay_length, pt_vcl_cpb_delay_offset[i][j], 2, i, j);
+                    ubs(cpb_removal_delay_length, pt_vcl_dpb_delay_offset[i][j], 2, i, j);
+                }
+            }
+        }
+    } else {
+        infer(pt_cpb_alt_timing_info_present_flag, 0);
+    }
+
+    if (bp->bp_du_hrd_params_present_flag && bp->bp_du_dpb_params_in_pic_timing_sei_flag)
+        ub(bp->bp_dpb_output_delay_du_length_minus1 + 1, pt_dpb_output_du_delay);
+
+    if (bp->bp_du_hrd_params_present_flag && bp->bp_du_cpb_params_in_pic_timing_sei_flag) {
+        ue(pt_num_decoding_units_minus1, 0, 0xffffffff);
+
+        if (current->pt_num_decoding_units_minus1 > 0) {
+            allocate(current->pt_num_nalus_in_du_minus1, current->pt_num_decoding_units_minus1 + 1 * sizeof(*current->pt_num_nalus_in_du_minus1));
+
+            flag(pt_du_common_cpb_removal_delay_flag);
+            if (current->pt_du_common_cpb_removal_delay_flag) {
+                for (i = temporal_id; i <= bp->bp_max_sublayers_minus1; i++) {
+                    if (current->pt_sublayer_delays_present_flag[i])
+                        ubs(bp->bp_du_cpb_removal_delay_increment_length_minus1 + 1, pt_du_common_cpb_removal_delay_increment_minus1[i], 1, i);
+                }
+            }
+
+            for (i = 0; i <= current->pt_num_decoding_units_minus1; i++) {
+                ues(pt_num_nalus_in_du_minus1[i], 0, 0xffffffff, 1, i);
+                if (!current->pt_du_common_cpb_removal_delay_flag && i < current->pt_num_decoding_units_minus1) {
+                    for (j = temporal_id; j <= bp->bp_max_sublayers_minus1; j++) {
+                        if (current->pt_sublayer_delays_present_flag[i])
+                            ubs(bp->bp_du_cpb_removal_delay_increment_length_minus1 + 1, pt_du_cpb_removal_delay_increment_minus1[i][j], 2, i, j);
+                    }
+                }
+            }
+        } else {
+            infer(pt_du_common_cpb_removal_delay_flag, 0);
+        }
+    }
+
+    if (bp->bp_additional_concatenation_info_present_flag)
+        flag(pt_delay_for_concatenation_ensured_flag);
+
+    ub(8, pt_display_elemental_periods_minus1);
+
+    return 0;
+}
+
+SEI_FUNC(sei_decoding_unit_info, (CodedBitstreamContext *ctx, RWContext *rw,
+                                  H266RawSEIDecodingUnitInfo *current,
+                                  SEIMessageState *sei))
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    H266RawSEIBufferingPeriod *bp   = h266->bp;
+
+    int temporal_id = h266->temporal_id;
+    int err, i;
+
+    HEADER("DU information");
+
+    if (!bp) {
+        av_log(ctx->log_ctx, AV_LOG_WARNING,
+            "Skipped DU information SEI message for no available buffer period.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    ue(dui_decoding_unit_idx, 0, 0xffffffff);
+
+    if (!bp->bp_du_cpb_params_in_pic_timing_sei_flag) {
+        for (i = temporal_id; i <= bp->bp_max_sublayers_minus1; i++) {
+            if (i < bp->bp_max_sublayers_minus1)
+                flags(dui_sublayer_delays_present_flag[i], 1, i);
+            else
+                infer(dui_sublayer_delays_present_flag[i], 1);
+
+            if (current->dui_sublayer_delays_present_flag[i])
+                ubs(bp->bp_du_cpb_removal_delay_increment_length_minus1 + 1, dui_du_cpb_removal_delay_increment[i], 1, i);
+            else
+                infer(dui_du_cpb_removal_delay_increment[i], 0);
+        }
+    } else {
+        for (int i = temporal_id; i < bp->bp_max_sublayers_minus1; i++)
+            infer(dui_du_cpb_removal_delay_increment[i], 0);
+    }
+
+    if (!bp->bp_du_dpb_params_in_pic_timing_sei_flag)
+        flag(dui_dpb_output_du_delay_present_flag);
+    else
+        infer(dui_dpb_output_du_delay_present_flag, 0);
+
+    if (current->dui_dpb_output_du_delay_present_flag)
+        ub(bp->bp_dpb_output_delay_du_length_minus1 + 1, dui_dpb_output_du_delay);
+
+    return 0;
+}
+
 static int FUNC(sei) (CodedBitstreamContext *ctx, RWContext *rw,
                       H266RawSEI *current, int prefix)
 {
     int err;
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
 
     if (prefix)
         HEADER("Prefix Supplemental Enhancement Information");
@@ -3455,6 +3756,7 @@ static int FUNC(sei) (CodedBitstreamContext *ctx, RWContext *rw,
     CHECK(FUNC(nal_unit_header) (ctx, rw, &current->nal_unit_header,
                                  prefix ? VVC_PREFIX_SEI_NUT
                                  : VVC_SUFFIX_SEI_NUT));
+    h266->temporal_id = current->nal_unit_header.nuh_temporal_id_plus1 - 1;
 
     CHECK(FUNC_SEI(message_list) (ctx, rw, &current->message_list, prefix));
 

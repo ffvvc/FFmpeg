@@ -24,9 +24,15 @@
 #include "libavcodec/decode.h"
 #include "libavcodec/profiles.h"
 #include "libavcodec/refstruct.h"
+#include "libavcodec/aom_film_grain.h"
+#include "libavcodec/thread.h"
+#include "libavutil/avstring.h"
 #include "libavutil/cpu.h"
+#include "libavutil/md5.h"
 #include "libavutil/mem.h"
 #include "libavutil/thread.h"
+#include "libavutil/film_grain_params.h"
+#include "libavutil/pixdesc.h"
 
 #include "dec.h"
 #include "ctu.h"
@@ -586,6 +592,35 @@ static int slice_init_entry_points(SliceContext *sc,
     return 0;
 }
 
+static void sei_free(VVCContext *s)
+{
+    for (int i = 0; i < s->nb_sei; i++)
+        ff_refstruct_unref(&s->sei[i]);
+
+    s->nb_sei           = 0;
+    s->nb_sei_allocated = 0;
+
+    av_freep(&s->sei);
+}
+
+static int sei_realloc(VVCContext *s)
+{
+    H266RawSEI **sei;
+    const int size = s->nb_sei_allocated * 2 + 1;
+
+    if (s->nb_sei < s->nb_sei_allocated)
+        return 0;
+
+    sei = av_realloc_array(s->sei, size, sizeof(H266RawSEI *));
+    if (!sei)
+        return AVERROR(ENOMEM);
+
+    s->sei              = sei;
+    s->nb_sei_allocated = size;
+
+    return 0;
+}
+
 static VVCFrameContext* get_frame_context(const VVCContext *s, const VVCFrameContext *fc, const int delta)
 {
     const int size = s->nb_fcs;
@@ -600,6 +635,11 @@ static int ref_frame(VVCFrame *dst, const VVCFrame *src)
     ret = av_frame_ref(dst->frame, src->frame);
     if (ret < 0)
         return ret;
+
+    if (src->needs_fg) {
+        ret = av_frame_ref(dst->frame_grain, src->frame_grain);
+        dst->needs_fg = src->needs_fg;
+    }
 
     ff_refstruct_replace(&dst->sps, src->sps);
     ff_refstruct_replace(&dst->pps, src->pps);
@@ -635,12 +675,14 @@ static av_cold void frame_context_free(VVCFrameContext *fc)
     for (int i = 0; i < FF_ARRAY_ELEMS(fc->DPB); i++) {
         ff_vvc_unref_frame(fc, &fc->DPB[i], ~0);
         av_frame_free(&fc->DPB[i].frame);
+        av_frame_free(&fc->DPB[i].frame_grain);
     }
 
     ff_vvc_frame_thread_free(fc);
     pic_arrays_free(fc);
     av_frame_free(&fc->output_frame);
     ff_vvc_frame_ps_free(&fc->ps);
+    ff_vvc_reset_sei(&fc->sei);
 }
 
 static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx)
@@ -656,6 +698,10 @@ static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx
         fc->DPB[j].frame = av_frame_alloc();
         if (!fc->DPB[j].frame)
             return AVERROR(ENOMEM);
+
+        fc->DPB[j].frame_grain = av_frame_alloc();
+        if (!fc->DPB[j].frame_grain)
+            return AVERROR(ENOMEM);
     }
     fc->cu_pool = ff_refstruct_pool_alloc(sizeof(CodingUnit), 0);
     if (!fc->cu_pool)
@@ -664,6 +710,8 @@ static av_cold int frame_context_init(VVCFrameContext *fc, AVCodecContext *avctx
     fc->tu_pool = ff_refstruct_pool_alloc(sizeof(TransformUnit), 0);
     if (!fc->tu_pool)
         return AVERROR(ENOMEM);
+
+    ff_vvc_reset_sei(&fc->sei);
 
     return 0;
 }
@@ -700,6 +748,41 @@ static int frame_context_setup(VVCFrameContext *fc, VVCContext *s)
     return 0;
 }
 
+static int set_side_data(VVCContext *s, VVCFrameContext *fc)
+{
+    AVFrame *out = fc->ref->frame;
+
+    return ff_h2645_sei_to_frame(out, &fc->sei.common, AV_CODEC_ID_VVC, s->avctx,
+        NULL, fc->ps.sps->bit_depth, fc->ps.sps->bit_depth, fc->ref->poc);
+}
+
+static int check_film_grain(VVCContext *s, VVCFrameContext *fc)
+{
+    fc->ref->needs_fg = (fc->sei.common.film_grain_characteristics.present ||
+        fc->sei.common.aom_film_grain.enable) &&
+        !(s->avctx->export_side_data & AV_CODEC_EXPORT_DATA_FILM_GRAIN) &&
+        !s->avctx->hwaccel;
+
+    if (fc->ref->needs_fg &&
+        (fc->sei.common.film_grain_characteristics.present &&
+            !ff_h274_film_grain_params_supported(fc->sei.common.film_grain_characteristics.model_id,
+                fc->ref->frame->format) ||
+            !av_film_grain_params_select(fc->ref->frame))) {
+        av_log_once(s->avctx, AV_LOG_WARNING, AV_LOG_DEBUG, &s->film_grain_warning_shown,
+            "Unsupported film grain parameters. Ignoring film grain.\n");
+        fc->ref->needs_fg = 0;
+    }
+
+    if (fc->ref->needs_fg) {
+        fc->ref->frame_grain->format = fc->ref->frame->format;
+        fc->ref->frame_grain->width  = fc->ref->frame->width;
+        fc->ref->frame_grain->height = fc->ref->frame->height;
+        return ff_thread_get_buffer(s->avctx, fc->ref->frame_grain, 0);
+    }
+
+    return 0;
+}
+
 static int frame_start(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
 {
     const VVCPH *ph                 = &fc->ps.ph;
@@ -711,6 +794,14 @@ static int frame_start(VVCContext *s, VVCFrameContext *fc, SliceContext *sc)
         s->poc_tid0 = ph->poc;
 
     if ((ret = ff_vvc_set_new_ref(s, fc, &fc->frame)) < 0)
+        goto fail;
+
+    ret = set_side_data(s, fc);
+    if (ret < 0)
+        goto fail;
+
+    ret = check_film_grain(s, fc);
+    if (ret < 0)
         goto fail;
 
     if (!IS_IDR(s))
@@ -817,6 +908,14 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
             return ret;
     }
 
+    for (int i = s->nb_sei - 1; i >= 0; i--) {
+        ret = ff_vvc_decode_nal_sei(fc, &fc->sei, s->sei[i]);
+        if (ret < 0)
+            return ret;
+        ff_refstruct_unref(&s->sei[i]);
+        s->nb_sei--;
+    }
+
     ret = slice_start(sc, s, fc, unit, is_first_slice);
     if (ret < 0)
         return ret;
@@ -831,7 +930,7 @@ static int decode_slice(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal,
 
 static int decode_nal_unit(VVCContext *s, VVCFrameContext *fc, const H2645NAL *nal, const CodedBitstreamUnit *unit)
 {
-    int  ret;
+    int ret;
 
     s->temporal_id = nal->temporal_id;
 
@@ -865,6 +964,18 @@ static int decode_nal_unit(VVCContext *s, VVCFrameContext *fc, const H2645NAL *n
         if (ret < 0)
             return ret;
         break;
+    case VVC_PREFIX_SEI_NUT:
+        ret = sei_realloc(s);
+        if (ret < 0)
+            return ret;
+        s->sei[s->nb_sei++] = ff_refstruct_ref(unit->content_ref);
+        break;
+
+    case VVC_SUFFIX_SEI_NUT:
+        ret = ff_vvc_decode_nal_sei(fc, &fc->sei, unit->content_ref);
+        if (ret < 0)
+            return ret;
+        break;
     }
 
     return 0;
@@ -878,6 +989,7 @@ static int decode_nal_units(VVCContext *s, VVCFrameContext *fc, AVPacket *avpkt)
     s->last_eos = s->eos;
     s->eos = 0;
 
+    ff_vvc_reset_sei(&fc->sei);
     ff_cbs_fragment_reset(frame);
     ret = ff_cbs_read_packet(s->cbc, frame, avpkt);
     if (ret < 0) {
@@ -921,16 +1033,56 @@ static int set_output_format(const VVCContext *s, const AVFrame *output)
     return 0;
 }
 
+static int frame_end(VVCContext *s, VVCFrameContext *fc)
+{
+    const AVFilmGrainParams *fgp;
+    int ret = 0;
+
+    if (fc->ref->needs_fg) {
+        av_assert0(fc->ref->frame_grain->buf[0]);
+        fgp = av_film_grain_params_select(fc->ref->frame);
+        switch (fgp->type) {
+        case AV_FILM_GRAIN_PARAMS_NONE:
+            av_assert0(0);
+            return AVERROR_BUG;
+        case AV_FILM_GRAIN_PARAMS_H274:
+            ret = ff_h274_apply_film_grain(fc->ref->frame_grain, fc->ref->frame,
+                &s->h274db, fgp);
+            break;
+        case AV_FILM_GRAIN_PARAMS_AV1:
+            ret = ff_aom_apply_film_grain(fc->ref->frame_grain, fc->ref->frame, fgp);
+            break;
+        }
+    }
+
+    if (!s->avctx->hwaccel && s->avctx->err_recognition & AV_EF_CRCCHECK) {
+        if (fc->sei.picture_hash.present) {
+            ret = ff_h274_verify_decoded_picture_hash(s->avctx, fc->ref->poc,
+                &fc->sei.picture_hash, fc->ref->frame, s->avctx->coded_width, s->avctx->coded_height);
+            if (ret < 0 && s->avctx->err_recognition & AV_EF_EXPLODE)
+                return ret;
+        }
+    }
+
+    return 0;
+}
+
 static int wait_delayed_frame(VVCContext *s, AVFrame *output, int *got_output)
 {
     VVCFrameContext *delayed = get_frame_context(s, s->fcs, s->nb_frames - s->nb_delayed);
     int ret                  = ff_vvc_frame_wait(s, delayed);
 
-    if (!ret && delayed->output_frame->buf[0] && output) {
-        av_frame_move_ref(output, delayed->output_frame);
-        ret = set_output_format(s, output);
-        if (!ret)
-            *got_output = 1;
+    if (!ret) {
+        ret = frame_end(s, delayed);
+        if (ret < 0)
+            return ret;
+
+        if (delayed->output_frame->buf[0] && output) {
+            av_frame_move_ref(output, delayed->output_frame);
+            ret = set_output_format(s, output);
+            if (!ret)
+                *got_output = 1;
+        }
     }
     s->nb_delayed--;
 
@@ -1032,6 +1184,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
 {
     VVCContext *s = avctx->priv_data;
 
+    sei_free(s);
     ff_cbs_fragment_free(&s->current_frame);
     vvc_decode_flush(avctx);
     ff_vvc_executor_free(&s->executor);
@@ -1042,6 +1195,7 @@ static av_cold int vvc_decode_free(AVCodecContext *avctx)
     }
     ff_vvc_ps_uninit(&s->ps);
     ff_cbs_close(&s->cbc);
+    av_freep(&s->md5_ctx);
 
     return 0;
 }
@@ -1089,6 +1243,10 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
         thread_count = 0;
     s->executor = ff_vvc_executor_alloc(s, thread_count);
     if (!s->executor)
+        return AVERROR(ENOMEM);
+
+    s->md5_ctx = av_md5_alloc();
+    if (!s->md5_ctx)
         return AVERROR(ENOMEM);
 
     s->eos = 1;

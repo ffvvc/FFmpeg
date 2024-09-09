@@ -364,7 +364,7 @@ static int cbs_h2645_read_more_rbsp_data(GetBitContext *gbc)
                                         AV_INPUT_BUFFER_PADDING_SIZE); \
         if (!name ## _ref) \
             return AVERROR(ENOMEM); \
-        name = name ## _ref->data; \
+        name = (void *)name ## _ref->data; \
     } while (0)
 
 #define FUNC(name) FUNC_H264(name)
@@ -833,6 +833,69 @@ static int cbs_h266_replace_ph(CodedBitstreamContext *ctx,
     return 0;
 }
 
+static int cbs_h266_replace_sei_messages(CodedBitstreamContext *ctx,
+                                         CodedBitstreamUnit *unit)
+{
+    CodedBitstreamH266Context *h266     = ctx->priv_data;
+    H266RawSEI                *sei      = unit->content;
+    SEIRawMessage             *messages = sei->message_list.messages;
+
+    for (int i = 0; i < sei->message_list.nb_messages; i++) {
+        if (messages[i].payload_type == SEI_TYPE_BUFFERING_PERIOD) {
+            ff_refstruct_replace(&h266->bp_ref, messages[i].payload_ref);
+            h266->bp = messages[i].payload;
+        }
+    }
+
+    return 0;
+}
+
+static int cbs_h266_replace_sei(CodedBitstreamContext *ctx,
+    CodedBitstreamUnit *unit)
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    CodedBitstreamFragment *fragment = &h266->sei_fragment;
+    int err, position;
+
+    err = ff_cbs_append_unit_data(fragment, unit->type, unit->data, unit->data_size, unit->data_ref);
+    if (err < 0)
+        return err;
+
+    position = fragment->nb_units - 1;
+    ff_refstruct_replace(&fragment->units[position].content_ref, unit->content_ref);
+    fragment->units[position].content = fragment->units[position].content_ref;
+
+    return 0;
+}
+
+static int cbs_h266_read_prefix_sei(CodedBitstreamContext *ctx)
+{
+    CodedBitstreamH266Context *h266 = ctx->priv_data;
+    CodedBitstreamFragment *fragment = &h266->sei_fragment;
+    int err = 0;
+
+    for (int i = 0; i < fragment->nb_units; i--) {
+        CodedBitstreamUnit *unit = &fragment->units[i];
+        GetBitContext gbc;
+        err = init_get_bits(&gbc, unit->data, 8 * unit->data_size);
+        if (err < 0)
+            goto fail;
+
+        err = cbs_h266_read_sei(ctx, &gbc, unit->content,
+            unit->type == VVC_PREFIX_SEI_NUT);
+        if (err < 0)
+            goto fail;
+
+        err = cbs_h266_replace_sei_messages(ctx, unit);
+        if (err < 0)
+            goto fail;
+    }
+
+fail:
+    ff_cbs_fragment_reset(fragment);
+    return err;
+}
+
 static int cbs_h264_read_nal_unit(CodedBitstreamContext *ctx,
                                   CodedBitstreamUnit *unit)
 {
@@ -1063,6 +1126,10 @@ static int cbs_h265_read_nal_unit(CodedBitstreamContext *ctx,
 
             if (err < 0)
                 return err;
+
+            err = cbs_h266_replace_sei_messages(ctx, unit);
+            if (err < 0)
+                return err;
         }
         break;
 
@@ -1202,6 +1269,10 @@ static int cbs_h266_read_nal_unit(CodedBitstreamContext *ctx,
                 return AVERROR(ENOMEM);
             slice->data = unit->data + pos / 8;
             slice->data_bit_start = pos % 8;
+
+            err = cbs_h266_read_prefix_sei(ctx);
+            if (err < 0 && err != AVERROR_INVALIDDATA)
+                return err;
         }
         break;
 
@@ -1214,11 +1285,21 @@ static int cbs_h266_read_nal_unit(CodedBitstreamContext *ctx,
         break;
 
     case VVC_PREFIX_SEI_NUT:
+        {
+            err = cbs_h266_replace_sei(ctx, unit);
+            if (err < 0)
+                return err;
+        }
+        break;
+
     case VVC_SUFFIX_SEI_NUT:
         {
             err = cbs_h266_read_sei(ctx, &gbc, unit->content,
                                     unit->type == VVC_PREFIX_SEI_NUT);
+            if (err < 0 && err != AVERROR_INVALIDDATA)
+                return err;
 
+            err = cbs_h266_replace_sei_messages(ctx, unit);
             if (err < 0)
                 return err;
         }
@@ -1958,6 +2039,8 @@ static void cbs_h266_flush(CodedBitstreamContext *ctx)
     for (int i = 0; i < FF_ARRAY_ELEMS(h266->pps); i++)
         ff_refstruct_unref(&h266->pps[i]);
     ff_refstruct_unref(&h266->ph_ref);
+    ff_refstruct_unref(&h266->bp_ref);
+    ff_cbs_fragment_reset(&h266->sei_fragment);
 }
 
 static void cbs_h266_close(CodedBitstreamContext *ctx)
@@ -1966,6 +2049,7 @@ static void cbs_h266_close(CodedBitstreamContext *ctx)
 
     cbs_h266_flush(ctx);
     ff_h2645_packet_uninit(&h266->common.read_packet);
+    ff_cbs_fragment_free(&h266->sei_fragment);
  }
 
 static void cbs_h264_free_sei(FFRefStructOpaque unused, void *content)
@@ -2170,6 +2254,24 @@ static const SEIMessageTypeDescriptor cbs_sei_common_types[] = {
         sizeof(SEIRawAmbientViewingEnvironment),
         SEI_MESSAGE_RW(sei, ambient_viewing_environment),
     },
+    {
+        SEI_TYPE_FILM_GRAIN_CHARACTERISTICS,
+        1, 0,
+        sizeof(SEIRawFilmGrainCharacteristics),
+        SEI_MESSAGE_RW(sei, film_grain_characteristics),
+    },
+    {
+        SEI_TYPE_DISPLAY_ORIENTATION,
+        1, 0,
+        sizeof(SEIRawDisplayOrientation),
+        SEI_MESSAGE_RW(sei, display_orientation)
+    },
+    {
+        SEI_TYPE_FRAME_FIELD_INFO,
+        1, 0,
+        sizeof(SEIRawFrameFieldInformation),
+        SEI_MESSAGE_RW(sei, frame_field_information)
+    },
     SEI_MESSAGE_TYPE_END,
 };
 
@@ -2290,6 +2392,24 @@ static const SEIMessageTypeDescriptor cbs_sei_h265_types[] = {
 };
 
 static const SEIMessageTypeDescriptor cbs_sei_h266_types[] = {
+    {
+        SEI_TYPE_BUFFERING_PERIOD,
+        1, 0,
+        sizeof(H266RawSEIBufferingPeriod),
+        SEI_MESSAGE_RW(h266, sei_buffering_period),
+    },
+    {
+        SEI_TYPE_PIC_TIMING,
+        1, 0,
+        sizeof(H266RawSEIPictureTiming),
+        SEI_MESSAGE_RW(h266, sei_picture_timing),
+    },
+    {
+        SEI_TYPE_DECODING_UNIT_INFO,
+        1, 0,
+        sizeof(H266RawSEIDecodingUnitInfo),
+        SEI_MESSAGE_RW(h266, sei_decoding_unit_info),
+    },
     SEI_MESSAGE_TYPE_END
 };
 

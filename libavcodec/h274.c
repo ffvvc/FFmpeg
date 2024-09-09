@@ -27,6 +27,10 @@
 
 #include "libavutil/avassert.h"
 #include "libavutil/imgutils.h"
+#include "libavutil/intreadwrite.h"
+#include "libavutil/md5.h"
+#include "libavutil/pixdesc.h"
+#include "libavutil/mem.h"
 
 #include "h274.h"
 
@@ -790,3 +794,169 @@ static const int8_t R64T[64][64] = {
          17, -16,  15, -14,  13, -12,  11, -10,   9,  -8,   7,  -6,   4,  -3,   2,  -1,
     }
 };
+
+static int verify_md5(void *log_ctx, int poc, const H274SEIPictureHash *s, const AVFrame *frame, int coded_width, int coded_height)
+{
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+
+    int err = 0;
+    int pixel_shift;
+    int i, j, w, h, same;
+    struct AVMD5 *md5_ctx;
+
+    if (!desc)
+        return AVERROR(EINVAL);
+
+    pixel_shift = desc->comp[0].depth > 8;
+
+    md5_ctx = av_md5_alloc();
+    if (!md5_ctx)
+        return AVERROR(ENOMEM);
+
+    for (i = 0; frame->data[i]; i++) {
+        uint8_t md5[16];
+        w = (i == 1 || i == 2) ? (coded_width  >> desc->log2_chroma_w) : coded_width;
+        h = (i == 1 || i == 2) ? (coded_height >> desc->log2_chroma_h) : coded_height;
+
+        av_md5_init(md5_ctx);
+        for (j = 0; j < h; j++) {
+            const uint8_t *src = frame->data[i] + j * frame->linesize[i];
+            av_md5_update(md5_ctx, src, w << pixel_shift);
+        }
+        av_md5_final(md5_ctx, md5);
+
+#define MD5_PRI "%016" PRIx64 "%016" PRIx64
+#define MD5_PRI_ARG(buf) AV_RB64(buf), AV_RB64((const uint8_t*)(buf) + 8)
+
+        same = !memcmp(md5, s->md5[i], 16);
+        av_log(log_ctx, same ? AV_LOG_DEBUG : AV_LOG_ERROR,
+            "Verifying MD5 for frame with POC %d ", poc);
+        if (same) {
+            av_log(log_ctx, AV_LOG_DEBUG,
+                "plane %d - correct " MD5_PRI "\n",
+                i, MD5_PRI_ARG(md5));
+        } else {
+            av_log(log_ctx, AV_LOG_ERROR,
+                "mismatching MD5 of plane %d - " MD5_PRI " != " MD5_PRI "\n",
+                i, MD5_PRI_ARG(md5), MD5_PRI_ARG(s->md5[i]));
+            err = AVERROR_INVALIDDATA;
+        }
+    }
+
+    av_freep(&md5_ctx);
+
+    return err;
+}
+
+// ITU-T H.274 - 8.8.2 Decoded picture hash SEI message semantics
+static int cal_crc(int crc, const uint8_t *data, size_t length)
+{
+    for (int i = 0; i < length * 8; i++) {
+        int byte = data[i >> 3];
+        int msb  = (crc >> 15) & 1;
+        int val  = (byte >> (7 - (i & 7))) & 1;
+        crc = (((crc << 1) + val) & 0xFFFF) ^ (msb * 0x1021);
+    }
+
+    return crc;
+}
+
+static int verify_crc(void *log_ctx, int poc, const H274SEIPictureHash *s, const AVFrame *frame, int coded_width, int coded_height)
+{
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+    uint8_t data[2] = { 0 };
+
+    int err = 0;
+    int pixel_shift;
+    int i, j, w, h;
+    uint32_t crc;
+
+    if (!desc)
+        return AVERROR(EINVAL);
+
+    pixel_shift = desc->comp[0].depth > 8;
+
+    for (i = 0; frame->data[i]; i++) {
+        w = (i == 1 || i == 2) ? (coded_width  >> desc->log2_chroma_w) : coded_width;
+        h = (i == 1 || i == 2) ? (coded_height >> desc->log2_chroma_h) : coded_height;
+
+        crc = 0xFFFF;
+        for (j = 0; j < h; j++) {
+            const uint8_t *src = frame->data[i] + j * frame->linesize[i];
+            crc = cal_crc(crc, src, w << pixel_shift);
+        }
+        crc = cal_crc(crc, data, FF_ARRAY_ELEMS(data));
+
+        av_log(log_ctx, crc == s->crc[i] ? AV_LOG_DEBUG : AV_LOG_ERROR ,
+            "Verifying CRC for frame with POC %d ", poc);
+        if (crc == s->crc[i]) {
+            av_log(log_ctx, AV_LOG_DEBUG, "plane %d - correct - %d\n",
+                i, crc);
+        } else {
+            av_log(log_ctx, AV_LOG_ERROR, "mismatching CRC of plane %d - %d != %d\n",
+                i, crc, s->crc[i]);
+            err = AVERROR_INVALIDDATA;
+        }
+    }
+
+    return err;
+}
+
+#define CAL_CHECKSUM(pixel) (checksum + ((pixel) ^ xor_mask)) & 0xFFFFFFFF
+static int verify_checksum(void *log_ctx, int poc, const H274SEIPictureHash *s, const AVFrame *frame, int coded_width, int coded_height)
+{
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+
+    int err = 0;
+    int pixel_shift;
+    int i, x, y, w, h;
+    uint32_t checksum;
+
+    if (!desc)
+        return AVERROR(EINVAL);
+
+    pixel_shift = desc->comp[0].depth > 8;
+
+    for (i = 0; frame->data[i]; i++) {
+        w = (i == 1 || i == 2) ? (coded_width  >> desc->log2_chroma_w) : coded_width;
+        h = (i == 1 || i == 2) ? (coded_height >> desc->log2_chroma_h) : coded_height;
+
+        checksum = 0;
+        for (y = 0; y < h; y++) {
+            const uint8_t *src = frame->data[i] + y * frame->linesize[i];
+            for (x = 0; x < w; x++) {
+                int xor_mask = (x & 0xFF) ^ (y & 0xFF) ^ (x >> 8) ^ (y >> 8);
+                checksum = CAL_CHECKSUM(src[x << pixel_shift]);
+                if (pixel_shift)
+                    checksum = CAL_CHECKSUM(src[(x << pixel_shift) + 1]);
+            }
+        }
+
+        av_log(log_ctx, checksum == s->checksum[i] ? AV_LOG_DEBUG : AV_LOG_ERROR ,
+            "Verifying Checksum for frame with POC %d ", poc);
+        if (checksum == s->checksum[i]) {
+            av_log(log_ctx, AV_LOG_DEBUG, "plane %d - correct - %d\n",
+                i, checksum);
+        } else {
+            av_log(log_ctx, AV_LOG_ERROR, "mismatching Checksum of plane %d - %d != %d\n",
+                i, checksum, s->checksum[i]);
+            err = AVERROR_INVALIDDATA;
+        }
+    }
+
+    return err;
+}
+
+int ff_h274_verify_decoded_picture_hash(void *log_ctx, int poc,
+    const H274SEIPictureHash *s, const AVFrame *frame,
+    int coded_width, int coded_height)
+{
+    if (s->hash_type == 0)
+        return verify_md5(log_ctx, poc, s, frame, coded_width, coded_height);
+    else if (s->hash_type == 1)
+        return verify_crc(log_ctx, poc, s, frame, coded_width, coded_height);
+    else if (s->hash_type == 2)
+        return verify_checksum(log_ctx, poc, s, frame, coded_width, coded_height);
+
+    return AVERROR_INVALIDDATA;
+}
