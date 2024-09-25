@@ -856,32 +856,6 @@ int ff_vvc_cabac_init(VVCLocalContext *lc,
     return ret;
 }
 
-//fixme
-static void vvc_refill2(CABACContext* c) {
-    int i;
-    unsigned x;
-#if !HAVE_FAST_CLZ
-    x = c->low ^ (c->low - 1);
-    i = 7 - ff_h264_norm_shift[x >> (CABAC_BITS - 1)];
-#else
-    i = ff_ctz(c->low) - CABAC_BITS;
-#endif
-
-    x = -CABAC_MASK;
-
-#if CABAC_BITS == 16
-    x += (c->bytestream[0] << 9) + (c->bytestream[1] << 1);
-#else
-    x += c->bytestream[0] << 1;
-#endif
-
-    c->low += x << i;
-#if !UNCHECKED_BITSTREAM_READER
-    if (c->bytestream < c->bytestream_end)
-#endif
-        c->bytestream += CABAC_BITS / 8;
-}
-
 static int inline vvc_get_cabac(CABACContext *c, VVCCabacState* base, const int ctx)
 {
     VVCCabacState *s = base + ctx;
@@ -904,7 +878,7 @@ static int inline vvc_get_cabac(CABACContext *c, VVCCabacState* base, const int 
     c->low  <<= lps_mask;
 
     if (!(c->low & CABAC_MASK))
-        vvc_refill2(c);
+        refill2(c);
     s->state[0] = s->state[0] - (s->state[0] >> s->shift[0]) + (1023 * bit >> s->shift[0]);
     s->state[1] = s->state[1] - (s->state[1] >> s->shift[1]) + (16383 * bit >> s->shift[1]);
     return bit;
