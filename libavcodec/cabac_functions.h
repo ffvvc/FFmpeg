@@ -85,7 +85,7 @@ static inline void renorm_cabac_decoder_once(CABACContext *c){
 }
 #endif
 
-#ifndef get_cabac_inline
+#if !defined(get_cabac_inline) || !defined(refill2)
 static void refill2(CABACContext *c){
     int i;
     unsigned x;
