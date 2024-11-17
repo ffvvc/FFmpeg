@@ -103,3 +103,6 @@ jobs:
 
     - name: Check for fuzz regressions
       run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg --no-output-check --allow-decode-error tests/fuzz/passed
+
+    - name: Fuzz negative test
+      run: python3 tests/tools/ffmpeg.py --threads ${{ matrix.os.runner_threads }} --ffmpeg-path=./FFmpeg/ffmpeg --no-output-check --allow-decode-error tests/fuzz/failed || tree
