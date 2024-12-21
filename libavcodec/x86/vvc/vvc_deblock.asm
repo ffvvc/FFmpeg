@@ -66,17 +66,13 @@ ALIGN 16
     MASKED_COPY          %1, m15
 %endmacro
 
-%macro STRONG_CHROMA 1
+%macro STRONG_CHROMA 0
     mova            m10, m1          ; save p2
     mova            m12, m2          ; save p1
 
     paddw           m14, m1, m2      ; p2 + p1
     paddw           m13, m3, m4      ; p0 + q0
     paddw           m13, m14         ; p2 + p1 + p0 + q0
-
-    cmp            no_pq, 0
-    je      .end_p_calcs
-    pand             m11, [rsp + 16] ; which p
 
     ; P2
     paddw          m14, m0, m0       ; 2 * p3
@@ -91,12 +87,6 @@ ALIGN 16
     paddw          m14, m0, m3       ; p3 + p0
     paddw          m15, m5, m6       ; q1 + q2
     CHROMA_FILTER  m3
-.end_p_calcs:
-
-    cmp            no_qq, 0
-    je      .end_q_calcs
-    movu             m11, [rsp + 32] ; strong
-    pand             m11, [rsp ]     ; strong & q
 
     ; Q0
     paddw          m14, m4, m5       ; q0 + q1
@@ -116,7 +106,6 @@ ALIGN 16
     paddw          m15, m6, m7       ; q2 + q3
     CHROMA_FILTER  m6
 
-.end_q_calcs:
 %endmacro
 
 ; m11 strong mask, m8/m9 -tc, tc
@@ -296,8 +285,7 @@ ALIGN 16
 
 %endmacro
 
-%macro ONE_SIDE_CHROMA 1
-    pand       m11, [rsp + 16]      ; no_p
+%macro ONE_SIDE_CHROMA 0
 
     paddw          m12, m3, m4      ; p0 + q0
     paddw          m13, m5, m6      ; q1 + q2
@@ -307,9 +295,6 @@ ALIGN 16
     paddw          m14, m2, m2      ; 2 * p1
     paddw          m15, m2, m3      ; p1 + p0
     CHROMA_FILTER  m3
-
-    movu         m11, [rsp + 32]    ; strong mask
-    pand         m11, [rsp]         ; no_q
 
     ; Q0
     paddw          m15, m4, m7      ; q0 + q3
@@ -413,7 +398,7 @@ ALIGN 16
     je              .end_strong_chroma
 
     movu       [rsp + 32], m11
-    STRONG_CHROMA %1
+    STRONG_CHROMA
 
 .end_strong_chroma:
 
@@ -428,7 +413,7 @@ ALIGN 16
     je              .end_one_side_chroma
 
     movu     [rsp + 32], m11
-    ONE_SIDE_CHROMA %1
+    ONE_SIDE_CHROMA
 .end_one_side_chroma:
 
 .chroma_weak:
