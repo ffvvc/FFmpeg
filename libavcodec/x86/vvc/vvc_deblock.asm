@@ -492,8 +492,8 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
     sub           pix0q, src3strideq
     sub           pix0q, strideq
 
-    movq             m0, [pix0q             ] ;  p1
-    movq             m1, [pix0q +   strideq] ;  p1
+    movq             m0, [pix0q             ]  ;  p3
+    movq             m1, [pix0q +   strideq]   ;  p2
     movq             m2, [pix0q + 2 * strideq] ;  p1
     movq             m3, [pix0q + src3strideq] ;  p0
     movq             m4, [pixq]                ;  q0
@@ -518,7 +518,7 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
     packuswb          m4, m5
     packuswb          m6, m7
 
-    movh     [pix0q             ], m0
+    movh     [pix0q              ], m0
     movhps   [pix0q +   strideq  ], m0
     movh     [pix0q + 2 * strideq], m2
     movhps   [pix0q + src3strideq], m2
@@ -554,17 +554,15 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     CLIPW           m5, m12, [pw_pixel_max_10] ; q1
     CLIPW           m6, m12, [pw_pixel_max_10] ; q2
 
-    movu   [pix0q]              , m0
     movu   [pix0q +     strideq], m1
     movu   [pix0q +   2*strideq], m2
     movu   [pix0q + src3strideq], m3
 
     movu                  [pixq], m4
-    movu    [pixq +     strideq], m5 ;
-    movu    [pixq + 2 * strideq], m6 ;
-    movu    [pixq + src3strideq], m7  ;  q3
+    movu    [pixq +     strideq], m5
+    movu    [pixq + 2 * strideq], m6
 
-RET
+    RET
 
 cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
     lea    src3strideq, [3 * strideq]
@@ -591,15 +589,15 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     CLIPW           m5, m12, [pw_pixel_max_12] ; p0
     CLIPW           m6, m12, [pw_pixel_max_12] ; p0
 
-    movu   [pix0q]              , m0
     movu   [pix0q +     strideq], m1
     movu   [pix0q +   2*strideq], m2
     movu   [pix0q + src3strideq], m3
     movu                  [pixq], m4
-    movu    [pixq +     strideq], m5 ;
-    movu    [pixq + 2 * strideq], m6 ;
-    movu    [pixq + src3strideq], m7  ;  q3
-RET
+    movu    [pixq +     strideq], m5
+    movu    [pixq + 2 * strideq], m6
+
+    RET
+
 %endmacro
 
 INIT_XMM avx
