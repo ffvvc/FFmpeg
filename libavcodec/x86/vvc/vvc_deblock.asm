@@ -347,14 +347,14 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 11, 16, pix, stride, beta, tc, no_p, no_q
     sub           pix0q, src3strideq
     sub           pix0q, strideq
 
-    movq             m0, [pix0q             ]  ;  p3
-    movq             m1, [pix0q +   strideq]   ;  p2
-    movq             m2, [pix0q + 2 * strideq] ;  p1
-    movq             m3, [pix0q + src3strideq] ;  p0
-    movq             m4, [pixq]                ;  q0
-    movq             m5, [pixq +     strideq]  ;  q1
-    movq             m6, [pixq + 2 * strideq]  ;  q2
-    movq             m7, [pixq + src3strideq]  ;  q3
+    movq             m0, [pix0q             ]  ; p3
+    movq             m1, [pix0q +   strideq]   ; p2
+    movq             m2, [pix0q + 2 * strideq] ; p1
+    movq             m3, [pix0q + src3strideq] ; p0
+    movq             m4, [pixq]                ; q0
+    movq             m5, [pixq +     strideq]  ; q1
+    movq             m6, [pixq + 2 * strideq]  ; q2
+    movq             m7, [pixq + src3strideq]  ; q3
 
     pxor            m12, m12 ; zeros reg
     punpcklbw        m0, m12
@@ -390,14 +390,14 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 11, 16, pix, stride, beta, tc, no_p, no_
     sub           pix0q, src3strideq
     sub           pix0q, strideq
 
-    movu             m0, [pix0q]               ;  p3
-    movu             m1, [pix0q + strideq]     ;  p2
-    movu             m2, [pix0q + 2 * strideq] ;  p1
-    movu             m3, [pix0q + src3strideq] ;  p0
-    movu             m4, [pixq]                ;  q0
-    movu             m5, [pixq +     strideq]  ;  q1
-    movu             m6, [pixq + 2 * strideq]  ;  q2
-    movu             m7, [pixq + src3strideq]  ;  q3
+    movu             m0, [pix0q]               ; p3
+    movu             m1, [pix0q + strideq]     ; p2
+    movu             m2, [pix0q + 2 * strideq] ; p1
+    movu             m3, [pix0q + src3strideq] ; p0
+    movu             m4, [pixq]                ; q0
+    movu             m5, [pixq +     strideq]  ; q1
+    movu             m6, [pixq + 2 * strideq]  ; q2
+    movu             m7, [pixq + src3strideq]  ; q3
 
     CHROMA_DEBLOCK_BODY 10
 
@@ -425,14 +425,14 @@ cglobal vvc_h_loop_filter_chroma_12, 9, 11, 16, pix, stride, beta, tc, no_p, no_
     sub           pix0q, src3strideq
     sub           pix0q, strideq
 
-    movu             m0, [pix0q]               ;  p3
-    movu             m1, [pix0q + strideq]     ;  p2
-    movu             m2, [pix0q + 2 * strideq] ;  p1
-    movu             m3, [pix0q + src3strideq] ;  p0
-    movu             m4, [pixq]                ;  q0
-    movu             m5, [pixq +     strideq]  ;  q1
-    movu             m6, [pixq + 2 * strideq]  ;  q2
-    movu             m7, [pixq + src3strideq]  ;  q3
+    movu             m0, [pix0q]               ; p3
+    movu             m1, [pix0q + strideq]     ; p2
+    movu             m2, [pix0q + 2 * strideq] ; p1
+    movu             m3, [pix0q + src3strideq] ; p0
+    movu             m4, [pixq]                ; q0
+    movu             m5, [pixq +     strideq]  ; q1
+    movu             m6, [pixq + 2 * strideq]  ; q2
+    movu             m7, [pixq + src3strideq]  ; q3
 
     CHROMA_DEBLOCK_BODY 12
 
@@ -513,14 +513,14 @@ cglobal vvc_h_loop_filter_luma_8, 4, 14, 16, pix, stride, beta, tc, pix0, src3st
     mov           pix0q, pixq
     sub           pix0q, src3strideq
     sub           pix0q, strideq
-    movq             m0, [pix0q];               p3
+    movq             m0, [pix0q]              ; p3
     movq             m1, [pix0q +     strideq]; p2
     movq             m2, [pix0q + 2 * strideq]; p1
     movq             m3, [pix0q + src3strideq]; p0
-    movq             m4, [pixq];                q0
-    movq             m5, [pixq +     strideq];  q1
-    movq             m6, [pixq + 2 * strideq];  q2
-    movq             m7, [pixq + src3strideq];  q3
+    movq             m4, [pixq]               ; q0
+    movq             m5, [pixq +     strideq] ; q1
+    movq             m6, [pixq + 2 * strideq] ; q2
+    movq             m7, [pixq + src3strideq] ; q3
     pxor             m8, m8
     punpcklbw        m0, m8
     punpcklbw        m1, m8
@@ -549,11 +549,11 @@ cglobal vvc_h_loop_filter_luma_10, 4, 14, 16, pix, stride, beta, tc, pix0, src3s
     mov                        pix0q, pixq
     sub                        pix0q, src3strideq
     sub                        pix0q, strideq
-    movdqu                        m0, [pix0q];               p3
+    movdqu                        m0, [pix0q]              ; p3
     movdqu                        m1, [pix0q +     strideq]; p2
     movdqu                        m2, [pix0q + 2 * strideq]; p1
     movdqu                        m3, [pix0q + src3strideq]; p0
-    movdqu                        m4, [pixq];                q0
+    movdqu                        m4, [pixq]               ; q0
     movdqu                        m5, [pixq  +     strideq]; q1
     movdqu                        m6, [pixq  + 2 * strideq]; q2
     movdqu                        m7, [pixq  + src3strideq]; q3
@@ -566,12 +566,12 @@ cglobal vvc_h_loop_filter_luma_10, 4, 14, 16, pix, stride, beta, tc, pix0, src3s
     CLIPW                         m4, m8, [pw_pixel_max_10]
     CLIPW                         m5, m8, [pw_pixel_max_10]
     CLIPW                         m6, m8, [pw_pixel_max_10]
-    movdqu     [pix0q +     strideq], m1;  p2
-    movdqu     [pix0q + 2 * strideq], m2;  p1
-    movdqu     [pix0q + src3strideq], m3;  p0
-    movdqu     [pixq               ], m4;  q0
-    movdqu     [pixq  +     strideq], m5;  q1
-    movdqu     [pixq  + 2 * strideq], m6;  q2
+    movdqu     [pix0q +     strideq], m1                   ; p2
+    movdqu     [pix0q + 2 * strideq], m2                   ; p1
+    movdqu     [pix0q + src3strideq], m3                   ; p0
+    movdqu     [pixq               ], m4                   ; q0
+    movdqu     [pixq  +     strideq], m5                   ; q1
+    movdqu     [pixq  + 2 * strideq], m6                   ; q2
 .bypassluma:
     RET
 
@@ -597,12 +597,12 @@ cglobal vvc_h_loop_filter_luma_12, 4, 14, 16, pix, stride, beta, tc, pix0, src3s
     CLIPW                         m4, m8, [pw_pixel_max_12]
     CLIPW                         m5, m8, [pw_pixel_max_12]
     CLIPW                         m6, m8, [pw_pixel_max_12]
-    movdqu     [pix0q +     strideq], m1;  p2
-    movdqu     [pix0q + 2 * strideq], m2;  p1
-    movdqu     [pix0q + src3strideq], m3;  p0
-    movdqu     [pixq               ], m4;  q0
-    movdqu     [pixq  +     strideq], m5;  q1
-    movdqu     [pixq  + 2 * strideq], m6;  q2
+    movdqu     [pix0q +     strideq], m1                   ; p2
+    movdqu     [pix0q + 2 * strideq], m2                   ; p1
+    movdqu     [pix0q + src3strideq], m3                   ; p0
+    movdqu     [pixq               ], m4                   ; q0
+    movdqu     [pixq  +     strideq], m5                   ; q1
+    movdqu     [pixq  + 2 * strideq], m6                   ; q2
 .bypassluma:
     RET
 
