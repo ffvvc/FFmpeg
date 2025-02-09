@@ -37,11 +37,8 @@ cextern pw_4
 cextern pw_5
 cextern pw_8
 cextern pw_1023
-cextern pw_4096
-cextern pw_8192
 cextern pw_m1
 cextern pd_1
-cextern pd_3
 
 %define pw_pixel_max_10 pw_1023
 pw_pixel_max_12: times 8 dw ((1 << 12)-1)
@@ -49,32 +46,138 @@ pw_m2:           times 8 dw -2
 
 SECTION .text
 
-%macro SHUFFLE_ON_SHIFT 2 ; dst, src
-    cmp shiftd, 1
-    je        %%no_shift
-    punpcklqdq       %2, %2, %2
-    pshufhw          %1, %2, q2222
-    pshuflw          %1, %1, q0000
-    jmp             %%end
+%macro CHROMA_LOAD_PARAM 3 ; dst, src, is_i32
+    cmp         shiftd, 1
+    jne             %%no_shift
+%if %3
+    movdqu          %1, [%2]
+%else
+    pmovzxbd        %1, [%2]
+%endif
+    pshufhw         %1, %1, q2200
+    pshuflw         %1, %1, q2200
+    jmp             %%end_shift
+
 %%no_shift:
-    pshufhw          %1, %2, q2301
-    pshuflw          %1, %1, q2301
-%%end:
+%if %3
+    movq            %1, [%2]
+%else
+    vpbroadcastw    %1, [%2]
+    pmovzxbd        %1, xmm%1
+%endif
+    punpcklwd       %1, %1
+    vpermilps       %1, %1, q2200
+
+%%end_shift:
 %endmacro
 
-%macro SHUFFLE_ON_SHIFT2 2
-    cmp          shiftd, 1
-    je            %%end
-    punpcklqdq       %1, %1, %1
-    pshufhw          %2, %1, q2222
-    pshuflw          %2, %2, q0000
-    movu             %1, %2
-%%end:
+%macro CHROMA_LOAD_I32 2 ; dst, src
+    CHROMA_LOAD_PARAM %1, %2, 1
 %endmacro
 
-ALIGN 16
+%macro CHROMA_LOAD_U8 2 ; dst, src
+    CHROMA_LOAD_PARAM %1, %2, 0
+%endmacro
+
+%macro CHROMA_LOAD_BETA 2 ; dst, bit_depth
+    CHROMA_LOAD_I32  %1, betaq
+%if %2 > 8
+    psllw            %1, %2 - 8
+%endif
+%endmacro
+
+; input: shift, betaq
+; output: m8(-tc), m9(tc)
+; CHROMA_LOAD_TC(bit_depth)
+%macro CHROMA_LOAD_TC 1
+    CHROMA_LOAD_I32   m9, tcq
+
+%if %1 > 10
+    psllw             m9, %1 - 10
+%elif %1 < 10
+    paddw             m9, [pw_2]
+    psrlw             m9, 2
+%endif
+
+    pxor              m8, m8
+    psubw             m8, m9  ; -tc
+%endmacro
+
+; m14: output, d0+d1 or dsam0&&dsam1
+%macro CHROMA_COMBINE 1 ; op
+    cmp                shiftd, 1
+    je                 %%shift
+    psrlq              m15, m13, 48
+    %1                 m14, m13, m15
+    pshufhw            m14, m14, 0
+    pshuflw            m14, m14, 0
+    jmp                %%end_shift
+%%shift:
+    psrld              m15, m13, 16
+    %1                 m14, m13, m15
+    pshufhw            m14, m14, q2200
+    pshuflw            m14, m14, q2200
+%%end_shift:
+%endmacro
+
+%macro CHROMA_DECIDE_TYPE 1
+    pcmpeqw            m15, m13, [pw_3]
+    pand               m11, m15
+    ptest              m11, m11
+    jz                 .weak
+
+    pcmpeqw            m12, [pw_1]
+    pblendvb           m13, m1, m2, m12 ; p2 and p2n
+    psubw              m13, m2
+    psubw              m13, m2
+    paddw              m13, m3
+    pabsw              m13, m13         ; abs(p2 - 2 * p1 + p0)  and abs(p2n - 2 * p1n + p0n)
+
+    psubw              m14, m6, m5      ; Q2 and q2n
+    psubw              m14, m5
+    paddw              m14, m4
+    pabsw              m14, m14
+
+    paddw              m13, m14         ; d0 and d1
+
+    ; compare d0 + d1 with beta
+    CHROMA_COMBINE     paddw
+    CHROMA_LOAD_BETA   m15, %1
+    pcmpgtw            m14, m15, m14    ; d0 + d1 < beta
+    pand               m11, m14
+
+    ; compare d0 << 1 and d1 << 1 with beta2
+    psrlw              m15, 2           ; beta_2
+    psllw              m13, 1
+    pcmpgtw            m13, m15, m13    ; (d0 << 1) and (d1 << 1) < beta_2
+
+    ; compare d0 and d1 with beta2
+    psrlw              m15, 1           ; beta_3
+    pblendvb           m12, m0, m2, m12 ; p3 and p3n
+    psubw              m12, m3
+    pabsw              m12, m12         ; abs(p3 - p0) and abs(p3n - p0n)
+    psubw              m14, m4, m7
+    pabsw              m14, m14         ; abs(Q0 - Q3) and abs(q0n - q3n)
+    paddw              m12, m14
+    pcmpgtw            m12, m15, m12    ; abs(p3 - p0) + abs(p3 - p0) and abs(p3n - p0n) + abs(q0n - q3n) < beta_3
+    pand               m13, m12
+
+    ; compare abs(p0 - Q0) and abs(p0n - q0n) with tc25
+    psllw              m15, m9, 2       ; tc * 4
+    pavgw              m15, m9          ; tc25
+    psubw              m14, m3, m4      ; (p0 - Q0) and (p3n - p0n)
+    pabsw              m14, m14
+    pcmpgtw            m14, m15, m14    ; (p0 - Q0) and (p3n - p0n) < tc25
+    pand               m13, m14
+
+    CHROMA_COMBINE     pand             ; dsam0 && dsam1
+    pand               m11, m14
+%endmacro
+
 %macro WEAK_CHROMA 0
-    H2656_CHROMA_DEBLOCK m14, m15, m2, m3, m4, m5, m8, m9, m12, m13
+    H2656_CHROMA_DEBLOCK m14, m15, m2, m3, m4, m5, m8, m9, m12, m13 ; (dst0, dst1, p1, p0, q0, q1, -tc, tc, tmp1, tmp2)
+    MASKED_COPY       m3, m14
+    MASKED_COPY       m4, m15
 %endmacro
 
 %macro CHROMA_FILTER 1 ;(dst)
@@ -87,6 +190,30 @@ ALIGN 16
     paddw               m15, %1
 
     MASKED_COPY          %1, m15
+%endmacro
+
+%macro ONE_SIDE_CHROMA 0
+    paddw          m12, m3, m4      ; p0 + q0
+    paddw          m13, m5, m6      ; q1 + q2
+    paddw          m13, m12         ; p0 + q0 + q1 + q2
+
+    ; P0
+    paddw          m14, m2, m2      ; 2 * p1
+    paddw          m15, m2, m3      ; p1 + p0
+    CHROMA_FILTER  m3
+
+    ; Q0
+    paddw          m15, m4, m7      ; q0 + q3
+    CHROMA_FILTER  m4
+
+    ; Q1
+    paddw          m14, m7, m7      ; 2 * q3
+    paddw          m15, m2, m5      ; p1 + q1
+    CHROMA_FILTER  m5
+
+    ; Q2
+    paddw          m15, m6, m7      ; q2 + q3
+    CHROMA_FILTER  m6
 %endmacro
 
 %macro STRONG_CHROMA 0
@@ -128,343 +255,63 @@ ALIGN 16
     psubw          m13, m12          ; p0 + q0 + q1 + q2
     paddw          m15, m6, m7       ; q2 + q3
     CHROMA_FILTER  m6
-
-%endmacro
-
-; m11 strong mask, m8/m9 -tc, tc
-%macro SPATIAL_ACTIVITY 1
-
-    ; if p == 1, then p3, p2 are p1 for spatial calc
-    pxor              m10, m10
-    movd              m11, [max_len_pq]
-    punpcklbw         m11, m11, m10
-    punpcklwd         m11, m11, m10
-
-    pcmpeqd           m11, [pd_1]
-
-    SHUFFLE_ON_SHIFT2 m11, m13
-
-    movu       [rsp + 48], m0
-    movu       [rsp + 64], m1
-
-    movu              m12, m2
-    movu              m13, m2
-    MASKED_COPY        m0, m12
-    MASKED_COPY        m1, m13
-
-; load tc
-.load_tc:
-    movu               m8, [tcq]
-%if %1 == 8
-    paddw              m8, [pw_2]
-    psrlw              m8, 2
-%elif %1 == 12
-    psllw              m8, %1 - 10;
-%endif
-    cmp             shiftd, 1
-    je      .tc_load_shift
-
-    punpcklqdq          m8, m8, m8
-    pshufhw             m8, m8, q2222
-    pshuflw             m8, m8, q0000
-    jmp       .end_tc_load
-.tc_load_shift:
-    pshufhw             m8, m8,  q2200
-    pshuflw             m8, m8,  q2200
-.end_tc_load:
-    movu          [tcptrq], m8
-
-    ; if max_len_q == 3, compute spatial activity to determine final length
-    pxor               m10, m10
-    movd               m11, [max_len_qq]
-    punpcklbw          m11, m11, m10
-    punpcklwd          m11, m11, m10
-
-    pcmpeqd            m11, [pd_3];
-    SHUFFLE_ON_SHIFT2  m11, m13
-
-    movu   [spatial_maskq], m11
-
-    movmskps           r14, m11
-    cmp                r14, 0
-    je         .final_mask
-
-.tc25_calculation:
-    pmullw              m8, [pw_5]
-    paddw               m8, [pw_1]
-    psrlw               m8, 1          ; ((tc * 5 + 1) >> 1);
-
-    psubw              m12, m3, m4     ;      p0 - q0
-    ABS1               m12, m14        ; abs(p0 - q0)
-
-    cmp             shiftd, 1
-    je  .tc25_mask
-
-    pshufhw            m12, m12, q3300
-    pshuflw            m12, m12, q3300
-
-.tc25_mask:
-    pcmpgtw            m15, m8, m12
-    pand               m11, m15
-
-; dsam
-    psllw               m9, m2, 1
-    psubw              m10, m1, m9
-    paddw              m10, m3
-    ABS1               m10, m12
-
-    psllw               m9, m5, 1
-    psubw              m12, m6, m9
-    paddw              m12, m4
-    ABS1               m12, m13
-
-    paddw               m9, m10, m12  ; m9 spatial activity sum for all lines
-; end dsam
-
-; Load beta
-    movu               m12, [betaq]
-%if %1 > 8
-    psllw              m12, %1 - 8   ; replace with bit_depth
-%endif
-
-    cmp             shiftd, 1
-    je    .beta_load_shift
-
-    punpcklqdq         m12,  m12, m12
-    pshufhw            m13,  m12, q2222
-    pshuflw            m13, m13, q0000
-
-; dsam calcs
-    pshufhw            m14,  m9, q0033
-    pshuflw            m14, m14, q0033
-    pshufhw             m9,  m9, q3300
-    pshuflw             m9,  m9, q3300
-
-    jmp  .spatial_activity
-
-.beta_load_shift:
-    pshufhw            m13, m12,  q2200
-    pshuflw            m13, m13,  q2200
-
-    movu               m14, m9
-    pshufhw             m9,  m9, q2301
-    pshuflw             m9,  m9, q2301
-
-.spatial_activity:
-    paddw               m14, m9          ; d0 + d3, d0 + d3, d0 + d3, ...
-    pcmpgtw             m15, m13, m14    ; beta > d0 + d3, d0 + d3 (next block)
-    pand                m11, m15         ; save filtering and or at the end
-
-    ; beta_2
-    psraw               m15, m13, 2   ; beta >> 2
-    psllw                m8, m9, 1    ;  d0, d1, d2, d3, ...
-
-    pcmpgtw             m15, m8       ; d0 ..  < beta_2, d0... < beta_2, d3... <
-    pand                m11, m15
-
-.beta3_comparison:
-    psubw               m12, m0, m3  ; p3 - p0
-    ABS1                m12, m14     ; abs(p3 - p0)
-
-    psubw               m15, m7, m4  ; q3 - q0
-    ABS1                m15, m14     ; abs(q3 - q0)
-
-    paddw               m12, m15     ; abs(p3 - p0) + abs(q3 - q0)
-
-    psraw               m13, 3       ; beta >> 3
-
-    cmp              shiftd, 1
-    je    .beta3_no_first_shuffle
-
-    pshufhw             m12, m12, q3300
-    pshuflw             m12, m12, q3300
-.beta3_no_first_shuffle:
-    pcmpgtw             m13, m12
-    pand                m11, m13
-
-.final_mask:
-    movu                m15, m11
-    cmp              shiftd, 1
-    je    .final_shift_mask
-
-    pshufhw             m15, m15, q0033
-    pshuflw             m15, m15, q0033
-    pand                m11, m15
-    jmp     .final_mask_end
-
-.final_shift_mask:
-    pshufhw             m15, m15, q2301
-    pshuflw             m15, m15, q2301
-    pand                m11, m15
-.final_mask_end:
-
-.prep_clipping_masks:
-    movu         [spatial_maskq], m11
-    movu                      m9, [tcptrq]
-    psignw                    m8, m9, [pw_m1];
-
-    movu             m0, [rsp + 48]
-    movu             m1, [rsp + 64]
-
-%endmacro
-
-%macro ONE_SIDE_CHROMA 0
-
-    paddw          m12, m3, m4      ; p0 + q0
-    paddw          m13, m5, m6      ; q1 + q2
-    paddw          m13, m12         ; p0 + q0 + q1 + q2
-
-    ; P0
-    paddw          m14, m2, m2      ; 2 * p1
-    paddw          m15, m2, m3      ; p1 + p0
-    CHROMA_FILTER  m3
-
-    ; Q0
-    paddw          m15, m4, m7      ; q0 + q3
-    CHROMA_FILTER  m4
-
-    ; Q1
-    paddw          m14, m7, m7      ; 2 * q3
-    paddw          m15, m2, m5      ; p1 + q1
-    CHROMA_FILTER  m5
-
-    ; Q2
-    paddw          m15, m6, m7      ; q2 + q3
-    CHROMA_FILTER  m6
 %endmacro
 
 ; CHROMA_DEBLOCK_BODY(bit_depth)
 %macro CHROMA_DEBLOCK_BODY 1
-    sub  rsp, 16
-    mov spatial_maskq, rsp
-    sub rsp, 16
-    mov tcptrq, rsp
-    sub rsp, 16  ; rsp + 64 = spatial activity storage
-    sub rsp, 16  ; rsp + 48 = spatial_activity storage
-    sub rsp, 16  ; rsp + 32 = strong mask
-    sub rsp, 16  ; rsp + 16 = no_p
-    sub rsp, 16  ; rsp      = no_q
+    CHROMA_LOAD_TC    %1
 
-    ; no_p
-    pxor            m10, m10
-    movd            m11, [no_pq]  ; 1 means skip
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
+    pxor               m10, m10   ; 0
 
-    pcmpeqd         m11, m10      ; calculate p mask
-    movmskps      no_pq, m11
+    ; if (tc)
+    pcmpgtw            m11, m9, m10
+    ptest              m11, m11
+    jz              .bypass
 
-    SHUFFLE_ON_SHIFT m13, m11
-    movu      [rsp + 16], m13
+    ; if (!max_len_q || !max_len_p)
+    CHROMA_LOAD_U8     m12, max_len_pq
+    CHROMA_LOAD_U8     m13, max_len_qq
+    pcmpgtw            m14, m12, m10
+    pcmpgtw            m15, m13, m10
+    pand               m14, m15
+    ptest              m14, m14
+    jz               .bypass
 
-    ; load max_len_q
-    pxor            m10, m10
-    movd            m11, [max_len_pq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
+    ; save filter mask
+    pand               m11, m14
+    mova               m10, m11
 
-    pcmpeqd         m11, m10 ; which are 0
-    pcmpeqd         m12, m12, m12
-    pxor            m11, m11, m12
+    CHROMA_DECIDE_TYPE %1
 
-    SHUFFLE_ON_SHIFT m13, m11
+.weak:
+    pandn              m11, m10
+    ptest              m11, m11
+    jz                 .one_side
+    WEAK_CHROMA
+    pandn              m10, m11, m10
+    ptest              m10, m10
+    jz                 .bypass
 
-    pand             m13, [rsp + 16]
-    movu             [rsp + 16], m13
-    movmskps         no_pq, m13
+.one_side:
+    CHROMA_LOAD_U8     m11, max_len_pq
+    pcmpeqw            m11, [pw_1]
+    pand               m11, m10
+    ptest              m11, m11
+    jz                 .strong
+    ONE_SIDE_CHROMA
+    pandn              m10, m11, m10
+    ptest              m10, m10
+    jz                 .bypass
 
-    ; no_q
-    pxor            m10, m10
-    movd            m11, [no_qq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
-
-    pcmpeqd         m11, m10;
-    movmskps      no_qq, m11;
-
-    SHUFFLE_ON_SHIFT m13, m11
-    movu           [rsp], m13
-
-    pxor            m10, m10
-    movd            m11, [max_len_qq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
-
-    pcmpeqd         m11, m10 ; which are 0
-    pcmpeqd         m12, m12, m12
-    pcmpeqd         m11, m10
-
-    SHUFFLE_ON_SHIFT   m13, m11
-    pand               m13, [rsp]
-    movu             [rsp], m13
-    movmskps         no_qq, m13
-; end q
-
-    SPATIAL_ACTIVITY %1
-
-    movmskps         r14, m11
-    cmp              r14, 0
-    je              .chroma_weak
-
-    pxor            m10, m10
-    movd            m11, [max_len_pq]
-    punpcklbw       m11, m11, m10
-    punpcklwd       m11, m11, m10
-
-    pcmpeqd         m11, [pd_3]
-
-    SHUFFLE_ON_SHIFT2 m11, m13
-
-    pand             m11, [spatial_maskq] ; p = 3 & spatial mask
-    movmskps         r14, m11
-    cmp              r14, 0
-    je              .end_strong_chroma
-
-    movu       [rsp + 32], m11
+.strong:
+    mova               m11, m10
     STRONG_CHROMA
 
-.end_strong_chroma:
-
-.one_side_chroma:
-    ; invert mask & all strong mask, to get only one-sided mask
-    pcmpeqd  m12, m12, m12
-    pxor     m11, m11, m12
-    pand     m11, [spatial_maskq]
-
-    movmskps         r14, m11
-    cmp              r14, 0
-    je              .end_one_side_chroma
-
-    movu     [rsp + 32], m11
-    ONE_SIDE_CHROMA
-.end_one_side_chroma:
-
-.chroma_weak:
-    movu     m11, [spatial_maskq]
-    pcmpeqd  m12, m12, m12
-    pxor     m11, m11, m12
-    movu             m9, [tcptrq]
-    psignw           m8, m9, [pw_m1];
-
-    movmskps         r14, m11
-    cmp              r14, 0
-    je              .end_weak_chroma
-
-    WEAK_CHROMA
-
-    movu             m12, m11
-    pand             m11, [rsp + 16]
-    MASKED_COPY       m3, m14   ; need to mask the copy since we can have a mix of weak + others
-
-    movu             m11, m12
-    pand             m11, [rsp]
-    MASKED_COPY       m4, m15 ; need to mask the copy since we can have a mix of weak + others
-.end_weak_chroma:
-    add rsp, 112
+.bypass:
 %endmacro
 
 %macro LOOP_FILTER_CHROMA 0
-cglobal vvc_v_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, r3stride, spatial_mask, tcptr
+cglobal vvc_v_loop_filter_chroma_8, 9, 11, 16, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift, pix0, r3stride
     sub            pixq, 4
     lea       r3strideq, [3*strideq]
     mov           pix0q, pixq
@@ -474,7 +321,7 @@ cglobal vvc_v_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
     TRANSPOSE8x8B_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq)
     RET
 
-cglobal vvc_v_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, r3stride, spatial_mask, tcptr
+cglobal vvc_v_loop_filter_chroma_10, 9, 11, 16, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift, pix0, r3stride
     sub            pixq, 8
     lea       r3strideq, [3*strideq]
     mov           pix0q, pixq
@@ -484,7 +331,7 @@ cglobal vvc_v_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     TRANSPOSE8x8W_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq), [pw_pixel_max_10]
     RET
 
-cglobal vvc_v_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, r3stride, spatial_mask, tcptr
+cglobal vvc_v_loop_filter_chroma_12, 9, 11, 16, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift, pix0, r3stride
     sub            pixq, 8
     lea       r3strideq, [3*strideq]
     mov           pix0q, pixq
@@ -494,7 +341,7 @@ cglobal vvc_v_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p
     TRANSPOSE8x8W_STORE PASS8ROWS(pix0q, pixq, strideq, r3strideq), [pw_pixel_max_12]
     RET
 
-cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
+cglobal vvc_h_loop_filter_chroma_8, 9, 11, 16, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift, pix0, src3stride
     lea     src3strideq, [3 * strideq]
     mov           pix0q, pixq
     sub           pix0q, src3strideq
@@ -537,7 +384,7 @@ cglobal vvc_h_loop_filter_chroma_8, 9, 15, 16, 112, pix, stride, beta, tc, no_p,
 
 RET
 
-cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
+cglobal vvc_h_loop_filter_chroma_10, 9, 11, 16, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift, pix0, src3stride
     lea    src3strideq, [3 * strideq]
     mov           pix0q, pixq
     sub           pix0q, src3strideq
@@ -572,7 +419,7 @@ cglobal vvc_h_loop_filter_chroma_10, 9, 15, 16, 112, pix, stride, beta, tc, no_p
 
     RET
 
-cglobal vvc_h_loop_filter_chroma_12, 9, 15, 16, 112, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift , pix0, q_len, src3stride, spatial_mask, tcptr
+cglobal vvc_h_loop_filter_chroma_12, 9, 11, 16, pix, stride, beta, tc, no_p, no_q, max_len_p, max_len_q, shift, pix0, src3stride
     lea    src3strideq, [3 * strideq]
     mov           pix0q, pixq
     sub           pix0q, src3strideq
