@@ -67,8 +67,8 @@ static const uint32_t pixel_mask[3] = {0xffffffff, 0x03ff03ff, 0x0fff0fff};
     else \
         *(uint16_t*)(&x) = z; \
 } while (0)
-#define RANDCLIP(x, diff) av_clip(GET(x) - (diff), 0, \
-    (1 << (bit_depth)) - 1) + rnd() % FFMAX(2 * (diff), 1)
+#define RANDCLIP(x, diff) av_clip(GET(x) - (diff)  + rnd() % FFMAX(2 * (diff), 1), \
+0, (1 << (bit_depth)) - 1)
 
 static void randomize_params(int32_t *beta, int32_t *tc, const int is_luma, const int bit_depth, const int size)
 {
