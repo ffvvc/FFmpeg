@@ -234,25 +234,54 @@
 
 ; in: %2 clobbered
 ; out: %1
-; mask in m11
-; clobbers m10
-%macro MASKED_COPY 2
-    pand             %2, m11 ; and mask
-    pandn           m10, m11, %1; and -mask
-    por              %2, m10
-    mova             %1, %2
+; mask in %3
+%macro MASKED_COPY2 3
+    PBLENDVB         %1, %2, %3
 %endmacro
 
 ; in: %2 clobbered
 ; out: %1
-; mask in %3, will be clobbered
-%macro MASKED_COPY2 3
-    pand             %2, %3 ; and mask
-    pandn            %3, %1; and -mask
-    por              %2, %3
-    mova             %1, %2
+; mask in m11
+%macro MASKED_COPY 2
+    MASKED_COPY2 %1, %2, m11
 %endmacro
 
+%macro LUMA_LOAD_BETA 3
+%ifidn %2, vvc
+    movq            %1, [betaq];
+    punpcklwd       %1, %1
+    vpermilps       %1, %1, q2200
+    %if %3 > 8
+        psllw       %1, %3 - 8
+    %endif
+%else
+    movd            %1, betad
+    SPLATW          %1, %1, 0
+%endif
+%endmacro
+
+%macro LUMA_LOAD_TC 4
+    mov     %1d, %2
+%ifidn %3, vvc
+    %if %4 > 10
+        shl      %1, %4 - 10
+    %elif %4 < 10
+        add      %1, 1 << (9 - %4)
+        shr      %1, 10 - %4
+    %endif
+%else
+    %if %4 > 8
+        shl      %1, %4 - 8
+    %endif
+%endif
+%endmacro
+
+%macro LUMA_LOAD_TC 2
+    LUMA_LOAD_TC       r11, [tcq], %1, %2
+    movd                m8, r11d; tc0
+    LUMA_LOAD_TC        r3, [tcq+4], %1, %2
+    add                r11d, r3d; tc0 + tc1
+%endmacro
 
 ; input in m0 ... m7, beta in r2 tcs in r3. Output in m1...m6
 %macro H2656_LUMA_DEBLOCK_BODY 3
@@ -267,11 +296,12 @@
     ABS1            m11, m13 ; 0dq0, 0dq3 , 1dq0, 1dq3
 
     ;beta calculations
-%if %2 > 8
-    shl             betaq, %2 - 8
+%ifidn %1, hevc
+    %if %2 > 8
+        shl             betaq, %2 - 8
+    %endif
 %endif
-    movd            m13, betad
-    SPLATW          m13, m13, 0
+    LUMA_LOAD_BETA  m13, %1, %2
     ;end beta calculations
 
     paddw            m9, m10, m11;   0d0, 0d3  ,  1d0, 1d3
@@ -327,16 +357,7 @@
 
     ;decide between strong and weak filtering
     ;tc25 calculations
-    mov            r11d, [tcq];
-%if %2 > 8
-    shl             r11, %2 - 8
-%endif
-    movd             m8, r11d; tc0
-    mov             r3d, [tcq+4];
-%if %2 > 8
-    shl              r3, %2 - 8
-%endif
-    add            r11d, r3d; tc0 + tc1
+    LUMA_LOAD_TC     %1, %2
     jz             .bypassluma
     movd             m9, r3d; tc1
     punpcklwd        m8, m8
@@ -375,12 +396,29 @@
     movmskps        r11, m8;
     and             r6, r11; strong mask, beta_2, beta_3 and tc25 comparisons
     ;----tc25 comparison end---
+%ifidn %1, vvc
+    ;----max_len comparison end---
+    mov            r11q, r6mp
+    pinsrw          m12, [r11q], 0; max_len_p
+    mov            r11q, r7mp
+    pinsrw          m12, [r11q], 1; max_len_q
+    pxor            m13, m13
+    punpcklbw       m12, m13
+    pshuflw         m12, m12, q3120
+    punpcklwd       m12, m12
+    pcmpgtw         m12, [pw_2]; max_len comparisons
+    movmskps        r11, m12
+    and              r6, r11; strong mask, beta_2, beta_3 and tc25 and max_len_{q, p} comparisons
+    ;----max_len comparison end---
+%endif
     mov             r11, r6;
     shr             r11, 1;
     and             r6, r11; strong mask, bits 2 and 0
 
+%ifidn %1, hevc
     pmullw          m14, m9, [pw_m2]; -tc * 2
     paddw            m9, m9
+%endif
 
     and             r6, 5; 0b101
     mov             r11, r6; strong mask
@@ -395,6 +433,13 @@
     shufps          m10, m12, 0
     pcmpeqd         m10, [pd_1]; strong mask
 
+%ifidn %1, vvc
+    mova            m15, m9
+    psllw            m9, 2;          4*tc
+    psubw           m14, m15, m9;   -3*tc
+    psubw            m9, m15;        3*tc
+%endif
+
     mova            m13, [pw_4]; 4 in every cell
     pand            m11, m10; combine filtering mask and strong mask
     paddw           m12, m2, m3;          p1 +   p0
@@ -406,8 +451,13 @@
     paddw           m12, m13;  p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4
     psraw           m12, 3;  ((p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3)
     psubw           m12, m3; ((p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3) - p0
-    CLIPW           m12, m14, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m12, m14, m9; hevc:av_clip( , -2 * tc, 2 * tc), vvc:av_clip( , -3 * tc, 3 * tc)
     paddw           m12, m3; p0'
+
+%ifidn %1, vvc
+    paddw           m14, m15;  -2*tc
+    psubw            m9, m15;   2*tc
+%endif
 
     paddw           m15, m1, m10; p2 + p1 + p0 + q0
     psrlw           m13, 1; 2 in every cell
@@ -417,6 +467,11 @@
     CLIPW           m15, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m15, m2; p1'
 
+%ifidn %1, vvc
+    psraw            m9, 1;      tc
+    psraw           m14, 1;     -tc
+%endif
+
     paddw            m8, m1, m0;     p3 +   p2
     paddw            m8, m8;   2*p3 + 2*p2
     paddw            m8, m1;   2*p3 + 3*p2
@@ -425,9 +480,16 @@
     paddw            m8, m13;  2*p3 + 3*p2 + p1 + p0 + q0 + 4
     psraw            m8, 3;   (2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3
     psubw            m8, m1; ((2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3) - p2
-    CLIPW            m8, m14, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW            m8, m14, m9; hevc:av_clip( , -2 * tc, 2 * tc), vvc:av_clip( , -tc, tc)
     paddw            m8, m1; p2'
     MASKED_COPY      m1, m8
+
+%ifidn %1, vvc
+    mova            m10, m9
+    psllw            m9, 2;          4*tc
+    psubw           m14, m10, m9;   -3*tc
+    psubw            m9, m10;        3*tc
+%endif
 
     paddw            m8, m3, m4;         p0 +   q0
     paddw            m8, m5;         p0 +   q0 +   q1
@@ -437,9 +499,14 @@
     paddw            m8, m13; p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4
     psraw            m8, 3;  (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >>3
     psubw            m8, m4;
-    CLIPW            m8, m14, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW            m8, m14, m9; hevc:av_clip( , -2 * tc, 2 * tc), vvc:av_clip( , -3 * tc, 3 * tc)
     paddw            m8, m4; q0'
     MASKED_COPY      m2, m15
+
+%ifidn %1, vvc
+    paddw           m14, m10;  -2*tc
+    psubw            m9, m10;   2*tc
+%endif
 
     paddw           m15, m3, m4;   p0 + q0
     paddw           m15, m5;   p0 + q0 + q1
@@ -452,6 +519,11 @@
     CLIPW           m15, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m15, m5; q1'
 
+%ifidn %1, vvc
+    psraw            m9, 1;      tc
+    psraw           m14, 1;     -tc
+%endif
+
     paddw           m13, m7;      q3 + 2
     paddw           m13, m6;      q3 +  q2 + 2
     paddw           m13, m13;   2*q3 + 2*q2 + 4
@@ -459,7 +531,7 @@
     paddw           m13, m10;   2*q3 + 3*q2 + q1 + q0 + p0 + 4
     psraw           m13, 3;    (2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3
     psubw           m13, m6;  ((2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3) - q2
-    CLIPW           m13, m14, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m13, m14, m9; hevc:av_clip( , -2 * tc, 2 * tc), vvc:av_clip( , -tc, tc)
     paddw           m13, m6; q2'
 
     MASKED_COPY      m6, m13
@@ -468,6 +540,11 @@
     MASKED_COPY      m3, m12
 
 .weakfilter:
+%ifidn %1, vvc
+    pmullw          m14, m9, [pw_m2]; -tc * 2
+    paddw            m9, m9
+%endif
+
     not             r6; strong mask -> weak mask
     and             r6, r13; final weak filtering mask, bits 0 and 1
     jz             .store
@@ -481,10 +558,12 @@
     shufps          m11, m12, 0
     pcmpeqd         m11, [pd_1]; filtering mask
 
+%ifidn %1, hevc
     mov             r13, betaq
     shr             r13, 1;
     add             betaq, r13
     shr             betaq, 3; ((beta + (beta >> 1)) >> 3))
+%endif
 
     psubw           m12, m4, m3 ; q0 - p0
     paddw           m10, m12, m12
@@ -547,8 +626,12 @@
     paddw           m15, m2; p1'
 
     ;beta calculations
-    movd            m10, betad
-    SPLATW          m10, m10, 0
+    LUMA_LOAD_BETA  m10, %1, %2
+%ifidn %1, vvc
+    psrlw           m13, m10, 1
+    paddw           m10, m13
+    psrlw           m10, m10, 3
+%endif
 
     movd            m13, r7d; 1dp0 + 1dp3
     movd             m8, r8d; 0dp0 + 0dp3

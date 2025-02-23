@@ -4,6 +4,7 @@ clean::
 OBJS-$(CONFIG_VVC_DECODER)             += x86/vvc/dsp_init.o        \
                                           x86/h26x/h2656dsp.o
 X86ASM-OBJS-$(CONFIG_VVC_DECODER)      += x86/vvc/alf.o             \
+                                          x86/vvc/deblock.o         \
                                           x86/vvc/dmvr.o            \
                                           x86/vvc/mc.o              \
                                           x86/vvc/of.o              \

@@ -840,6 +840,9 @@ static void FUNC(ff_vvc_lf_dsp_init)(VVCLFDSPContext *const lf)
     lf->filter_luma[1]     = FUNC(vvc_v_loop_filter_luma);
     lf->filter_chroma[0]   = FUNC(vvc_h_loop_filter_chroma);
     lf->filter_chroma[1]   = FUNC(vvc_v_loop_filter_chroma);
+
+    lf->filter_luma_c[0]     = FUNC(vvc_h_loop_filter_luma);
+    lf->filter_luma_c[1]     = FUNC(vvc_v_loop_filter_luma);
 }
 
 static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)

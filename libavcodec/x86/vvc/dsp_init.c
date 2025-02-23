@@ -366,6 +366,38 @@ ALF_FUNCS(16, 12, avx2)
 
 int ff_vvc_sad_avx2(const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
 #define SAD_INIT() c->inter.sad = ff_vvc_sad_avx2
+
+#if HAVE_AVX_EXTERNAL
+
+#define DEBLOCK_LUMA_FUNCS(dir)                                                                                       \
+void ff_vvc_##dir##_loop_filter_luma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,    \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int hor_ctu_edge);  \
+void ff_vvc_##dir##_loop_filter_luma_10_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,   \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int hor_ctu_edge);  \
+void ff_vvc_##dir##_loop_filter_luma_12_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,   \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int hor_ctu_edge);  \
+
+#define DEBLOCK_CHROMA_FUNCS(dir)                                                                                     \
+void ff_vvc_##dir##_loop_filter_chroma_8_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc,  \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);         \
+void ff_vvc_##dir##_loop_filter_chroma_10_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc, \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);         \
+void ff_vvc_##dir##_loop_filter_chroma_12_avx(uint8_t *pix, ptrdiff_t stride, const int32_t *beta, const int32_t *tc, \
+    const uint8_t *no_p, const uint8_t *no_q, const uint8_t *max_len_p, const uint8_t *max_len_q, int shift);         \
+
+DEBLOCK_CHROMA_FUNCS(h)
+DEBLOCK_CHROMA_FUNCS(v)
+DEBLOCK_LUMA_FUNCS(h)
+DEBLOCK_LUMA_FUNCS(v)
+
+#define DEBLOCK_INIT(bd) do {                                        \
+    c->lf.filter_chroma[0] = ff_vvc_h_loop_filter_chroma_##bd##_avx; \
+    c->lf.filter_chroma[1] = ff_vvc_v_loop_filter_chroma_##bd##_avx; \
+    c->lf.filter_luma[0]   = ff_vvc_h_loop_filter_luma_##bd##_avx;   \
+    c->lf.filter_luma[1]   = ff_vvc_v_loop_filter_luma_##bd##_avx;   \
+} while (0)
+#endif //HAVE_AVX_EXTERNAL
+
 #endif
 
 
@@ -381,6 +413,9 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
         if (EXTERNAL_SSE4(cpu_flags)) {
             MC_LINK_SSE4(8);
         }
+        if(EXTERNAL_AVX(cpu_flags)) {
+            DEBLOCK_INIT(8);
+        }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(8);
             AVG_INIT(8, avx2);
@@ -393,6 +428,9 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
     case 10:
         if (EXTERNAL_SSE4(cpu_flags)) {
             MC_LINK_SSE4(10);
+        }
+        if(EXTERNAL_AVX(cpu_flags)) {
+            DEBLOCK_INIT(10);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(10);
@@ -407,6 +445,9 @@ void ff_vvc_dsp_init_x86(VVCDSPContext *const c, const int bd)
     case 12:
         if (EXTERNAL_SSE4(cpu_flags)) {
             MC_LINK_SSE4(12);
+        }
+        if(EXTERNAL_AVX(cpu_flags)) {
+            DEBLOCK_INIT(12);
         }
         if (EXTERNAL_AVX2_FAST(cpu_flags)) {
             ALF_INIT(12);
