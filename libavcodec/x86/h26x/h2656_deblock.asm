@@ -406,8 +406,7 @@
     paddw           m12, m13;  p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4
     psraw           m12, 3;  ((p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3)
     psubw           m12, m3; ((p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3) - p0
-    pmaxsw          m12, m14
-    pminsw          m12, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m12, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m12, m3; p0'
 
     paddw           m15, m1, m10; p2 + p1 + p0 + q0
@@ -415,8 +414,7 @@
     paddw           m15, m13; p2 + p1 + p0 + q0 + 2
     psraw           m15, 2;  (p2 + p1 + p0 + q0 + 2) >> 2
     psubw           m15, m2;((p2 + p1 + p0 + q0 + 2) >> 2) - p1
-    pmaxsw          m15, m14
-    pminsw          m15, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m15, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m15, m2; p1'
 
     paddw            m8, m1, m0;     p3 +   p2
@@ -427,8 +425,7 @@
     paddw            m8, m13;  2*p3 + 3*p2 + p1 + p0 + q0 + 4
     psraw            m8, 3;   (2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3
     psubw            m8, m1; ((2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3) - p2
-    pmaxsw           m8, m14
-    pminsw           m8, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW            m8, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw            m8, m1; p2'
     MASKED_COPY      m1, m8
 
@@ -440,8 +437,7 @@
     paddw            m8, m13; p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4
     psraw            m8, 3;  (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >>3
     psubw            m8, m4;
-    pmaxsw           m8, m14
-    pminsw           m8, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW            m8, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw            m8, m4; q0'
     MASKED_COPY      m2, m15
 
@@ -453,8 +449,7 @@
     paddw           m15, m13;  p0 + q0 + q1 + q2 + 2
     psraw           m15, 2;   (p0 + q0 + q1 + q2 + 2) >> 2
     psubw           m15, m5; ((p0 + q0 + q1 + q2 + 2) >> 2) - q1
-    pmaxsw          m15, m14
-    pminsw          m15, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m15, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m15, m5; q1'
 
     paddw           m13, m7;      q3 + 2
@@ -464,8 +459,7 @@
     paddw           m13, m10;   2*q3 + 3*q2 + q1 + q0 + p0 + 4
     psraw           m13, 3;    (2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3
     psubw           m13, m6;  ((2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3) - q2
-    pmaxsw          m13, m14
-    pminsw          m13, m9; av_clip( , -2 * tc, 2 * tc)
+    CLIPW           m13, m14, m9; av_clip( , -2 * tc, 2 * tc)
     paddw           m13, m6; q2'
 
     MASKED_COPY      m6, m13
@@ -536,8 +530,7 @@
     psraw            m9, 1;   tc * 2 -> tc
     psraw           m14, 1; -tc * 2 -> -tc
 
-    pmaxsw          m12, m14
-    pminsw          m12, m9;  av_clip(delta0, -tc, tc)
+    CLIPW           m12, m14, m9;  av_clip(delta0, -tc, tc)
 
     psraw            m9, 1;   tc -> tc / 2
 %if cpuflag(ssse3)
@@ -550,8 +543,7 @@
     psubw           m15, m2;  ((p2 + p0 + 1) >> 1) - p1
     paddw           m15, m12; ((p2 + p0 + 1) >> 1) - p1 + delta0
     psraw           m15, 1;   (((p2 + p0 + 1) >> 1) - p1 + delta0) >> 1
-    pmaxsw          m15, m14
-    pminsw          m15, m9; av_clip(deltap1, -tc/2, tc/2)
+    CLIPW           m15, m14, m9; av_clip(deltap1, -tc/2, tc/2)
     paddw           m15, m2; p1'
 
     ;beta calculations
@@ -572,8 +564,7 @@
     psubw            m8, m5;  ((q2 + q0 + 1) >> 1) - q1
     psubw            m8, m12; ((q2 + q0 + 1) >> 1) - q1 - delta0)
     psraw            m8, 1;   ((q2 + q0 + 1) >> 1) - q1 - delta0) >> 1
-    pmaxsw           m8, m14
-    pminsw           m8, m9; av_clip(deltaq1, -tc/2, tc/2)
+    CLIPW            m8, m14, m9; av_clip(deltaq1, -tc/2, tc/2)
     paddw            m8, m5; q1'
 
     movd            m13, r9d;
