@@ -136,5 +136,15 @@ int ff_vvc_sei_replace(VVCSEI *dst, const VVCSEI *src)
 void ff_vvc_sei_reset(VVCSEI *s)
 {
     ff_h2645_sei_reset(&s->common);
+    ff_h274_hash_freep(&s->hash_ctx);
     s->picture_hash.present = 0;
+}
+
+int ff_vvc_sei_verify_hash(VVCSEI *s, const AVFrame *frame, const int coded_width, const int coded_height)
+{
+    const int ret = ff_h274_hash_init(&s->hash_ctx, s->picture_hash.hash_type);
+    if (ret < 0)
+        return ret;
+
+    return ff_h274_hash_verify(s->hash_ctx, &s->picture_hash, frame, coded_width, coded_height);
 }

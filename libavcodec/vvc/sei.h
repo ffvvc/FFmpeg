@@ -36,6 +36,8 @@
 typedef struct VVCSEI {
     H2645SEI common;
     H274SEIPictureHash picture_hash;
+
+    H274HashContext *hash_ctx;
 } VVCSEI;
 
 struct VVCFrameContext;
@@ -43,5 +45,6 @@ struct VVCFrameContext;
 int ff_vvc_sei_decode(VVCSEI *s, const H266RawSEI *sei, const struct VVCFrameContext *fc);
 int ff_vvc_sei_replace(VVCSEI *dst, const VVCSEI *src);
 void ff_vvc_sei_reset(VVCSEI *s);
+int ff_vvc_sei_verify_hash(VVCSEI *s, const AVFrame *frame, int coded_width, int coded_height);
 
 #endif /* AVCODEC_VVC_SEI_H */

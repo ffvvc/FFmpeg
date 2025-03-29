@@ -1079,7 +1079,21 @@ static int frame_end(VVCContext *s, VVCFrameContext *fc)
         }
     }
 
-    return ret;
+    if (!s->avctx->hwaccel && s->avctx->err_recognition & AV_EF_CRCCHECK) {
+        VVCSEI *sei = &fc->sei;
+        if (sei->picture_hash.present) {
+            ret = ff_vvc_sei_verify_hash(sei, fc->ref->frame, fc->ps.pps->width, fc->ps.pps->height);
+            if (ret < 0) {
+                av_log(s->avctx, AV_LOG_ERROR,
+                    "Verifying checksum for frame with decoder_order %d: failed\n",
+                    (int)fc->decode_order);
+                if (s->avctx->err_recognition & AV_EF_EXPLODE)
+                    return ret;
+            }
+        }
+    }
+
+    return 0;
 }
 
 static int wait_delayed_frame(VVCContext *s, AVFrame *output, int *got_output)
