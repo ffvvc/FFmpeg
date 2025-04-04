@@ -566,21 +566,124 @@ static void itransform(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx,
     }
 }
 
+static void itransform2(VVCLocalContext *lc, TransformUnit *tu, TransformBlock *tb)
+{
+    const VVCFrameContext *fc = lc->fc;
+    const CodingUnit      *cu = lc->cu;
+    const int              w  = tb->tb_width;
+    const int              h  = tb->tb_height;
+
+    if (cu->bdpcm_flag[tb->c_idx])
+        transform_bdpcm(tb, lc, cu);
+
+    dequant(lc, tu, tb);
+    if (!tb->ts) {
+        enum VVCTxType trh, trv;
+        if (cu->apply_lfnst_flag[tb->c_idx])
+            ilfnst_transform(lc, tb);
+        derive_transform_type(fc, lc, tb, &trh, &trv);
+        if (w > 1 && h > 1)
+            itx_2d(fc, tb, trh, trv);
+        else
+            itx_1d(fc, tb, trh, trv);
+    }
+}
+
+static void add_residual(VVCLocalContext *lc, TransformUnit *tu, const int tu_idx, const int target_ch_type)
+{
+    const VVCFrameContext *fc = lc->fc;
+    const VVCSPS *sps = fc->ps.sps;
+    const VVCSH *sh = &lc->sc->sh;
+    const CodingUnit *cu = lc->cu;
+    const int ps = fc->ps.sps->pixel_shift;
+    DECLARE_ALIGNED(32, int, temp)[MAX_TB_SIZE * MAX_TB_SIZE];
+
+    for (int i = 0; i < tu->nb_tbs; i++) {
+        TransformBlock *tb = &tu->tbs[i];
+        const int c_idx = tb->c_idx;
+        const int ch_type = c_idx > 0;
+
+        if (ch_type == target_ch_type) {
+            const int w = tb->tb_width;
+            const int h = tb->tb_height;
+            const int chroma_scale = ch_type && sh->r->sh_lmcs_used_flag && fc->ps.ph.r->ph_chroma_residual_scale_flag && (w * h > 4);
+            const ptrdiff_t stride = fc->frame->linesize[c_idx];
+            const int hs = sps->hshift[c_idx];
+            const int vs = sps->vshift[c_idx];
+            uint8_t *dst = &fc->frame->data[c_idx][(tb->y0 >> vs) * stride + ((tb->x0 >> hs) << ps)];
+
+            if (chroma_scale)
+                fc->vvcdsp.intra.lmcs_scale_chroma(lc, temp, tb->coeffs, w, h, cu->x0, cu->y0);
+            // TODO: Address performance issue here by combining transform, lmcs_scale_chroma, and add_residual into one function.
+            // Complete this task before implementing ASM code.
+            fc->vvcdsp.itx.add_residual(dst, chroma_scale ? temp : tb->coeffs, w, h, stride);
+
+            //if (tu->joint_cbcr_residual_flag && tb->c_idx)
+            //    add_residual_for_joint_coding_chroma(lc, tu, tb, chroma_scale);
+        }
+    }
+}
+
 static int reconstruct(VVCLocalContext *lc)
 {
     VVCFrameContext *fc = lc->fc;
     CodingUnit *cu      = lc->cu;
     const int start     = cu->tree_type == DUAL_TREE_CHROMA;
     const int end       = fc->ps.sps->r->sps_chroma_format_idc && (cu->tree_type != DUAL_TREE_LUMA);
+    const VVCSPS *sps = fc->ps.sps;
 
-    for (int ch_type = start; ch_type <= end; ch_type++) {
+    if (cu->act_enabled_flag) {
         TransformUnit *tu = cu->tus.head;
         for (int i = 0; tu; i++) {
-            predict_intra(lc, tu, i, ch_type);
-            itransform(lc, tu, i, ch_type);
+            for (int ch_type = start; ch_type <= end; ch_type++) {
+                predict_intra(lc, tu, i, ch_type);
+                for (int j = 0; j < tu->nb_tbs; j++) {
+                    TransformBlock *tb    = &tu->tbs[j];
+                    const int       c_idx = tb->c_idx;
+                    if (ch_type == !!c_idx) {
+                        if (tu->joint_cbcr_residual_flag && c_idx) {
+                            if (c_idx == CB) {
+                                const int c_res_mode = 2 * tu->coded_flag[CB] + tu->coded_flag[CR];
+                                const int c_sign     = 1 - 2 * fc->ps.ph.r->ph_joint_cbcr_sign_flag;
+                                const int shift      = tu->coded_flag[CB] ^ tu->coded_flag[CR];
+                                int joint_idx        = CB;
+                                int coded_idx        = CR;
+
+                                if (c_res_mode >> 1)
+                                {
+                                    FFSWAP(int, joint_idx, coded_idx);
+                                }
+
+                                itransform2(lc, tu, &tu->tbs[coded_idx]);
+                                fc->vvcdsp.itx.pred_residual_joint(tu->tbs[joint_idx].coeffs,
+                                    tu->tbs[coded_idx].coeffs, tb->tb_width, tb->tb_height, c_sign, shift);
+                            }
+                        } else if (tb->has_coeffs) {
+                            itransform2(lc, tu, tb);
+                        }
+                    }
+                }
+            }
+
+            fc->vvcdsp.itx.adaptive_color_transform(tu->tbs[LUMA].coeffs,
+                tu->tbs[CB].coeffs, tu->tbs[CR].coeffs, tu->width, tu->height);
+
+            for (int ch_type = start; ch_type <= end; ch_type++)
+                add_residual(lc, tu, i, ch_type);
+
             tu = tu->next;
         }
+    } else {
+        for (int ch_type = start; ch_type <= end; ch_type++) {
+            TransformUnit *tu = cu->tus.head;
+            for (int i = 0; tu; i++) {
+                predict_intra(lc, tu, i, ch_type);
+                itransform(lc, tu, i, ch_type);
+                tu = tu->next;
+            }
+        }
     }
+
     return 0;
 }
 
