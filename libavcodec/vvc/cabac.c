@@ -1395,7 +1395,7 @@ int ff_vvc_num_signalled_palette_entries(VVCLocalContext *lc)
 }
 
 int ff_vvc_new_palette_entries(VVCLocalContext *lc, int bit_depth)
-{   
+{
     return fixed_length_decode(&lc->ep->cc, (1 << bit_depth) - 1);
 }
 
@@ -1713,6 +1713,11 @@ int ff_vvc_tu_y_coded_flag(VVCLocalContext *lc)
         inc = 2 + lc->parse.prev_tu_cbf_y;
     lc->parse.prev_tu_cbf_y = GET_CABAC(TU_Y_CODED_FLAG + inc);
     return lc->parse.prev_tu_cbf_y;
+}
+
+int ff_vvc_cu_act_enabled_flag(VVCLocalContext *lc)
+{
+    return GET_CABAC(CU_ACT_ENABLED_FLAG);
 }
 
 int ff_vvc_cu_qp_delta_abs(VVCLocalContext *lc)
