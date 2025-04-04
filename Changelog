@@ -52,7 +52,8 @@ version 7.1:
 - libswresample now accepts custom order channel layouts as input, with some
   constrains
 - FFV1 parser
-
+- VVC decoder supports all content of SCC (Screen Content Coding):
+  IBC (Inter Block Copy), Palette Mode and ACT (Adaptive Color Transform)
 
 version 7.0:
 - DXV DXT1 encoder
