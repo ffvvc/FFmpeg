@@ -227,6 +227,7 @@ typedef enum PredFlag {
     PF_L1    = 0x2,
     PF_BI    = 0x3,
     PF_IBC   = PF_L0 | 0x4,
+    PF_PLT   = 0x8,
 } PredFlag;
 
 typedef enum IntraPredMode {
