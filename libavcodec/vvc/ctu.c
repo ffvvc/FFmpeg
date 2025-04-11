@@ -2210,6 +2210,21 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
         if (ret < 0)
             return ret;
     }
+    if (!cu->ciip_flag && !((cu->pred_mode == MODE_INTER || cu->pred_mode == MODE_SKIP) && cu->tree_type != DUAL_TREE_CHROMA)) {
+        const VVCFrameContext *fc = lc->fc;
+        MvField *tab_mvf = fc->tab.mvf;
+        const int min_pu_width = fc->ps.pps->min_pu_width;
+        const int min_pu_size = 1 << MIN_PU_LOG2;
+        int w = cu->cb_width;
+        int h = cu->cb_height;
+        for (int dy = 0; dy < h; dy += min_pu_size) {
+            for (int dx = 0; dx < w; dx += min_pu_size) {
+                const int x = x0 + dx;
+                const int y = y0 + dy;
+                tab_mvf[((y) >> 2) * min_pu_width + ((x) >> 2)].ciip_flag = cu->ciip_flag;
+            }
+        }
+    }
     set_cu_tabs(lc, cu);
 
     return 0;
