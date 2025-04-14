@@ -35,15 +35,16 @@ static void FUNC(lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const in
     }
 }
 
-static av_always_inline int16_t FUNC(alf_clip)(pixel curr, pixel v0, pixel v1, int16_t clip)
+static av_always_inline tpixel FUNC(alf_clip)(pixel curr, pixel v0, pixel v1, tpixel clip)
 {
     return av_clip(v0 - curr, -clip, clip) + av_clip(v1 - curr, -clip, clip);
 }
 
 static void FUNC(alf_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t src_stride,
-    const int width, const int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+    const int width, const int height, const int16_t *filter, const int16_t *_clip, const int vb_pos)
 {
     const pixel *src    = (pixel *)_src;
+    const tpixel *clip  = (const tpixel *)_clip;
     const int shift     = 7;
     const int offset    = 1 << ( shift - 1 );
     const int vb_above  = vb_pos - 4;
