@@ -202,9 +202,11 @@ static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 }
 
 static void FUNC(w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *src0, const int16_t *src1, const int width, const int height,
+    const int16_t *_src0, const int16_t *_src1, const int width, const int height,
     const int denom, const int w0, const int w1, const int o0, const int o1)
 {
+    const tpixel *src0          = (const tpixel *)_src0;
+    const tpixel *src1          = (const tpixel *)_src1;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int shift             = denom + FFMAX(3, 15 - BIT_DEPTH);
