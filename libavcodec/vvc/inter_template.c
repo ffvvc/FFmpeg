@@ -271,25 +271,25 @@ static void FUNC(bdof_fetch_samples)(int16_t *_dst, const uint8_t *_src, const p
     const int y_off             = (y_frac >> 3) - 1;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const pixel *src            = (pixel*)_src + (x_off) + y_off * src_stride;
-    int16_t *dst                = _dst - 1 - MAX_PB_SIZE;
-    const int shift             = 14 - BIT_DEPTH;
+    tpixel *dst                 = (tpixel *)_dst - 1 - MAX_PB_SIZE;
+    const int shift             = FFMAX(2, 14 - BIT_DEPTH);
     const int bdof_width        = width + 2 * BDOF_BORDER_EXT;
 
     // top
     for (int i = 0; i < bdof_width; i++)
-        dst[i] = src[i] << shift;
+        dst[i] = (src[i] << shift);
 
     dst += MAX_PB_SIZE;
     src += src_stride;
 
     for (int i = 0; i < height; i++) {
-        dst[0] = src[0] << shift;
-        dst[1 + width] = src[1 + width] << shift;
+        dst[0] = (src[0] << shift);
+        dst[1 + width] = (src[1 + width] << shift);
         dst += MAX_PB_SIZE;
         src += src_stride;
     }
     for (int i = 0; i < bdof_width; i++)
-        dst[i] = src[i] << shift;
+        dst[i] = (src[i] << shift);
 }
 
 //8.5.6.3.3 Luma integer sample fetching process
