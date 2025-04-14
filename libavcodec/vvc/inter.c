@@ -30,6 +30,8 @@
 #define PROF_TEMP_OFFSET (MAX_PB_SIZE + 32)
 static const int bcw_w_lut[] = {4, 5, 3, 10, -2};
 
+#define HIGHBD_MULTIPLIER(bd) (((bd) + 2) >> 3)
+
 static void subpic_get_rect(VVCRect *r, const VVCFrame *src_frame, const int subpic_idx, const int is_chroma)
 {
     const VVCSPS *sps = src_frame->sps;
@@ -319,8 +321,9 @@ static void mc_bi(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst_stride,
     const int hs              = fc->ps.sps->hshift[c_idx];
     const int vs              = fc->ps.sps->vshift[c_idx];
     const int idx             = av_log2(block_w) - 1;
+    const int mult            = HIGHBD_MULTIPLIER(fc->ps.sps->bit_depth);
     const VVCFrame *refs[]    = { ref0, ref1 };
-    int16_t *tmp[]            = { lc->tmp + sb_bdof_flag * PROF_TEMP_OFFSET, lc->tmp1 + sb_bdof_flag * PROF_TEMP_OFFSET };
+    int16_t *tmp[]            = { lc->tmp + sb_bdof_flag * PROF_TEMP_OFFSET * mult, lc->tmp1 + sb_bdof_flag * PROF_TEMP_OFFSET * mult };
     int denom, w0, w1, o0, o1;
     const int weight_flag     = derive_weight(&denom, &w0, &w1, &o0, &o1, lc, mvf, c_idx, pu->dmvr_flag);
     const int is_chroma       = !!c_idx;
@@ -497,7 +500,7 @@ static void luma_prof_uni(VVCLocalContext *lc, uint8_t *dst, const ptrdiff_t dst
     const VVCFrameContext *fc = lc->fc;
     const uint8_t *src        = ref->frame->data[LUMA];
     ptrdiff_t src_stride      = ref->frame->linesize[LUMA];
-    uint16_t *prof_tmp        = lc->tmp + PROF_TEMP_OFFSET;
+    int16_t *prof_tmp         = lc->tmp + PROF_TEMP_OFFSET * HIGHBD_MULTIPLIER(fc->ps.sps->bit_depth);
     const int idx             = av_log2(block_w) - 1;
     const int lx              = mvf->pred_flag - PF_L0;
     const Mv *mv              = mvf->mv + lx;
@@ -540,7 +543,7 @@ static void luma_prof(VVCLocalContext *lc, int16_t *dst, const VVCFrame *ref,
     const int oy              = y_off + (mv->y >> 4);
     const int idx             = av_log2(block_w) - 1;
     const int is_chroma       = 0;
-    uint16_t *prof_tmp        = lc->tmp2 + PROF_TEMP_OFFSET;
+    uint16_t *prof_tmp        = lc->tmp2 + PROF_TEMP_OFFSET * HIGHBD_MULTIPLIER(fc->ps.sps->bit_depth);
     ptrdiff_t src_stride      = ref->frame->linesize[LUMA];
     const uint8_t *src        = ref->frame->data[LUMA];
     const int8_t *hf          = ff_vvc_inter_luma_filters[VVC_INTER_LUMA_FILTER_TYPE_AFFINE][mx];
