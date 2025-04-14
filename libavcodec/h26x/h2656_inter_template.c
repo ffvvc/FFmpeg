@@ -404,16 +404,12 @@ static void FUNC(put_uni_chroma_h)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int8_t *filter        = hf;
-    const int shift             = 14 - BIT_DEPTH;
-#if BIT_DEPTH < 14
+    const int shift             = FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
-#else
-    const int offset            = 0;
-#endif
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
-            dst[x] = av_clip_pixel(((CHROMA_FILTER(src, 1) >> (BIT_DEPTH - 8)) + offset) >> shift);
+            dst[x] = av_clip_pixel(((CHROMA_FILTER(src, 1) >> FFMIN(4, BIT_DEPTH - 8)) + offset) >> shift);
         src += src_stride;
         dst += dst_stride;
     }
@@ -428,16 +424,12 @@ static void FUNC(put_uni_chroma_v)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int8_t *filter        = vf;
-    const int shift             = 14 - BIT_DEPTH;
-#if BIT_DEPTH < 14
+    const int shift             = FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
-#else
-    const int offset            = 0;
-#endif
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
-            dst[x] = av_clip_pixel(((CHROMA_FILTER(src, src_stride) >> (BIT_DEPTH - 8)) + offset) >> shift);
+            dst[x] = av_clip_pixel(((CHROMA_FILTER(src, src_stride) >> FFMIN(4, BIT_DEPTH - 8)) + offset) >> shift);
         src += src_stride;
         dst += dst_stride;
     }
@@ -447,25 +439,21 @@ static void FUNC(put_uni_chroma_hv)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
-    int16_t tmp_array[(MAX_PB_SIZE + CHROMA_EXTRA) * MAX_PB_SIZE];
-    int16_t *tmp                = tmp_array;
+    tpixel tmp_array[(MAX_PB_SIZE + CHROMA_EXTRA) * MAX_PB_SIZE];
+    tpixel *tmp                 = tmp_array;
     const pixel *src            = (const pixel *)_src;
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int8_t *filter        = hf;
-    const int shift             = 14 - BIT_DEPTH;
-#if BIT_DEPTH < 14
+    const int shift             = FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
-#else
-    const int offset            = 0;
-#endif
 
     src -= CHROMA_EXTRA_BEFORE * src_stride;
 
     for (int y = 0; y < height + CHROMA_EXTRA; y++) {
         for (int x = 0; x < width; x++)
-            tmp[x] = CHROMA_FILTER(src, 1) >> (BIT_DEPTH - 8);
+            tmp[x] = CHROMA_FILTER(src, 1) >> FFMIN(4, BIT_DEPTH - 8);
         src += src_stride;
         tmp += MAX_PB_SIZE;
     }
