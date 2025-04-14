@@ -370,7 +370,7 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
 
 }
 
-static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *clip,
+static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *_clip,
     const int *class_idx, const int *transpose_idx, const int size,
     const int16_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
 {
@@ -381,9 +381,11 @@ static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *clip,
         { 9, 8, 10, 4, 3, 7, 11, 5, 1, 0, 2, 6 },
     };
 
-    const int16_t clip_set[] = {
+    const tpixel clip_set[] = {
         1 << BIT_DEPTH, 1 << (BIT_DEPTH - 3), 1 << (BIT_DEPTH - 5), 1 << (BIT_DEPTH - 7)
     };
+
+    tpixel *clip = (tpixel *)_clip;
 
     for (int i = 0; i < size; i++) {
         const int16_t  *src_coeff = coeff_set + class_to_filt[class_idx[i]] * ALF_NUM_COEFF_LUMA;

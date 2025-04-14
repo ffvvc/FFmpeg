@@ -1030,7 +1030,7 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *sr
     int16_t *clip             = (int16_t *)lc->tmp1;
 
     av_assert0(ALF_MAX_FILTER_SIZE <= sizeof(lc->tmp));
-    av_assert0(ALF_MAX_FILTER_SIZE * sizeof(int16_t) <= sizeof(lc->tmp1));
+    av_assert0(ALF_MAX_FILTER_SIZE * sizeof(int16_t) * fc->ps.sps->bit_depth >> 3 <= sizeof(lc->tmp1));
 
     alf_get_coeff_and_clip(lc, coeff, clip, src, src_stride, width, height, vb_pos, alf);
     fc->vvcdsp.alf.filter[LUMA](dst, dst_stride, src, src_stride, width, height, coeff, clip, vb_pos);
