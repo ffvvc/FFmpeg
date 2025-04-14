@@ -241,12 +241,14 @@ static void FUNC(put_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 
 static void FUNC(put_gpm)(uint8_t *_dst, ptrdiff_t dst_stride,
     const int width, const int height,
-    const int16_t *src0, const int16_t *src1,
+    const int16_t *_src0, const int16_t *_src1,
     const uint8_t *weights, const int step_x, const int step_y)
 {
-    const int shift  = FFMAX(5, 17 - BIT_DEPTH);
-    const int offset = 1 << (shift - 1);
-    pixel *dst       = (pixel *)_dst;
+    const tpixel *src0 = (const tpixel *)_src0;
+    const tpixel *src1 = (const tpixel *)_src1;
+    pixel *dst         = (pixel *)_dst;
+    const int shift    = FFMAX(5, 17 - BIT_DEPTH);
+    const int offset   = 1 << (shift - 1);
 
     dst_stride /= sizeof(pixel);
     for (int y = 0; y < height; y++) {
