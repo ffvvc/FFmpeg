@@ -183,8 +183,10 @@ static void FUNC(put_uni_chroma_w_scaled)(uint8_t *_dst, const ptrdiff_t _dst_st
 #undef TMP_STRIDE
 
 static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *src0, const int16_t *src1, const int width, const int height)
+    const int16_t *_src0, const int16_t *_src1, const int width, const int height)
 {
+    const tpixel *src0          = (const tpixel *)_src0;
+    const tpixel *src1          = (const tpixel *)_src1;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int shift             = FFMAX(3, 15 - BIT_DEPTH);
