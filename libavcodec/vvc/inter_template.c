@@ -298,14 +298,13 @@ static void FUNC(fetch_samples)(int16_t *_dst, const uint8_t *_src, const ptrdif
     FUNC(bdof_fetch_samples)(_dst, _src, _src_stride, x_frac, y_frac, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 }
 
-static void FUNC(prof_grad_filter)(int16_t *gradient_h, int16_t *gradient_v, const ptrdiff_t gradient_stride,
-    const int16_t *_src, const ptrdiff_t src_stride, const int width, const int height)
+static void FUNC(prof_grad_filter)(tpixel *gradient_h, tpixel *gradient_v, const ptrdiff_t gradient_stride,
+    const tpixel *src, const ptrdiff_t src_stride, const int width, const int height)
 {
-    const int shift     = 6;
-    const int16_t *src  = _src;
+    const int shift    = 6;
 
     for (int y = 0; y < height; y++) {
-        const int16_t *p = src;
+        const tpixel *p = src;
         for (int x = 0; x < width; x++) {
             gradient_h[x] = (p[1] >> shift) - (p[-1] >> shift);
             gradient_v[x] = (p[src_stride] >> shift) - (p[-src_stride] >> shift);
