@@ -397,6 +397,16 @@ static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *clip,
     }
 }
 
+static void FUNC(alf_get_clip_from_idx)(int16_t *_clip, const uint8_t *clip_idx)
+{
+    tpixel *clip = (tpixel *)_clip;
+    const int offset[] = { 0, 3, 5, 7 };
+
+    for (int i = 0; i < ALF_NUM_COEFF_CHROMA; i++) {
+        clip[i] = 1 << (BIT_DEPTH - offset[clip_idx[i]]);
+    }
+}
+
 #undef ALF_DIR_HORZ
 #undef ALF_DIR_VERT
 #undef ALF_DIR_DIGA0
@@ -854,9 +864,10 @@ static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)
 
 static void FUNC(ff_vvc_alf_dsp_init)(VVCALFDSPContext *const alf)
 {
-    alf->filter[LUMA]    = FUNC(alf_filter_luma);
-    alf->filter[CHROMA]  = FUNC(alf_filter_chroma);
-    alf->filter_cc       = FUNC(alf_filter_cc);
-    alf->classify        = FUNC(alf_classify);
+    alf->filter[LUMA]         = FUNC(alf_filter_luma);
+    alf->filter[CHROMA]       = FUNC(alf_filter_chroma);
+    alf->filter_cc            = FUNC(alf_filter_cc);
+    alf->classify             = FUNC(alf_classify);
     alf->recon_coeff_and_clip = FUNC(alf_recon_coeff_and_clip);
+    alf->get_clip_from_idx    = FUNC(alf_get_clip_from_idx);
 }
