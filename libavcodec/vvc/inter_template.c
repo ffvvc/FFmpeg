@@ -316,12 +316,15 @@ static void FUNC(prof_grad_filter)(tpixel *gradient_h, tpixel *gradient_v, const
     }
 }
 
-static void FUNC(apply_prof)(int16_t *dst, const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y)
+static void FUNC(apply_prof)(int16_t *_dst, const int16_t *_src, const int16_t *diff_mv_x, const int16_t *diff_mv_y)
 {
-    const int limit     = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
+    const tpixel *src  = (const tpixel *)_src;
+    tpixel *dst        = (tpixel *)_dst;
+    const int limit    = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
 
-    int16_t gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
-    int16_t gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+
     FUNC(prof_grad_filter)(gradient_h, gradient_v, AFFINE_MIN_BLOCK_SIZE, src, MAX_PB_SIZE, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 
     for (int y = 0; y < AFFINE_MIN_BLOCK_SIZE; y++) {
