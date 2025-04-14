@@ -26,16 +26,17 @@
 #define LUMA_EXTRA_BEFORE       3
 #define LUMA_EXTRA              7
 
-static void FUNC(put_pixels)(int16_t *dst,
+static void FUNC(put_pixels)(int16_t *_dst,
     const uint8_t *_src, const ptrdiff_t _src_stride,
     const int height, const int8_t *hf, const int8_t *vf, const int width)
 {
     const pixel *src            = (const pixel *)_src;
+    tpixel *dst                 = (tpixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++)
-            dst[x] = src[x] << (14 - BIT_DEPTH);
+            dst[x] = (src[x] << (FFMAX(2, 14 - BIT_DEPTH)));
         src += src_stride;
         dst += MAX_PB_SIZE;
     }
@@ -66,17 +67,13 @@ static void FUNC(put_uni_w_pixels)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     pixel *dst                  = (pixel *)_dst;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int shift             = denom + 14 - BIT_DEPTH;
-#if BIT_DEPTH < 14
+    const int shift             = denom + FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
-#else
-    const int offset            = 0;
-#endif
-    const int ox                = _ox * (1 << (BIT_DEPTH - 8));
+    const int ox                = _ox * (1 << FFMIN(4, BIT_DEPTH - 8));
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            const int v = (src[x] << (14 - BIT_DEPTH));
+            const int v = (src[x] << (FFMAX(2, 14 - BIT_DEPTH)));
             dst[x] = av_clip_pixel(((v * wx + offset) >> shift) + ox);
         }
         src += src_stride;
