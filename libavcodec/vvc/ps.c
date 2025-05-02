@@ -32,6 +32,13 @@
 #include "ps.h"
 #include "dec.h"
 
+static enum AVPixelFormat chroma_idc_formats[][4] = {
+    {  AV_PIX_FMT_GRAY8,   AV_PIX_FMT_YUV420P,  AV_PIX_FMT_YUV422P,    AV_PIX_FMT_YUV444P },
+    { AV_PIX_FMT_GRAY10, AV_PIX_FMT_YUV420P10, AV_PIX_FMT_YUV422P10, AV_PIX_FMT_YUV444P10 },
+    { AV_PIX_FMT_GRAY12, AV_PIX_FMT_YUV420P12, AV_PIX_FMT_YUV422P12, AV_PIX_FMT_YUV444P12 },
+    { AV_PIX_FMT_GRAY14, AV_PIX_FMT_YUV420P14, AV_PIX_FMT_YUV422P14, AV_PIX_FMT_YUV444P14 },
+};
+
 static int sps_map_pixel_format(VVCSPS *sps, void *log_ctx)
 {
     const H266RawSPS *r = sps->r;
@@ -39,26 +46,16 @@ static int sps_map_pixel_format(VVCSPS *sps, void *log_ctx)
 
     switch (sps->bit_depth) {
     case 8:
-        if (r->sps_chroma_format_idc == 0) sps->pix_fmt = AV_PIX_FMT_GRAY8;
-        if (r->sps_chroma_format_idc == 1) sps->pix_fmt = AV_PIX_FMT_YUV420P;
-        if (r->sps_chroma_format_idc == 2) sps->pix_fmt = AV_PIX_FMT_YUV422P;
-        if (r->sps_chroma_format_idc == 3) sps->pix_fmt = AV_PIX_FMT_YUV444P;
-       break;
     case 10:
-        if (r->sps_chroma_format_idc == 0) sps->pix_fmt = AV_PIX_FMT_GRAY10;
-        if (r->sps_chroma_format_idc == 1) sps->pix_fmt = AV_PIX_FMT_YUV420P10;
-        if (r->sps_chroma_format_idc == 2) sps->pix_fmt = AV_PIX_FMT_YUV422P10;
-        if (r->sps_chroma_format_idc == 3) sps->pix_fmt = AV_PIX_FMT_YUV444P10;
-        break;
     case 12:
-        if (r->sps_chroma_format_idc == 0) sps->pix_fmt = AV_PIX_FMT_GRAY12;
-        if (r->sps_chroma_format_idc == 1) sps->pix_fmt = AV_PIX_FMT_YUV420P12;
-        if (r->sps_chroma_format_idc == 2) sps->pix_fmt = AV_PIX_FMT_YUV422P12;
-        if (r->sps_chroma_format_idc == 3) sps->pix_fmt = AV_PIX_FMT_YUV444P12;
+    case 14:
+        enum AVPixelFormat *formats = chroma_idc_formats[sps->r->sps_bitdepth_minus8 >> 1];
+        sps->pix_fmt = formats[sps->r->sps_chroma_format_idc];
         break;
+
     default:
         av_log(log_ctx, AV_LOG_ERROR,
-               "The following bit-depths are currently specified: 8, 10, 12 bits, "
+               "The following bit-depths are currently specified: 8, 10, 12, 14 bits, "
                "chroma_format_idc is %d, depth is %d\n",
                r->sps_chroma_format_idc, sps->bit_depth);
         return AVERROR_INVALIDDATA;
