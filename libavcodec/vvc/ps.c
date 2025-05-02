@@ -37,6 +37,7 @@ static enum AVPixelFormat chroma_idc_formats[][4] = {
     { AV_PIX_FMT_GRAY10, AV_PIX_FMT_YUV420P10, AV_PIX_FMT_YUV422P10, AV_PIX_FMT_YUV444P10 },
     { AV_PIX_FMT_GRAY12, AV_PIX_FMT_YUV420P12, AV_PIX_FMT_YUV422P12, AV_PIX_FMT_YUV444P12 },
     { AV_PIX_FMT_GRAY14, AV_PIX_FMT_YUV420P14, AV_PIX_FMT_YUV422P14, AV_PIX_FMT_YUV444P14 },
+    { AV_PIX_FMT_GRAY16, AV_PIX_FMT_YUV420P16, AV_PIX_FMT_YUV422P16, AV_PIX_FMT_YUV444P16 },
 };
 
 static int sps_map_pixel_format(VVCSPS *sps, void *log_ctx)
@@ -49,13 +50,14 @@ static int sps_map_pixel_format(VVCSPS *sps, void *log_ctx)
     case 10:
     case 12:
     case 14:
+    case 16:
         enum AVPixelFormat *formats = chroma_idc_formats[sps->r->sps_bitdepth_minus8 >> 1];
         sps->pix_fmt = formats[sps->r->sps_chroma_format_idc];
         break;
 
     default:
         av_log(log_ctx, AV_LOG_ERROR,
-               "The following bit-depths are currently specified: 8, 10, 12, 14 bits, "
+               "The following bit-depths are currently specified: 8, 10, 12, 14, 16 bits, "
                "chroma_format_idc is %d, depth is %d\n",
                r->sps_chroma_format_idc, sps->bit_depth);
         return AVERROR_INVALIDDATA;
