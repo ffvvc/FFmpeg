@@ -83,6 +83,10 @@ typedef struct IntraEdgeParams {
 #include "dsp_template.c"
 #undef BIT_DEPTH
 
+#define BIT_DEPTH 14
+#include "dsp_template.c"
+#undef BIT_DEPTH
+
 void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
 {
 #undef FUNC
@@ -98,6 +102,9 @@ void ff_vvc_dsp_init(VVCDSPContext *vvcdsp, int bit_depth)
     FUNC(ff_vvc_alf_dsp_init, depth)(&vvcdsp->alf);                             \
 
     switch (bit_depth) {
+    case 14:
+        VVC_DSP(14);
+        break;
     case 12:
         VVC_DSP(12);
         break;
