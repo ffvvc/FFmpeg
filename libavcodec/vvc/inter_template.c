@@ -366,17 +366,18 @@ static void FUNC(apply_prof_uni)(uint8_t *_dst, const ptrdiff_t _dst_stride, con
 }
 
 static void FUNC(apply_prof_uni_w)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y,
+    const int16_t *_src, const int16_t *diff_mv_x, const int16_t *diff_mv_y,
     const int denom, const int wx, const int _ox)
 {
     const int limit             = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
+    const tpixel *src           = (const tpixel *)_src;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int shift             = denom + FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
     const int ox                = _ox * (1 << (BIT_DEPTH - 8));
-    int16_t gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
-    int16_t gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
 
     FUNC(prof_grad_filter)(gradient_h, gradient_v, AFFINE_MIN_BLOCK_SIZE, src, MAX_PB_SIZE, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 
