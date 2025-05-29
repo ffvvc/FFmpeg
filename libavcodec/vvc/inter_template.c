@@ -29,10 +29,10 @@ static void av_always_inline FUNC(put_scaled)(uint8_t *_dst, const ptrdiff_t _ds
     const int _x, const int _y, const int dx, const int dy,
     const int height, const int8_t *hf, const int8_t *vf, const int width, const int is_uni, const int is_chroma)
 {
-    int16_t tmp_array[TMP_STRIDE * MAX_PB_SIZE];
-    int16_t *tmp                 = tmp_array;
-    pixel *dst                   = (pixel*)_dst;
-    int16_t *dst16               = (int16_t*)_dst;
+    tpixel tmp_array[TMP_STRIDE * MAX_PB_SIZE];
+    tpixel *tmp                  = tmp_array;
+    pixel *dst                   = (pixel *)_dst;
+    tpixel *dst16                = (tpixel *)_dst;
     const ptrdiff_t dst_stride   = _dst_stride / sizeof(pixel);
     const ptrdiff_t src_stride   = _src_stride / sizeof(pixel);
     const int shift              = FFMAX(2, 14 - BIT_DEPTH);
