@@ -18,6 +18,7 @@ version <next>:
 - APV encoding support through a libopenapv wrapper
 - VVC decoder supports all content of SCC (Screen Content Coding):
   IBC (Inter Block Copy), Palette Mode and ACT (Adaptive Color Transform
+- The VVC decoder supports decoding 14/16 bits bitstreams
 
 
 version 7.1:
