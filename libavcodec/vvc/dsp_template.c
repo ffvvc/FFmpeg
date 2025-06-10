@@ -32,9 +32,8 @@
 static void FUNC(add_residual)(uint8_t *_dst, const int *res,
     const int w, const int h, const ptrdiff_t _stride)
 {
-    pixel *dst          = (pixel *)_dst;
-
-    const int stride    = _stride / sizeof(pixel);
+    pixel *dst             = (pixel *)_dst;
+    const ptrdiff_t stride = _stride / sizeof(pixel);
 
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {

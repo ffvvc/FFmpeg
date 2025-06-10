@@ -35,15 +35,16 @@ static void FUNC(lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const in
     }
 }
 
-static av_always_inline int16_t FUNC(alf_clip)(pixel curr, pixel v0, pixel v1, int16_t clip)
+static av_always_inline tpixel FUNC(alf_clip)(pixel curr, pixel v0, pixel v1, tpixel clip)
 {
     return av_clip(v0 - curr, -clip, clip) + av_clip(v1 - curr, -clip, clip);
 }
 
 static void FUNC(alf_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const uint8_t *_src, ptrdiff_t src_stride,
-    const int width, const int height, const int16_t *filter, const int16_t *clip, const int vb_pos)
+    const int width, const int height, const int16_t *filter, const int16_t *_clip, const int vb_pos)
 {
     const pixel *src    = (pixel *)_src;
+    const tpixel *clip  = (const tpixel *)_clip;
     const int shift     = 7;
     const int offset    = 1 << ( shift - 1 );
     const int vb_above  = vb_pos - 4;
@@ -135,13 +136,14 @@ static void FUNC(alf_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const uin
 }
 
 static void FUNC(alf_filter_chroma)(uint8_t* _dst, ptrdiff_t dst_stride, const uint8_t* _src, ptrdiff_t src_stride,
-    const int width, const int height, const int16_t* filter, const int16_t* clip, const int vb_pos)
+    const int width, const int height, const int16_t *filter, const int16_t *_clip, const int vb_pos)
 {
-    const pixel *src = (pixel *)_src;
-    const int shift  = 7;
-    const int offset = 1 << ( shift - 1 );
-    const int vb_above  = vb_pos - 2;
-    const int vb_below  = vb_pos + 1;
+    const pixel *src   = (pixel *)_src;
+    const tpixel *clip = (const tpixel *)_clip;
+    const int shift    = 7;
+    const int offset   = 1 << ( shift - 1 );
+    const int vb_above = vb_pos - 2;
+    const int vb_below = vb_pos + 1;
 
     dst_stride /= sizeof(pixel);
     src_stride /= sizeof(pixel);
@@ -370,7 +372,7 @@ static void FUNC(alf_classify)(int *class_idx, int *transpose_idx,
 
 }
 
-static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *clip,
+static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *_clip,
     const int *class_idx, const int *transpose_idx, const int size,
     const int16_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt)
 {
@@ -381,9 +383,11 @@ static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *clip,
         { 9, 8, 10, 4, 3, 7, 11, 5, 1, 0, 2, 6 },
     };
 
-    const int16_t clip_set[] = {
+    const tpixel clip_set[] = {
         1 << BIT_DEPTH, 1 << (BIT_DEPTH - 3), 1 << (BIT_DEPTH - 5), 1 << (BIT_DEPTH - 7)
     };
+
+    tpixel *clip = (tpixel *)_clip;
 
     for (int i = 0; i < size; i++) {
         const int16_t  *src_coeff = coeff_set + class_to_filt[class_idx[i]] * ALF_NUM_COEFF_LUMA;
@@ -394,6 +398,16 @@ static void FUNC(alf_recon_coeff_and_clip)(int16_t *coeff, int16_t *clip,
             *coeff++ = src_coeff[idx];
             *clip++  = clip_set[clip_idx[idx]];
         }
+    }
+}
+
+static void FUNC(alf_get_clip_from_idx)(int16_t *_clip, const uint8_t *clip_idx)
+{
+    tpixel *clip = (tpixel *)_clip;
+    const int offset[] = { 0, 3, 5, 7 };
+
+    for (int i = 0; i < ALF_NUM_COEFF_CHROMA; i++) {
+        clip[i] = 1 << (BIT_DEPTH - offset[clip_idx[i]]);
     }
 }
 
@@ -854,9 +868,10 @@ static void FUNC(ff_vvc_sao_dsp_init)(VVCSAODSPContext *const sao)
 
 static void FUNC(ff_vvc_alf_dsp_init)(VVCALFDSPContext *const alf)
 {
-    alf->filter[LUMA]    = FUNC(alf_filter_luma);
-    alf->filter[CHROMA]  = FUNC(alf_filter_chroma);
-    alf->filter_cc       = FUNC(alf_filter_cc);
-    alf->classify        = FUNC(alf_classify);
+    alf->filter[LUMA]         = FUNC(alf_filter_luma);
+    alf->filter[CHROMA]       = FUNC(alf_filter_chroma);
+    alf->filter_cc            = FUNC(alf_filter_cc);
+    alf->classify             = FUNC(alf_classify);
     alf->recon_coeff_and_clip = FUNC(alf_recon_coeff_and_clip);
+    alf->get_clip_from_idx    = FUNC(alf_get_clip_from_idx);
 }

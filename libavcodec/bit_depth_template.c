@@ -30,6 +30,7 @@
 #   undef pixel4
 #   undef dctcoef
 #   undef idctin
+#   undef tpixel
 #   undef no_rnd_avg_pixel4
 #   undef rnd_avg_pixel4
 #   undef AV_RN2P
@@ -52,6 +53,11 @@
 #   define pixel2 uint32_t
 #   define pixel4 uint64_t
 #   define dctcoef int32_t
+#if BIT_DEPTH > 12
+#   define tpixel int
+#else
+#   define tpixel int16_t
+#endif
 
 #ifdef IN_IDCT_DEPTH
 #if IN_IDCT_DEPTH == 32
@@ -81,6 +87,7 @@
 #   define pixel4 uint32_t
 #   define dctcoef int16_t
 #   define idctin  int16_t
+#   define tpixel int16_t
 
 #   define no_rnd_avg_pixel4 no_rnd_avg32
 #   define    rnd_avg_pixel4    rnd_avg32

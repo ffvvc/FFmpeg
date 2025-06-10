@@ -1030,18 +1030,10 @@ static void alf_filter_luma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *sr
     int16_t *clip             = (int16_t *)lc->tmp1;
 
     av_assert0(ALF_MAX_FILTER_SIZE <= sizeof(lc->tmp));
-    av_assert0(ALF_MAX_FILTER_SIZE * sizeof(int16_t) <= sizeof(lc->tmp1));
+    av_assert0(ALF_MAX_FILTER_SIZE * sizeof(int16_t) * fc->ps.sps->bit_depth >> 3 <= sizeof(lc->tmp1));
 
     alf_get_coeff_and_clip(lc, coeff, clip, src, src_stride, width, height, vb_pos, alf);
     fc->vvcdsp.alf.filter[LUMA](dst, dst_stride, src, src_stride, width, height, coeff, clip, vb_pos);
-}
-
-static int alf_clip_from_idx(const VVCFrameContext *fc, const int idx)
-{
-    const VVCSPS *sps  = fc->ps.sps;
-    const int offset[] = {0, 3, 5, 7};
-
-    return 1 << (sps->bit_depth - offset[idx]);
 }
 
 static void alf_filter_chroma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *src,
@@ -1053,11 +1045,9 @@ static void alf_filter_chroma(VVCLocalContext *lc, uint8_t *dst, const uint8_t *
     const VVCALF *aps             = fc->ps.alf_list[rsh->sh_alf_aps_id_chroma];
     const int idx                 = alf->alf_ctb_filter_alt_idx[c_idx - 1];
     const int16_t *coeff          = aps->chroma_coeff[idx];
-    int16_t clip[ALF_NUM_COEFF_CHROMA];
+    int16_t clip[ALF_NUM_COEFF_CHROMA * 2];
 
-    for (int i = 0; i < ALF_NUM_COEFF_CHROMA; i++)
-        clip[i] = alf_clip_from_idx(fc, aps->chroma_clip_idx[idx][i]);
-
+    fc->vvcdsp.alf.get_clip_from_idx(clip, aps->chroma_clip_idx[idx]);
     fc->vvcdsp.alf.filter[CHROMA](dst, dst_stride, src, src_stride, width, height, coeff, clip, vb_pos);
 }
 

@@ -165,6 +165,7 @@ typedef struct VVCALFDSPContext {
         int vb_pos, int *gradient_tmp);
     void (*recon_coeff_and_clip)(int16_t *coeff, int16_t *clip, const int *class_idx, const int *transpose_idx, int size,
         const int16_t *coeff_set, const uint8_t *clip_idx_set, const uint8_t *class_to_filt);
+    void (*get_clip_from_idx)(int16_t *clip, const uint8_t *clip_idx);
 } VVCALFDSPContext;
 
 typedef struct VVCDSPContext {

@@ -29,10 +29,10 @@ static void av_always_inline FUNC(put_scaled)(uint8_t *_dst, const ptrdiff_t _ds
     const int _x, const int _y, const int dx, const int dy,
     const int height, const int8_t *hf, const int8_t *vf, const int width, const int is_uni, const int is_chroma)
 {
-    int16_t tmp_array[TMP_STRIDE * MAX_PB_SIZE];
-    int16_t *tmp                 = tmp_array;
-    pixel *dst                   = (pixel*)_dst;
-    int16_t *dst16               = (int16_t*)_dst;
+    tpixel tmp_array[TMP_STRIDE * MAX_PB_SIZE];
+    tpixel *tmp                  = tmp_array;
+    pixel *dst                   = (pixel *)_dst;
+    tpixel *dst16                = (tpixel *)_dst;
     const ptrdiff_t dst_stride   = _dst_stride / sizeof(pixel);
     const ptrdiff_t src_stride   = _src_stride / sizeof(pixel);
     const int shift              = FFMAX(2, 14 - BIT_DEPTH);
@@ -183,8 +183,10 @@ static void FUNC(put_uni_chroma_w_scaled)(uint8_t *_dst, const ptrdiff_t _dst_st
 #undef TMP_STRIDE
 
 static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *src0, const int16_t *src1, const int width, const int height)
+    const int16_t *_src0, const int16_t *_src1, const int width, const int height)
 {
+    const tpixel *src0          = (const tpixel *)_src0;
+    const tpixel *src1          = (const tpixel *)_src1;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int shift             = FFMAX(3, 15 - BIT_DEPTH);
@@ -200,9 +202,11 @@ static void FUNC(avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 }
 
 static void FUNC(w_avg)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *src0, const int16_t *src1, const int width, const int height,
+    const int16_t *_src0, const int16_t *_src1, const int width, const int height,
     const int denom, const int w0, const int w1, const int o0, const int o1)
 {
+    const tpixel *src0          = (const tpixel *)_src0;
+    const tpixel *src1          = (const tpixel *)_src1;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int shift             = denom + FFMAX(3, 15 - BIT_DEPTH);
@@ -237,12 +241,14 @@ static void FUNC(put_ciip)(uint8_t *_dst, const ptrdiff_t _dst_stride,
 
 static void FUNC(put_gpm)(uint8_t *_dst, ptrdiff_t dst_stride,
     const int width, const int height,
-    const int16_t *src0, const int16_t *src1,
+    const int16_t *_src0, const int16_t *_src1,
     const uint8_t *weights, const int step_x, const int step_y)
 {
-    const int shift  = FFMAX(5, 17 - BIT_DEPTH);
-    const int offset = 1 << (shift - 1);
-    pixel *dst       = (pixel *)_dst;
+    const tpixel *src0 = (const tpixel *)_src0;
+    const tpixel *src1 = (const tpixel *)_src1;
+    pixel *dst         = (pixel *)_dst;
+    const int shift    = FFMAX(5, 17 - BIT_DEPTH);
+    const int offset   = 1 << (shift - 1);
 
     dst_stride /= sizeof(pixel);
     for (int y = 0; y < height; y++) {
@@ -265,25 +271,25 @@ static void FUNC(bdof_fetch_samples)(int16_t *_dst, const uint8_t *_src, const p
     const int y_off             = (y_frac >> 3) - 1;
     const ptrdiff_t src_stride  = _src_stride / sizeof(pixel);
     const pixel *src            = (pixel*)_src + (x_off) + y_off * src_stride;
-    int16_t *dst                = _dst - 1 - MAX_PB_SIZE;
-    const int shift             = 14 - BIT_DEPTH;
+    tpixel *dst                 = (tpixel *)_dst - 1 - MAX_PB_SIZE;
+    const int shift             = FFMAX(2, 14 - BIT_DEPTH);
     const int bdof_width        = width + 2 * BDOF_BORDER_EXT;
 
     // top
     for (int i = 0; i < bdof_width; i++)
-        dst[i] = src[i] << shift;
+        dst[i] = (src[i] << shift);
 
     dst += MAX_PB_SIZE;
     src += src_stride;
 
     for (int i = 0; i < height; i++) {
-        dst[0] = src[0] << shift;
-        dst[1 + width] = src[1 + width] << shift;
+        dst[0] = (src[0] << shift);
+        dst[1 + width] = (src[1 + width] << shift);
         dst += MAX_PB_SIZE;
         src += src_stride;
     }
     for (int i = 0; i < bdof_width; i++)
-        dst[i] = src[i] << shift;
+        dst[i] = (src[i] << shift);
 }
 
 //8.5.6.3.3 Luma integer sample fetching process
@@ -292,14 +298,13 @@ static void FUNC(fetch_samples)(int16_t *_dst, const uint8_t *_src, const ptrdif
     FUNC(bdof_fetch_samples)(_dst, _src, _src_stride, x_frac, y_frac, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 }
 
-static void FUNC(prof_grad_filter)(int16_t *gradient_h, int16_t *gradient_v, const ptrdiff_t gradient_stride,
-    const int16_t *_src, const ptrdiff_t src_stride, const int width, const int height)
+static void FUNC(prof_grad_filter)(tpixel *gradient_h, tpixel *gradient_v, const ptrdiff_t gradient_stride,
+    const tpixel *src, const ptrdiff_t src_stride, const int width, const int height)
 {
-    const int shift     = 6;
-    const int16_t *src  = _src;
+    const int shift    = 6;
 
     for (int y = 0; y < height; y++) {
-        const int16_t *p = src;
+        const tpixel *p = src;
         for (int x = 0; x < width; x++) {
             gradient_h[x] = (p[1] >> shift) - (p[-1] >> shift);
             gradient_v[x] = (p[src_stride] >> shift) - (p[-src_stride] >> shift);
@@ -311,12 +316,15 @@ static void FUNC(prof_grad_filter)(int16_t *gradient_h, int16_t *gradient_v, con
     }
 }
 
-static void FUNC(apply_prof)(int16_t *dst, const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y)
+static void FUNC(apply_prof)(int16_t *_dst, const int16_t *_src, const int16_t *diff_mv_x, const int16_t *diff_mv_y)
 {
-    const int limit     = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
+    const tpixel *src  = (const tpixel *)_src;
+    tpixel *dst        = (tpixel *)_dst;
+    const int limit    = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
 
-    int16_t gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
-    int16_t gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+
     FUNC(prof_grad_filter)(gradient_h, gradient_v, AFFINE_MIN_BLOCK_SIZE, src, MAX_PB_SIZE, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 
     for (int y = 0; y < AFFINE_MIN_BLOCK_SIZE; y++) {
@@ -325,26 +333,23 @@ static void FUNC(apply_prof)(int16_t *dst, const int16_t *src, const int16_t *di
             const int di = gradient_h[o] * diff_mv_x[o] + gradient_v[o] * diff_mv_y[o];
             const int val = src[x] + av_clip(di, -limit, limit - 1);
             dst[x] = val;
-
         }
         src += MAX_PB_SIZE;
         dst += MAX_PB_SIZE;
     }
 }
 
-static void FUNC(apply_prof_uni)(uint8_t *_dst, const ptrdiff_t _dst_stride, const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y)
+static void FUNC(apply_prof_uni)(uint8_t *_dst, const ptrdiff_t _dst_stride, const int16_t *_src, const int16_t *diff_mv_x, const int16_t *diff_mv_y)
 {
     const int limit             = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
+    const tpixel *src           = (const tpixel *)_src;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    const int shift             = 14 - BIT_DEPTH;
-#if BIT_DEPTH < 14
+    const int shift             = FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
-#else
-    const int offset            = 0;
-#endif
-    int16_t gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
-    int16_t gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+
+    tpixel gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
 
     FUNC(prof_grad_filter)(gradient_h, gradient_v, AFFINE_MIN_BLOCK_SIZE, src, MAX_PB_SIZE, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 
@@ -354,7 +359,6 @@ static void FUNC(apply_prof_uni)(uint8_t *_dst, const ptrdiff_t _dst_stride, con
             const int di = gradient_h[o] * diff_mv_x[o] + gradient_v[o] * diff_mv_y[o];
             const int val = src[x] + av_clip(di, -limit, limit - 1);
             dst[x] = av_clip_pixel((val + offset) >> shift);
-
         }
         src += MAX_PB_SIZE;
         dst += dst_stride;
@@ -362,17 +366,18 @@ static void FUNC(apply_prof_uni)(uint8_t *_dst, const ptrdiff_t _dst_stride, con
 }
 
 static void FUNC(apply_prof_uni_w)(uint8_t *_dst, const ptrdiff_t _dst_stride,
-    const int16_t *src, const int16_t *diff_mv_x, const int16_t *diff_mv_y,
+    const int16_t *_src, const int16_t *diff_mv_x, const int16_t *diff_mv_y,
     const int denom, const int wx, const int _ox)
 {
     const int limit             = (1 << FFMAX(13, BIT_DEPTH + 1));          ///< dILimit
+    const tpixel *src           = (const tpixel *)_src;
     pixel *dst                  = (pixel*)_dst;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
     const int shift             = denom + FFMAX(2, 14 - BIT_DEPTH);
     const int offset            = 1 << (shift - 1);
     const int ox                = _ox * (1 << (BIT_DEPTH - 8));
-    int16_t gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
-    int16_t gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_h[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
+    tpixel gradient_v[AFFINE_MIN_BLOCK_SIZE * AFFINE_MIN_BLOCK_SIZE];
 
     FUNC(prof_grad_filter)(gradient_h, gradient_v, AFFINE_MIN_BLOCK_SIZE, src, MAX_PB_SIZE, AFFINE_MIN_BLOCK_SIZE, AFFINE_MIN_BLOCK_SIZE);
 
@@ -388,9 +393,9 @@ static void FUNC(apply_prof_uni_w)(uint8_t *_dst, const ptrdiff_t _dst_stride,
     }
 }
 
-static void FUNC(derive_bdof_vx_vy)(const int16_t *_src0, const int16_t *_src1,
+static void FUNC(derive_bdof_vx_vy)(const tpixel *_src0, const tpixel *_src1,
     const int pad_left, const int pad_top, const int pad_right, const int pad_bottom,
-    const int16_t **gradient_h, const int16_t **gradient_v,
+    const tpixel **gradient_h, const tpixel **gradient_v,
     int* vx, int* vy)
 {
     const int shift2 = 4;
@@ -398,17 +403,22 @@ static void FUNC(derive_bdof_vx_vy)(const int16_t *_src0, const int16_t *_src1,
     const int thres = 1 << 4;
     int sgx2 = 0, sgy2 = 0, sgxgy = 0, sgxdi = 0, sgydi = 0;
 
+    const tpixel *gh0 = gradient_h[0];
+    const tpixel *gv0 = gradient_v[0];
+    const tpixel *gh1 = gradient_h[1];
+    const tpixel *gv1 = gradient_v[1];
+
     for (int y = -1; y < BDOF_MIN_BLOCK_SIZE + 1; y++) {
-        const int dy        = y + (pad_top && y < 0) - (pad_bottom && y == BDOF_MIN_BLOCK_SIZE);         // we pad for the first and last row
-        const int16_t *src0 = _src0 + dy * MAX_PB_SIZE;
-        const int16_t *src1 = _src1 + dy * MAX_PB_SIZE;
+        const int dy       = y + (pad_top && y < 0) - (pad_bottom && y == BDOF_MIN_BLOCK_SIZE);         // we pad for the first and last row
+        const tpixel *src0 = _src0 + dy * MAX_PB_SIZE;
+        const tpixel *src1 = _src1 + dy * MAX_PB_SIZE;
 
         for (int x = -1; x < BDOF_MIN_BLOCK_SIZE + 1; x++) {
             const int dx    = x + (pad_left && x < 0) - (pad_right && x == BDOF_MIN_BLOCK_SIZE);         // we pad for the first and last col
             const int diff  = (src0[dx] >> shift2) - (src1[dx] >> shift2);
             const int idx   = BDOF_BLOCK_SIZE * dy + dx;
-            const int temph = (gradient_h[0][idx] + gradient_h[1][idx]) >> shift3;
-            const int tempv = (gradient_v[0][idx] + gradient_v[1][idx]) >> shift3;
+            const int temph = (gh0[idx] + gh1[idx]) >> shift3;
+            const int tempv = (gv0[idx] + gv1[idx]) >> shift3;
 
             sgx2 += FFABS(temph);
             sgy2 += FFABS(tempv);
@@ -421,11 +431,11 @@ static void FUNC(derive_bdof_vx_vy)(const int16_t *_src0, const int16_t *_src1,
     *vy = sgy2 > 0 ? av_clip(((sgydi * (1 << 2)) - ((*vx * sgxgy) >> 1)) >> av_log2(sgy2), -thres + 1, thres - 1) : 0;
 }
 
-static void FUNC(apply_bdof_min_block)(pixel* dst, const ptrdiff_t dst_stride, const int16_t *src0, const int16_t *src1,
-    const int16_t **gh, const int16_t **gv, const int vx, const int vy)
+static void FUNC(apply_bdof_min_block)(pixel* dst, const ptrdiff_t dst_stride, const tpixel *src0, const tpixel *src1,
+    const tpixel **gh, const tpixel **gv, const int vx, const int vy)
 {
-    const int shift4 = 15 - BIT_DEPTH;
-    const int offset4 = 1 << (shift4 - 1);
+    const int shift4   = FFMAX(3, 15 - BIT_DEPTH);
+    const int offset4  = 1 << (shift4 - 1);
 
     for (int y = 0; y < BDOF_MIN_BLOCK_SIZE; y++) {
         for (int x = 0; x < BDOF_MIN_BLOCK_SIZE; x++) {
@@ -442,27 +452,31 @@ static void FUNC(apply_bdof_min_block)(pixel* dst, const ptrdiff_t dst_stride, c
 static void FUNC(apply_bdof)(uint8_t *_dst, const ptrdiff_t _dst_stride, const int16_t *_src0, const int16_t *_src1,
     const int block_w, const int block_h)
 {
-    int16_t gradient_h[2][BDOF_BLOCK_SIZE * BDOF_BLOCK_SIZE];
-    int16_t gradient_v[2][BDOF_BLOCK_SIZE * BDOF_BLOCK_SIZE];
+    tpixel gradient_h[2][BDOF_BLOCK_SIZE * BDOF_BLOCK_SIZE];
+    tpixel gradient_v[2][BDOF_BLOCK_SIZE * BDOF_BLOCK_SIZE];
     int vx, vy;
     const ptrdiff_t dst_stride  = _dst_stride / sizeof(pixel);
-    pixel* dst                  = (pixel*)_dst;
+    const tpixel *src0          = (const tpixel *)_src0;
+    const tpixel *src1          = (const tpixel *)_src1;
+    pixel *dst                  = (pixel *)_dst;
 
     FUNC(prof_grad_filter)(gradient_h[0], gradient_v[0], BDOF_BLOCK_SIZE,
-        _src0, MAX_PB_SIZE, block_w, block_h);
+        src0, MAX_PB_SIZE, block_w, block_h);
     FUNC(prof_grad_filter)(gradient_h[1], gradient_v[1], BDOF_BLOCK_SIZE,
-        _src1, MAX_PB_SIZE, block_w, block_h);
+        src1, MAX_PB_SIZE, block_w, block_h);
 
     for (int y = 0; y < block_h; y += BDOF_MIN_BLOCK_SIZE) {
         for (int x = 0; x < block_w; x += BDOF_MIN_BLOCK_SIZE) {
-            const int16_t* src0 = _src0 + y * MAX_PB_SIZE + x;
-            const int16_t* src1 = _src1 + y * MAX_PB_SIZE + x;
-            pixel *d            = dst + x;
-            const int idx       = BDOF_BLOCK_SIZE * y  + x;
-            const int16_t* gh[] = { gradient_h[0] + idx, gradient_h[1] + idx };
-            const int16_t* gv[] = { gradient_v[0] + idx, gradient_v[1] + idx };
-            FUNC(derive_bdof_vx_vy)(src0, src1, !x, !y, x + BDOF_MIN_BLOCK_SIZE == block_w, y + BDOF_MIN_BLOCK_SIZE == block_h, gh, gv, &vx, &vy);
-            FUNC(apply_bdof_min_block)(d, dst_stride, src0, src1, gh, gv, vx, vy);
+            const tpixel *s0   = src0 + y * MAX_PB_SIZE + x;
+            const tpixel *s1   = src1 + y * MAX_PB_SIZE + x;
+
+            pixel *d           = dst + x;
+            const int idx      = BDOF_BLOCK_SIZE * y + x;
+            const tpixel *gh[] = { gradient_h[0] + idx, gradient_h[1] + idx };
+            const tpixel *gv[] = { gradient_v[0] + idx, gradient_v[1] + idx };
+
+            FUNC(derive_bdof_vx_vy)(s0, s1, !x, !y, x + BDOF_MIN_BLOCK_SIZE == block_w, y + BDOF_MIN_BLOCK_SIZE == block_h, gh, gv, &vx, &vy);
+            FUNC(apply_bdof_min_block)(d, dst_stride, s0, s1, gh, gv, vx, vy);
         }
         dst += BDOF_MIN_BLOCK_SIZE * dst_stride;
     }
